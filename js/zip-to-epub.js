@@ -120,8 +120,7 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
             li.draggable = true;
             li.dataset.name = chapter.name;
             li.className = 'flex items-center p-2.5 border-b border-slate-200 dark:border-slate-700 cursor-grab user-select-none transition-all duration-200 rounded-md mb-0.5 last:border-b-0 hover:bg-slate-200/50 dark:hover:bg-slate-700/50';
-            const handle = `<span class="mr-3 text-slate-500 text-lg leading-none p-1 rounded-sm transition-colors duration-200 hover:text-primary-600 hover:bg-slate-200 dark:hover:bg-slate-700">☰</span>`;
-            li.innerHTML = `${handle}<input type="text" value="${escapeHTML(chapter.title)}" class="flex-grow bg-transparent border-none text-slate-800 dark:text-slate-200 p-1.5 rounded-md border border-transparent text-sm transition-all duration-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 focus:bg-white/50 dark:focus:bg-slate-600/50 focus:border-primary-500 focus:outline-none" aria-label="Title for chapter ${escapeHTML(chapter.name)}">`;
+            li.innerHTML = `<input type="text" value="${escapeHTML(chapter.title)}" class="flex-grow bg-transparent border-none text-slate-800 dark:text-slate-200 p-1.5 rounded-md border border-transparent text-sm transition-all duration-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 focus:bg-white/50 dark:focus:bg-slate-600/50 focus:border-primary-500 focus:outline-none" aria-label="Title for chapter ${escapeHTML(chapter.name)}">`;
             chapterListUl.appendChild(li);
         });
     }

@@ -621,7 +621,7 @@
 
       <!-- Upload Section -->
       <div class="max-w-md mx-auto mb-6">
-        <label for="zipBackupFile" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-violet-600 hover:bg-violet-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 w-full cursor-pointer" id="zipBackupFileLabel">📦 Upload ZIP File</label>
+        <label for="zipBackupFile" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-violet-600 hover:bg-violet-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 w-full cursor-pointer" id="zipBackupFileLabel">Upload ZIP File</label>
         <input type="file" id="zipBackupFile" class="hidden" accept=".zip" aria-labelledby="zipBackupFileLabel" aria-describedby="statusMessageCreateBackupFromZip">
         <div class="mt-2.5 flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 p-2 rounded-md min-h-[40px]">
               <span id="zipBackupFileName" class="text-slate-500 dark:text-slate-300 max-w-[calc(100%-30px)] overflow-hidden text-ellipsis whitespace-nowrap inline-block"></span>
@@ -635,25 +635,25 @@
         <!-- Project Information -->
         <div class="p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
           <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
-            <span>📝</span>Project Information
+            Project Information
           </h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label for="zipProjectTitle" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                <span>📚</span>Project Title:
+                Project Title:
               </label>
               <input type="text" id="zipProjectTitle" placeholder="Enter project title" aria-describedby="statusMessageCreateBackupFromZip" class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
             </div>
             <div>
               <label for="zipUniqueCode" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                <span>🔢</span>Unique Code (Optional):
+                Unique Code (Optional):
               </label>
               <input type="text" id="zipUniqueCode" placeholder="Auto-generated if blank" class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
             </div>
           </div>
           <div class="mt-4">
             <label for="zipDescription" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              <span>📄</span>Description:
+              Description:
             </label>
             <textarea id="zipDescription" placeholder="Enter project description" rows="3" class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full min-h-[80px]"></textarea>
           </div>
@@ -662,12 +662,12 @@
         <!-- Chapter Configuration -->
         <div class="p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
           <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
-            <span>⚙️</span>Chapter Configuration
+            Chapter Configuration
           </h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label for="zipChapterPattern" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                <span>🏷️</span>Chapter Pattern:
+                Chapter Pattern:
                 <span class="tooltip-trigger relative group inline-block ml-1 cursor-help text-primary-600 font-bold border border-primary-600 rounded-full w-5 h-5 leading-4 text-center text-xs hover:bg-primary-600 hover:text-white" aria-label="More info about Chapter Pattern" role="button" tabindex="0">(?)
                   <span class="tooltip-text-popup absolute bottom-full left-1/2 -ml-[110px] w-[220px] invisible opacity-0 group-hover:visible group-hover:opacity-100 group-[.active]:visible group-[.active]:opacity-100 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-left rounded-md p-2 z-10 shadow-lg text-sm transition-opacity duration-300">
                     If provided, chapters will be named 'Pattern + Number'. E.g., 'Chapter 1', 'Chapter 2'. If blank, original .txt filenames are used. Click to dismiss.
@@ -679,14 +679,14 @@
             </div>
             <div>
               <label for="zipStartNumber" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                <span>🔢</span>Start Number:
+                Start Number:
               </label>
               <input type="number" id="zipStartNumber" min="1" value="1" aria-describedby="statusMessageCreateBackupFromZip" class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
             </div>
           </div>
           <div class="mt-4">
             <label for="zipExtraChapters" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              <span>➕</span>Extra Empty Chapters:
+              Extra Empty Chapters:
             </label>
             <input type="number" id="zipExtraChapters" min="0" value="0" aria-describedby="statusMessageCreateBackupFromZip" class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
             <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">Add this many empty chapters to the end of your backup</p>
@@ -697,7 +697,7 @@
       <!-- Action Button -->
       <div class="mt-8 flex justify-center">
         <button id="createFromZipBtn" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 disabled:opacity-60 disabled:cursor-not-allowed" disabled>
-          <span class="mr-2">⚡</span>Generate Backup and Download
+          Generate Backup and Download
         </button>
       </div>
 
@@ -829,12 +829,10 @@
       <div class="max-w-md mx-auto mb-6">
         <label class="text-center block mb-4 text-slate-800 dark:text-slate-200">Conversion Direction:</label>
         <div class="flex justify-center gap-3 mt-2">
-          <button id="zipToEpubMode" class="flex items-center gap-2 px-6 py-3 rounded-lg font-medium bg-primary-600 text-white shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary-500 hover:bg-primary-700 hover:scale-105">
-            <span class="text-lg">📦</span>
+          <button id="zipToEpubMode" class="flex items-center px-6 py-3 rounded-lg font-medium bg-primary-600 text-white shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary-500 hover:bg-primary-700 hover:scale-105">
             <span>ZIP → EPUB</span>
           </button>
-          <button id="epubToZipMode" class="flex items-center gap-2 px-6 py-3 rounded-lg font-medium bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-slate-500 hover:bg-slate-300 dark:hover:bg-slate-600 hover:scale-105">
-            <span class="text-lg">📖</span>
+          <button id="epubToZipMode" class="flex items-center px-6 py-3 rounded-lg font-medium bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-slate-500 hover:bg-slate-300 dark:hover:bg-slate-600 hover:scale-105">
             <span>EPUB → ZIP</span>
           </button>
         </div>
