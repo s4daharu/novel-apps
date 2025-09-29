@@ -120,7 +120,7 @@ function loadBackupFile(file, showAppToast) {
         resetState();
         toggleSpinner(false);
     };
-    reader.readText(file);
+    reader.readAsText(file);
 }
 
 function populateScopeSelector() {
@@ -159,8 +159,30 @@ function renderSnippetPreview(match) {
         return;
     }
     
+    // --- FIX START ---
+    // Calculate the precise index of the match within the full chapter text
+    // to avoid ambiguity if a block's text appears multiple times.
+    let precedingTextLength = 0;
+    let fullChapterIndex = -1;
+    const scene = frData.revisions[0].scenes[match.sceneIndex];
+
+    try {
+        const sceneContent = JSON.parse(scene.text);
+        // Calculate the length of all text blocks before the matched one, including separators
+        for (let i = 0; i < match.blockIndex; i++) {
+            const block = sceneContent.blocks[i];
+            if (block.type === 'text' && typeof block.text === 'string') {
+                precedingTextLength += block.text.length + 2; // +2 for the '\n\n' joiner
+            }
+        }
+        fullChapterIndex = precedingTextLength + match.matchIndexInBlock;
+    } catch {
+        frSnippetPreview.innerHTML = `<p class="fr-preview-placeholder">Error rendering preview for this match.</p>`;
+        return;
+    }
+
     const chapterText = getChapterText(match.sceneIndex);
-    const fullChapterIndex = chapterText.indexOf(match.blockText) + match.matchIndexInBlock;
+    // --- FIX END ---
 
     const start = Math.max(0, fullChapterIndex - SNIPPET_CONTEXT_LENGTH);
     const end = Math.min(chapterText.length, fullChapterIndex + match.matchLength + SNIPPET_CONTEXT_LENGTH);
