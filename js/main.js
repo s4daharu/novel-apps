@@ -319,8 +319,8 @@ async function initializeZipEpubCombined() {
     async function switchMode(mode) {
         if (mode === 'zipToEpub') {
             // Show ZIP to EPUB, hide EPUB to ZIP
-            zipToEpubApp.style.display = 'block';
-            epubToZipApp.style.display = 'none';
+            zipToEpubApp.classList.remove('hidden');
+            epubToZipApp.classList.add('hidden');
 
             // Update button states
             zipToEpubModeBtn.classList.remove('bg-slate-200', 'dark:bg-slate-700', 'text-slate-700', 'dark:text-slate-300', 'hover:bg-slate-300', 'dark:hover:bg-slate-600');
@@ -343,8 +343,8 @@ async function initializeZipEpubCombined() {
             }
         } else {
             // Show EPUB to ZIP, hide ZIP to EPUB
-            zipToEpubApp.style.display = 'none';
-            epubToZipApp.style.display = 'block';
+            zipToEpubApp.classList.add('hidden');
+            epubToZipApp.classList.remove('hidden');
 
             // Update button states
             epubToZipModeBtn.classList.remove('bg-slate-200', 'dark:bg-slate-700', 'text-slate-700', 'dark:text-slate-300', 'hover:bg-slate-300', 'dark:hover:bg-slate-600');

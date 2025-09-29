@@ -151,7 +151,11 @@ export function toggleSpinner(spinnerElement, show) {
     if (!spinnerElement) {
         return;
     }
-    spinnerElement.style.display = show ? 'block' : 'none';
+    if (show) {
+        spinnerElement.classList.remove('hidden');
+    } else {
+        spinnerElement.classList.add('hidden');
+    }
 }
 
 /**
@@ -161,7 +165,7 @@ export function toggleSpinner(spinnerElement, show) {
 function hideFindReplaceOverlays() {
     const frReviewModal = document.getElementById('frReviewModal');
     if (frReviewModal) {
-        frReviewModal.style.display = 'none';
+        frReviewModal.classList.add('hidden');
     }
 
     const frHud = document.getElementById('frHud');
@@ -173,7 +177,7 @@ function hideFindReplaceOverlays() {
     const frOptionsPopover = document.getElementById('frOptionsPopover');
     if (frOptionsPopover) {
         // The options popover is also a floating element to hide.
-        frOptionsPopover.style.display = 'none';
+        frOptionsPopover.classList.add('hidden');
     }
 }
 
@@ -182,7 +186,7 @@ function displayTool(appId, currentToolSectionsMap) {
     const dashboardAppEl = document.getElementById('dashboardApp');
     const appTitleEl = document.getElementById('appTitle');
 
-    if (dashboardAppEl) dashboardAppEl.style.display = 'none';
+    if (dashboardAppEl) dashboardAppEl.classList.add('hidden');
     hideFindReplaceOverlays();
 
     let currentTitle = 'Novel-Apps';
@@ -193,11 +197,20 @@ function displayTool(appId, currentToolSectionsMap) {
         const appElement = document.getElementById(toolInfo.elementId);
         if (appElement) {
             if (id === appId) {
-                appElement.style.display = (id === 'findReplaceBackup') ? 'flex' : 'block';
+                appElement.classList.remove('hidden');
+                // The find & replace tool has a flex layout, others are block
+                if (id === 'findReplaceBackup') {
+                    appElement.classList.add('flex');
+                    appElement.classList.remove('block');
+                } else {
+                    appElement.classList.add('block');
+                    appElement.classList.remove('flex');
+                }
                 currentTitle = toolInfo.title;
                 toolDisplayed = true;
             } else {
-                appElement.style.display = 'none';
+                appElement.classList.add('hidden');
+                appElement.classList.remove('flex', 'block');
             }
         }
     }
@@ -213,13 +226,16 @@ export function showDashboard(fromPopStateUpdate = false, currentToolSectionsMap
     const dashboardAppEl = document.getElementById('dashboardApp');
     const appTitleEl = document.getElementById('appTitle');
     
-    if (dashboardAppEl) dashboardAppEl.style.display = 'block';
+    if (dashboardAppEl) dashboardAppEl.classList.remove('hidden');
     hideFindReplaceOverlays();
 
     for (const id in currentToolSectionsMap) {
         const toolInfo = currentToolSectionsMap[id];
         const appElement = document.getElementById(toolInfo.elementId);
-        if (appElement) appElement.style.display = 'none';
+        if (appElement) {
+            appElement.classList.add('hidden');
+            appElement.classList.remove('flex', 'block');
+        }
     }
 
     if (appTitleEl) appTitleEl.textContent = 'Novel-Apps';
