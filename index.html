@@ -569,80 +569,81 @@
         <div class="upload-section option-group">
           <label for="frBackupFile" class="btn upload-btn" id="frBackupFileLabel">Upload Backup File</label>
           <input type="file" id="frBackupFile" accept=".json,.txt,.nov" style="display: none;" aria-labelledby="frBackupFileLabel">
-          <p class="text-xs text-slate-400 mt-2">Upload a .json or .nov backup file to search and replace.</p>
+          <p class="text-xs text-slate-400 mt-2">Upload a .json, .txt, or .nov backup file to begin.</p>
         </div>
       </div>
-
-      <!-- Live Preview Area -->
-      <div id="frLivePreview" class="fr-live-preview">
+    
+      <!-- Context Snippet Preview Area -->
+      <div id="frSnippetPreview" class="fr-snippet-preview">
         <p class="fr-preview-placeholder">Upload a backup file to begin.</p>
       </div>
-
+    
       <!-- Download Button Container -->
-      <div id="frDownloadContainer" class="fr-download-container">
+      <div id="frDownloadContainer" class="fr-download-container" style="display: none;">
         <button id="downloadCurrentFrBackupBtn" class="btn btn-primary" disabled>Download Backup</button>
       </div>
-
-      <!-- Bottom Action Container -->
-      <div id="frActionContainer" class="fr-action-container" style="display: none;">
-        <button id="frStartBtn" class="btn btn-primary w-full">Find in Document...</button>
-
-        <div id="frBottomSheet" class="fr-bottom-sheet">
-          <!-- Sheet Header with Drag Handle -->
-          <div class="fr-sheet-header">
-            <div class="fr-sheet-handle"></div>
-            <button id="frCloseSheetBtn" class="fr-sheet-close-btn" aria-label="Close find and replace controls">&times;</button>
-          </div>
-
-          <!-- Main Controls -->
-          <div class="fr-sheet-content">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div class="option-group">
-                <label for="findPattern">Find</label>
-                <textarea id="findPattern" rows="2" class="w-full"></textarea>
-              </div>
-              <div class="option-group">
-                <label for="replaceText">Replace with</label>
-                <textarea id="replaceText" rows="2" class="w-full"></textarea>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3 mt-3">
-              <div class="option-group">
+    
+      <!-- Floating HUD -->
+      <div id="frHud" class="fr-hud" style="display: none;">
+        <div class="fr-hud-content-wrapper">
+          <!-- Options Popover -->
+          <div id="frOptionsPopover" class="fr-options-popover" style="display: none;">
+            <div class="option-group">
                 <label for="frScopeSelect">Search In</label>
                 <select id="frScopeSelect" class="w-full"></select>
-              </div>
-              <div class="fr-options-toggles">
+            </div>
+            <div class="fr-options-toggles">
                 <label class="checkbox-label-wrapper" for="useRegexBackup" title="Use Regular Expression">
-                  <input type="checkbox" id="useRegexBackup">
-                  <span>Regex</span>
+                    <input type="checkbox" id="useRegexBackup">
+                    <span>Regex</span>
                 </label>
                 <label class="checkbox-label-wrapper" for="frCaseSensitiveCheckbox" title="Case Sensitive">
-                  <input type="checkbox" id="frCaseSensitiveCheckbox">
-                  <span>Aa</span>
+                    <input type="checkbox" id="frCaseSensitiveCheckbox">
+                    <span>Aa</span>
                 </label>
                 <label class="checkbox-label-wrapper" for="frWholeWordCheckbox" title="Match Whole Word">
-                  <input type="checkbox" id="frWholeWordCheckbox">
-                  <span>" "</span>
+                    <input type="checkbox" id="frWholeWordCheckbox">
+                    <span>" "</span>
                 </label>
-              </div>
             </div>
-
-            <div class="fr-navigation-actions mt-4">
-              <div id="frMatchCountDisplay" class="fr-match-counter">No matches</div>
-              <div class="fr-nav-buttons">
-                <button id="findPreviousBtn" class="btn-icon" aria-label="Find Previous">◀</button>
-                <button id="findNextBtn" class="btn-icon" aria-label="Find Next">▶</button>
-              </div>
-              <div class="fr-action-buttons">
-                <button id="replaceNextBtn" class="btn btn-primary flex-1">Replace</button>
-                <button id="replaceAllBtn" class="btn btn-accent flex-1">Replace All</button>
-              </div>
+          </div>
+    
+          <!-- Main HUD controls -->
+          <div class="fr-hud-main">
+            <div class="fr-hud-col-1">
+                <button id="frReplaceToggleBtn" class="btn-icon fr-hud-chevron" aria-expanded="false" title="Toggle Replace">
+                    <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </button>
+            </div>
+            <div class="fr-hud-col-2">
+                <div class="fr-hud-row">
+                    <input type="text" id="findPattern" placeholder="Find" class="fr-hud-input">
+                    <div id="frMatchCountDisplay" class="fr-match-counter">No results</div>
+                </div>
+                <div id="frReplaceRow" class="fr-hud-row mt-1" style="display:none;">
+                    <input type="text" id="replaceText" placeholder="Replace" class="fr-hud-input">
+                    <div class="fr-hud-replace-actions">
+                        <button id="replaceNextBtn" class="btn-icon" title="Replace">
+                            <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z"></path><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd"></path></svg>
+                        </button>
+                        <button id="replaceAllBtn" class="btn-icon" title="Replace All">
+                           <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm3.47 3.97a.75.75 0 011.06 0l2.5 2.5a.75.75 0 010 1.06l-2.5 2.5a.75.75 0 11-1.06-1.06L11.94 9 9.47 6.53a.75.75 0 010-1.06z" clip-rule="evenodd"></path></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="fr-hud-col-3">
+                <button id="findPreviousBtn" class="btn-icon" aria-label="Find Previous">‹</button>
+                <button id="findNextBtn" class="btn-icon" aria-label="Find Next">›</button>
+                <button id="frOptionsToggleBtn" class="btn-icon" aria-label="Search Options">
+                    <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg>
+                </button>
+                <button id="frDoneBtn" class="btn-icon" aria-label="Close Find/Replace">&times;</button>
             </div>
           </div>
         </div>
       </div>
-
+    
       <!-- Review All Modal -->
       <div id="frReviewModal" class="fr-review-modal" style="display: none;">
         <div class="fr-review-content">
@@ -664,7 +665,7 @@
           </div>
         </div>
       </div>
-
+    
       <!-- Global Spinner -->
       <div id="spinnerFindReplaceBackup" class="spinner" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 50; display: none;"></div>
     </div>

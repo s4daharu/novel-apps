@@ -1,5 +1,5 @@
 /**
- * Browser-compatible Find & Replace Backup functionality (Overhauled UI)
+ * Browser-compatible Find & Replace Backup functionality (HUD Overhaul)
  */
 import { triggerDownload } from './browser-helpers.js';
 
@@ -7,33 +7,41 @@ import { triggerDownload } from './browser-helpers.js';
 let frData = null; // The loaded backup file content (as a JS object)
 let allMatches = []; // Array of all found matches across the selected scope
 let currentMatchIndex = -1; // Index of the currently highlighted match in `allMatches`
-let currentChapterInPreview = -1; // Scene index of the chapter currently shown in the preview pane
 let modificationsMade = false; // Flag to enable the download button
+
+const SNIPPET_CONTEXT_LENGTH = 80; // Characters of context before and after match
 
 // --- DOM ELEMENTS ---
 // Main containers
+const frContainer = document.getElementById('findReplaceBackupApp');
 const frUploadArea = document.getElementById('frUploadArea');
-const frActionContainer = document.getElementById('frActionContainer');
 const frDownloadContainer = document.getElementById('frDownloadContainer');
-const frLivePreview = document.getElementById('frLivePreview');
+const frSnippetPreview = document.getElementById('frSnippetPreview');
 // Upload
 const frBackupFileInput = document.getElementById('frBackupFile');
-// Bottom Sheet Controls
-const frStartBtn = document.getElementById('frStartBtn');
-const frBottomSheet = document.getElementById('frBottomSheet');
-const frCloseSheetBtn = document.getElementById('frCloseSheetBtn');
+// HUD
+const frHud = document.getElementById('frHud');
 const findPatternInput = document.getElementById('findPattern');
 const replaceTextInput = document.getElementById('replaceText');
+const frReplaceToggleBtn = document.getElementById('frReplaceToggleBtn');
+const frReplaceRow = document.getElementById('frReplaceRow');
+const matchCountDisplay = document.getElementById('frMatchCountDisplay');
+const findPreviousBtn = document.getElementById('findPreviousBtn');
+const findNextBtn = document.getElementById('findNextBtn');
+const frDoneBtn = document.getElementById('frDoneBtn');
+// HUD Actions
+const replaceNextBtn = document.getElementById('replaceNextBtn');
+const replaceAllBtn = document.getElementById('replaceAllBtn');
+// Options Popover
+const frOptionsToggleBtn = document.getElementById('frOptionsToggleBtn');
+const frOptionsPopover = document.getElementById('frOptionsPopover');
 const frScopeSelect = document.getElementById('frScopeSelect');
 const useRegexCheckbox = document.getElementById('useRegexBackup');
 const caseSensitiveCheckbox = document.getElementById('frCaseSensitiveCheckbox');
 const wholeWordCheckbox = document.getElementById('frWholeWordCheckbox');
-const matchCountDisplay = document.getElementById('frMatchCountDisplay');
-const findPreviousBtn = document.getElementById('findPreviousBtn');
-const findNextBtn = document.getElementById('findNextBtn');
-const replaceNextBtn = document.getElementById('replaceNextBtn');
-const replaceAllBtn = document.getElementById('replaceAllBtn');
+// Common
 const downloadCurrentFrBackupBtn = document.getElementById('downloadCurrentFrBackupBtn');
+let frSpinner = null;
 // Review Modal
 const frReviewModal = document.getElementById('frReviewModal');
 const frCloseReviewModalBtn = document.getElementById('frCloseReviewModalBtn');
@@ -53,22 +61,34 @@ const debounce = (func, delay) => {
         timeout = setTimeout(() => func.apply(this, args), delay);
     };
 };
+const toggleSpinner = (show) => {
+    if (frSpinner) frSpinner.style.display = show ? 'block' : 'none';
+};
 
 // --- UI UPDATE FUNCTIONS ---
 function updateUIVisibility(hasFile) {
     frUploadArea.style.opacity = hasFile ? '0' : '1';
     frUploadArea.style.pointerEvents = hasFile ? 'none' : 'auto';
-    frActionContainer.style.display = hasFile ? 'block' : 'none';
+    
+    frHud.style.display = hasFile ? 'block' : 'none';
+    setTimeout(() => {
+        if(hasFile) frHud.classList.add('visible');
+    }, 10); // Small delay to allow CSS transition
+    
     frDownloadContainer.style.display = hasFile ? 'block' : 'none';
-}
-
-function toggleBottomSheet(open) {
-    frBottomSheet.classList.toggle('open', open);
 }
 
 function updateDownloadButtonState() {
     downloadCurrentFrBackupBtn.disabled = !modificationsMade;
 }
+
+function toggleReplaceUI(show) {
+    const isExpanded = show ?? !frHud.classList.contains('expanded');
+    frHud.classList.toggle('expanded', isExpanded);
+    frReplaceToggleBtn.setAttribute('aria-expanded', isExpanded);
+    frReplaceRow.style.display = isExpanded ? 'block' : 'none';
+}
+
 
 // --- CORE LOGIC ---
 function loadBackupFile(file, showAppToast) {
@@ -82,9 +102,12 @@ function loadBackupFile(file, showAppToast) {
             modificationsMade = false;
             updateDownloadButtonState();
             populateScopeSelector();
-            renderLivePreview(0, true); // Render the first chapter
+            
+            frSnippetPreview.innerHTML = `<p class="fr-preview-placeholder">Start typing in the find bar below...</p>`;
             updateUIVisibility(true);
             showAppToast("Backup loaded successfully.");
+            findPatternInput.focus();
+
         } catch (err) {
             showAppToast(err.message || "Error parsing backup file.", true);
             resetState();
@@ -97,20 +120,18 @@ function loadBackupFile(file, showAppToast) {
         resetState();
         toggleSpinner(false);
     };
-    reader.readAsText(file);
+    reader.readText(file);
 }
 
 function populateScopeSelector() {
     frScopeSelect.innerHTML = '';
     const scenes = frData.revisions[0].scenes;
     
-    // Add 'All Chapters' option
     const allOpt = document.createElement('option');
     allOpt.value = 'all';
     allOpt.textContent = `All Chapters (${scenes.length})`;
     frScopeSelect.appendChild(allOpt);
 
-    // Add individual chapter options
     scenes.forEach((scene, index) => {
         const opt = document.createElement('option');
         opt.value = index.toString();
@@ -126,55 +147,35 @@ function getChapterText(sceneIndex) {
         return sceneContent.blocks
             .filter(block => block.type === 'text' && typeof block.text === 'string')
             .map(block => block.text)
-            .join('\n');
+            .join('\n\n'); // Use double newline to better represent paragraph breaks
     } catch {
         return "Error: Could not parse chapter content.";
     }
 }
 
-function renderLivePreview(sceneIndex, forceRerender = false) {
-    if (currentChapterInPreview === sceneIndex && !forceRerender) return;
-
-    currentChapterInPreview = sceneIndex;
-    const chapterText = getChapterText(sceneIndex);
-    
-    let renderedHtml = escapeHtml(chapterText).replace(/\n/g, '<br>');
-
-    // Highlight matches for the current chapter
-    const chapterMatches = allMatches.filter(m => m.sceneIndex === sceneIndex);
-    if (chapterMatches.length > 0) {
-        const parts = [];
-        let lastIndex = 0;
-        // Sort matches by their position to correctly segment the text
-        chapterMatches.sort((a, b) => a.matchIndexInBlock - b.matchIndexInBlock);
-        
-        chapterMatches.forEach(match => {
-             // Use original block text for highlighting
-            const matchInBlockText = match.blockText.substring(match.matchIndexInBlock, match.matchIndexInBlock + match.matchLength);
-
-            // Find match start in the full chapter text
-            const fullChapterIndex = chapterText.indexOf(match.blockText) + match.matchIndexInBlock;
-
-            parts.push(escapeHtml(chapterText.substring(lastIndex, fullChapterIndex)));
-            
-            const isCurrent = allMatches[currentMatchIndex] === match;
-            parts.push(`<mark class="${isCurrent ? 'current' : ''}" data-match-id="${match.id}">${escapeHtml(matchInBlockText)}</mark>`);
-            
-            lastIndex = fullChapterIndex + match.matchLength;
-        });
-        parts.push(escapeHtml(chapterText.substring(lastIndex)));
-        renderedHtml = parts.join('').replace(/\n/g, '<br>');
+function renderSnippetPreview(match) {
+    if (!match) {
+        frSnippetPreview.innerHTML = `<p class="fr-preview-placeholder">No match found. Try another search.</p>`;
+        return;
     }
-
-    frLivePreview.innerHTML = `<p>${renderedHtml}</p>`;
     
-    // After rendering, scroll to the current match if it's in this chapter
-    const currentMatch = allMatches[currentMatchIndex];
-    if (currentMatch && currentMatch.sceneIndex === sceneIndex) {
-        scrollToCurrentMatch();
-    }
+    const chapterText = getChapterText(match.sceneIndex);
+    const fullChapterIndex = chapterText.indexOf(match.blockText) + match.matchIndexInBlock;
+
+    const start = Math.max(0, fullChapterIndex - SNIPPET_CONTEXT_LENGTH);
+    const end = Math.min(chapterText.length, fullChapterIndex + match.matchLength + SNIPPET_CONTEXT_LENGTH);
+
+    const prefix = start > 0 ? '... ' : '';
+    const suffix = end < chapterText.length ? ' ...' : '';
+
+    const beforeText = escapeHtml(chapterText.substring(start, fullChapterIndex));
+    const matchedText = escapeHtml(chapterText.substring(fullChapterIndex, fullChapterIndex + match.matchLength));
+    const afterText = escapeHtml(chapterText.substring(fullChapterIndex + match.matchLength, end));
+
+    frSnippetPreview.innerHTML = `<div class="fr-snippet-preview-content">
+        <p>${prefix}${beforeText}<mark>${matchedText}</mark>${afterText}${suffix}</p>
+    </div>`;
 }
-
 
 function performFind() {
     const findPattern = findPatternInput.value;
@@ -182,7 +183,7 @@ function performFind() {
         allMatches = [];
         currentMatchIndex = -1;
         updateMatchCountUI();
-        renderLivePreview(currentChapterInPreview, true); // Re-render to remove highlights
+        frSnippetPreview.innerHTML = `<p class="fr-preview-placeholder">Start typing to find text...</p>`;
         return;
     }
 
@@ -225,10 +226,9 @@ function performFind() {
                             matchIndexInBlock: matchResult.index,
                             matchLength: matchResult[0].length,
                             chapterTitle: scene.title,
-                            blockText: block.text, // Store original block text
+                            blockText: block.text,
                             matchedText: matchResult[0]
                         });
-                        // Prevent infinite loops with zero-length matches
                         if (matchResult.index === regex.lastIndex) regex.lastIndex++;
                     }
                 }
@@ -241,37 +241,32 @@ function performFind() {
     } else {
         currentMatchIndex = -1;
         updateMatchCountUI();
-        renderLivePreview(currentChapterInPreview, true); // Re-render to remove highlights
+        renderSnippetPreview(null);
     }
 }
 
 function navigateToMatch(index) {
+    if (allMatches.length === 0) return;
     if (index < 0 || index >= allMatches.length) return;
 
     currentMatchIndex = index;
-    const match = allMatches[index];
-    
     updateMatchCountUI();
-    renderLivePreview(match.sceneIndex, true);
-}
-
-function scrollToCurrentMatch() {
-    const currentMark = frLivePreview.querySelector('mark.current');
-    if (currentMark) {
-        currentMark.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+    renderSnippetPreview(allMatches[currentMatchIndex]);
 }
 
 function updateMatchCountUI() {
+    findNextBtn.disabled = allMatches.length <= 1;
+    findPreviousBtn.disabled = allMatches.length <= 1;
+
     if (allMatches.length > 0) {
-        matchCountDisplay.textContent = `${currentMatchIndex + 1} of ${allMatches.length}`;
+        matchCountDisplay.textContent = `${currentMatchIndex + 1} / ${allMatches.length}`;
     } else {
-        matchCountDisplay.textContent = findPatternInput.value ? "No matches" : "";
+        matchCountDisplay.textContent = findPatternInput.value ? "No results" : "";
     }
 }
 
 function performSingleReplace(showAppToast) {
-    if (currentMatchIndex === -1) {
+    if (currentMatchIndex === -1 || !allMatches[currentMatchIndex]) {
         showAppToast("No match selected to replace.", true);
         return;
     }
@@ -292,8 +287,7 @@ function performSingleReplace(showAppToast) {
 
     modificationsMade = true;
     updateDownloadButtonState();
-
-    // Re-run find and navigate to the same logical position
+    
     const oldIndex = currentMatchIndex;
     performFind();
     if(allMatches.length > 0) {
@@ -302,9 +296,7 @@ function performSingleReplace(showAppToast) {
 }
 
 function showReviewModal() {
-    if (allMatches.length === 0) {
-        return;
-    }
+    if (allMatches.length === 0) return;
     frReviewList.innerHTML = '';
     const replacementText = replaceTextInput.value;
 
@@ -318,7 +310,7 @@ function showReviewModal() {
         li.innerHTML = `
             <input type="checkbox" id="review-${index}" data-match-index="${index}" checked>
             <div class="fr-review-item-content">
-                <label for="review-${index}">
+                <label for="review-${index}" class="cursor-pointer">
                     <div class="fr-review-item-meta">In: ${escapeHtml(match.chapterTitle)} (Block ${match.blockIndex + 1})</div>
                     <div class="fr-review-diff">
                         ${before}<del>${escapeHtml(match.matchedText)}</del><ins>${escapeHtml(replacementText)}</ins>${after}
@@ -346,7 +338,6 @@ function confirmReplaceAll(showAppToast) {
 
     toggleSpinner(true);
     
-    // Group changes by scene and block to avoid parsing JSON multiple times
     const changesByBlock = {};
     checkedIndices.forEach(index => {
         const match = allMatches[index];
@@ -361,7 +352,7 @@ function confirmReplaceAll(showAppToast) {
     
     for (const key in changesByBlock) {
         const [sceneIndex, blockIndex] = key.split('-').map(Number);
-        const matchesInBlock = changesByBlock[key].sort((a, b) => b.matchIndexInBlock - a.matchIndexInBlock); // Replace from end to start
+        const matchesInBlock = changesByBlock[key].sort((a, b) => b.matchIndexInBlock - a.matchIndexInBlock);
         
         const scene = frData.revisions[0].scenes[sceneIndex];
         const sceneContent = JSON.parse(scene.text);
@@ -380,17 +371,13 @@ function confirmReplaceAll(showAppToast) {
     modificationsMade = true;
     updateDownloadButtonState();
     
-    // Reset search
-    allMatches = [];
-    currentMatchIndex = -1;
-    updateMatchCountUI();
-    renderLivePreview(currentChapterInPreview, true);
+    findPatternInput.value = '';
+    performFind();
     
     frReviewModal.style.display = 'none';
     showAppToast(`${checkedIndices.length} replacement(s) made.`, false);
     toggleSpinner(false);
     
-    // Suggest downloading
     downloadCurrentFrBackupBtn.focus();
 }
 
@@ -398,26 +385,20 @@ function resetState() {
     frData = null;
     allMatches = [];
     currentMatchIndex = -1;
-    currentChapterInPreview = -1;
     modificationsMade = false;
-    frLivePreview.innerHTML = '<p class="fr-preview-placeholder">Upload a backup file to begin.</p>';
+    frSnippetPreview.innerHTML = '<p class="fr-preview-placeholder">Upload a backup file to begin.</p>';
     frBackupFileInput.value = '';
     findPatternInput.value = '';
     replaceTextInput.value = '';
     updateDownloadButtonState();
     updateUIVisibility(false);
-    toggleBottomSheet(false);
+    frHud.classList.remove('visible', 'expanded');
+    frOptionsPopover.style.display = 'none';
 }
 
 const debouncedFind = debounce(performFind, 300);
-let frSpinner = null;
-const toggleSpinner = (show) => {
-    if (frSpinner) frSpinner.style.display = show ? 'block' : 'none';
-}
-
 
 export function initializeFindReplaceBackup(showAppToast, setSpinner) {
-    // --- EVENT LISTENERS ---
     frSpinner = document.getElementById('spinnerFindReplaceBackup');
 
     frBackupFileInput.addEventListener('change', (e) => {
@@ -426,8 +407,22 @@ export function initializeFindReplaceBackup(showAppToast, setSpinner) {
         }
     });
 
-    frStartBtn.addEventListener('click', () => toggleBottomSheet(true));
-    frCloseSheetBtn.addEventListener('click', () => toggleBottomSheet(false));
+    frDoneBtn.addEventListener('click', resetState);
+
+    frReplaceToggleBtn.addEventListener('click', () => toggleReplaceUI());
+
+    frOptionsToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isHidden = frOptionsPopover.style.display === 'none';
+        frOptionsPopover.style.display = isHidden ? 'block' : 'none';
+    });
+    
+    document.addEventListener('click', (e) => {
+        if (frOptionsPopover.style.display === 'block' && !frHud.contains(e.target)) {
+            frOptionsPopover.style.display = 'none';
+        }
+    });
+
 
     [findPatternInput, useRegexCheckbox, caseSensitiveCheckbox, wholeWordCheckbox, frScopeSelect].forEach(el => {
         el.addEventListener('input', debouncedFind);
@@ -438,7 +433,6 @@ export function initializeFindReplaceBackup(showAppToast, setSpinner) {
     useRegexCheckbox.addEventListener('change', () => {
         if (useRegexCheckbox.checked) wholeWordCheckbox.checked = false;
     });
-
 
     findNextBtn.addEventListener('click', () => navigateToMatch((currentMatchIndex + 1) % allMatches.length));
     findPreviousBtn.addEventListener('click', () => navigateToMatch((currentMatchIndex - 1 + allMatches.length) % allMatches.length));
@@ -482,6 +476,6 @@ export function initializeFindReplaceBackup(showAppToast, setSpinner) {
         frReviewList.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = e.target.checked);
     });
     
-    // Reset on tool launch (if it's re-initialized)
+    // Reset on tool launch
     resetState();
 }
