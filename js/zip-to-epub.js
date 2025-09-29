@@ -321,7 +321,7 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
         if (chapters.length === 0) {
             showAppToast("Please upload a ZIP file with .txt chapters.", true);
             statusEl.textContent = 'Error: No chapters loaded to create an EPUB.';
-            statusEl.className = 'bg-red-600 text-white rounded-xl p-4 mt-5 text-center text-sm';
+            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
             statusEl.style.display = 'block';
             zipUploadInput.focus();
             return;
@@ -331,7 +331,7 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
         if (!title) {
             showAppToast("EPUB Title is required.", true);
             statusEl.textContent = 'Error: EPUB Title is required.';
-            statusEl.className = 'bg-red-600 text-white rounded-xl p-4 mt-5 text-center text-sm';
+            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
             statusEl.style.display = 'block';
             epubTitleInput.focus();
             return;
@@ -341,7 +341,7 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
         if (!author) {
             showAppToast("Author is required.", true);
             statusEl.textContent = 'Error: Author is required.';
-            statusEl.className = 'bg-red-600 text-white rounded-xl p-4 mt-5 text-center text-sm';
+            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
             statusEl.style.display = 'block';
             epubAuthorInput.focus();
             return;
@@ -516,14 +516,14 @@ p { text-indent: 1.5em; margin-top: 0; margin-bottom: 0.5em; text-align: justify
 
             if (downloadSec) downloadSec.style.display = 'block';
             statusEl.textContent = `EPUB "${title}" created successfully with ${chapters.length} chapter(s). Download started.`;
-            statusEl.className = 'bg-green-600 text-white rounded-xl p-4 mt-5 text-center text-sm';
+            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-green-50 dark:bg-green-600/10 border border-green-200 dark:border-green-500/30 text-green-700 dark:text-green-400';
             statusEl.style.display = 'block';
             showAppToast("EPUB created successfully!");
 
         } catch (err) {
             console.error("ZIP to EPUB Error:", err);
             statusEl.textContent = `Error: ${err.message}`;
-            statusEl.className = 'bg-red-600 text-white rounded-xl p-4 mt-5 text-center text-sm';
+            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
             statusEl.style.display = 'block';
             showAppToast(`Error creating EPUB: ${err.message}`, true);
         } finally {

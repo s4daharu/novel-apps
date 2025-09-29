@@ -7,7 +7,7 @@ import { triggerDownload } from './browser-helpers.js';
 export function initializeAugmentBackupWithZip(showAppToast, toggleAppSpinner) {
     const baseBackupFileInput = document.getElementById('augmentBaseBackupFile');
     const baseBackupFileNameEl = document.getElementById('augmentBaseBackupFileName');
-    const clearBaseBackupFileBtn = document.getElementById('clearAugmentBaseBackupFile');
+    const clearBaseBackupFileBtn = document.getElementById('clearBaseBackupFile');
 
     const zipFileInput = document.getElementById('augmentZipFile');
     const zipFileNameEl = document.getElementById('augmentZipFileName');
@@ -115,7 +115,7 @@ export function initializeAugmentBackupWithZip(showAppToast, toggleAppSpinner) {
         if (!selectedBaseFile) {
             showAppToast('Please select a base backup file.', true);
             statusEl.textContent = 'Error: Base backup file is required.';
-            statusEl.className = 'status error';
+            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
             statusEl.style.display = 'block';
             baseBackupFileInput.focus();
             return;
@@ -123,7 +123,7 @@ export function initializeAugmentBackupWithZip(showAppToast, toggleAppSpinner) {
         if (!selectedZipFile) {
             showAppToast('Please select a ZIP file.', true);
             statusEl.textContent = 'Error: ZIP file is required.';
-            statusEl.className = 'status error';
+            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
             statusEl.style.display = 'block';
             zipFileInput.focus();
             return;
@@ -174,7 +174,7 @@ export function initializeAugmentBackupWithZip(showAppToast, toggleAppSpinner) {
             if (chapterFiles.length === 0) {
                 showAppToast('No .txt files found in the ZIP archive. No changes made.', false);
                 statusEl.textContent = 'Info: No .txt files found in ZIP. Backup not augmented.';
-                statusEl.className = 'status success';
+                statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-green-50 dark:bg-green-600/10 border border-green-200 dark:border-green-500/30 text-green-700 dark:text-green-400';
                 statusEl.style.display = 'block';
                 toggleAppSpinner(false);
                 return;
@@ -285,14 +285,14 @@ export function initializeAugmentBackupWithZip(showAppToast, toggleAppSpinner) {
             await triggerDownload(blob, filename, 'application/json', showAppToast);
 
             statusEl.textContent = `Backup augmented with ${chapterFiles.length} chapter(s) from ZIP. Download started.`;
-            statusEl.className = 'status success';
+            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-green-50 dark:bg-green-600/10 border border-green-200 dark:border-green-500/30 text-green-700 dark:text-green-400';
             statusEl.style.display = 'block';
             showAppToast(`Backup augmented successfully with ${chapterFiles.length} chapters.`);
 
         } catch (err) {
             console.error("Augment Backup with ZIP Error:", err);
             statusEl.textContent = `Error: ${err.message || 'Could not augment backup.'}`;
-            statusEl.className = 'status error';
+            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
             statusEl.style.display = 'block';
             showAppToast(`Error: ${err.message || 'Could not augment backup.'}`, true);
         } finally {

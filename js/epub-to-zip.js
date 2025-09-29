@@ -318,7 +318,9 @@ export function initializeEpubToZip(showAppToast, toggleAppSpinner) {
         if (statusEl) {
             statusEl.textContent = message;
             statusEl.style.display = 'block';
-            statusEl.className = isError ? 'status error' : 'status success';
+            statusEl.className = isError 
+                ? 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400' 
+                : 'rounded-xl p-4 mt-5 text-center text-sm bg-green-50 dark:bg-green-600/10 border border-green-200 dark:border-green-500/30 text-green-700 dark:text-green-400';
         }
         if (isError) showAppToast(message, true);
         else if (message.toLowerCase().includes("download started") || message.toLowerCase().includes("file saved") || message.toLowerCase().includes("found") || message.toLowerCase().includes("reading")) {
@@ -482,7 +484,7 @@ export function initializeEpubToZip(showAppToast, toggleAppSpinner) {
             if (isNaN(numLinesToRemove) || numLinesToRemove < 0) {
                 showAppToast('Invalid "Number of lines to remove". Must be 0 or greater.', true);
                 statusEl.textContent = 'Error: "Number of lines to remove" must be 0 or greater.';
-                statusEl.className = 'status error';
+                statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
                 statusEl.style.display = 'block';
                 linesToRemoveInput.focus();
                 return;
