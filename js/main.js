@@ -10,7 +10,8 @@ import {
     toggleSpinner as displaySpinnerElement,
     handleTouchStart,
     handleTouchMove,
-    handleTouchEnd
+    handleTouchEnd,
+    initializeTheme
 } from './ui-helpers.js';
 
 import { triggerDownload } from './browser-helpers.js';
@@ -328,10 +329,10 @@ async function initializeZipEpubCombined() {
             epubToZipApp.style.display = 'none';
 
             // Update button states
-            zipToEpubModeBtn.classList.remove('bg-slate-700', 'text-slate-300', 'hover:bg-slate-600');
+            zipToEpubModeBtn.classList.remove('bg-slate-200', 'dark:bg-slate-700', 'text-slate-700', 'dark:text-slate-300', 'hover:bg-slate-300', 'dark:hover:bg-slate-600');
             zipToEpubModeBtn.classList.add('bg-primary-600', 'text-white');
             epubToZipModeBtn.classList.remove('bg-primary-600', 'text-white');
-            epubToZipModeBtn.classList.add('bg-slate-700', 'text-slate-300', 'hover:bg-slate-600');
+            epubToZipModeBtn.classList.add('bg-slate-200', 'dark:bg-slate-700', 'text-slate-700', 'dark:text-slate-300', 'hover:bg-slate-300', 'dark:hover:bg-slate-600');
 
             currentMode = 'zipToEpub';
 
@@ -352,10 +353,10 @@ async function initializeZipEpubCombined() {
             epubToZipApp.style.display = 'block';
 
             // Update button states
-            epubToZipModeBtn.classList.remove('bg-slate-700', 'text-slate-300', 'hover:bg-slate-600');
+            epubToZipModeBtn.classList.remove('bg-slate-200', 'dark:bg-slate-700', 'text-slate-700', 'dark:text-slate-300', 'hover:bg-slate-300', 'dark:hover:bg-slate-600');
             epubToZipModeBtn.classList.add('bg-primary-600', 'text-white');
             zipToEpubModeBtn.classList.remove('bg-primary-600', 'text-white');
-            zipToEpubModeBtn.classList.add('bg-slate-700', 'text-slate-300', 'hover:bg-slate-600');
+            zipToEpubModeBtn.classList.add('bg-slate-200', 'dark:bg-slate-700', 'text-slate-700', 'dark:text-slate-300', 'hover:bg-slate-300', 'dark:hover:bg-slate-600');
 
             currentMode = 'epubToZip';
 
@@ -406,25 +407,25 @@ function applyTailwindClassesToTools() {
         'inline-flex','items-center','justify-center','px-4','py-2','rounded-lg','font-medium',
         'bg-primary-600','hover:bg-primary-700','text-white','shadow-lg','hover:shadow-xl',
         'transition-all','duration-200','focus:outline-none','focus:ring-2','focus:ring-primary-500',
-        'focus:ring-offset-2','focus:ring-offset-slate-800','disabled:opacity-60','disabled:cursor-not-allowed'
+        'focus:ring-offset-2','dark:focus:ring-offset-slate-800','focus:ring-offset-slate-100', 'disabled:opacity-60','disabled:cursor-not-allowed'
     ]);
     add('.btn.split-btn', [
         'inline-flex','items-center','justify-center','px-4','py-2','rounded-lg','font-medium',
         'bg-primary-600','hover:bg-primary-700','text-white','shadow-lg','hover:shadow-xl',
         'transition-all','duration-200','focus:outline-none','focus:ring-2','focus:ring-primary-500',
-        'focus:ring-offset-2','focus:ring-offset-slate-800','disabled:opacity-60','disabled:cursor-not-allowed'
+        'focus:ring-offset-2','dark:focus:ring-offset-slate-800','focus:ring-offset-slate-100', 'disabled:opacity-60','disabled:cursor-not-allowed'
     ]);
     add('.btn.download-btn', [
         'inline-flex','items-center','justify-center','px-4','py-2','rounded-lg','font-medium',
         'bg-orange-600','hover:bg-orange-700','text-white','shadow-lg','hover:shadow-xl',
         'transition-all','duration-200','focus:outline-none','focus:ring-2','focus:ring-orange-500',
-        'focus:ring-offset-2','focus:ring-offset-slate-800'
+        'focus:ring-offset-2','dark:focus:ring-offset-slate-800', 'focus:ring-offset-slate-100'
     ]);
     add('.btn.upload-btn', [
         'inline-flex','items-center','justify-center','px-4','py-2','rounded-lg','font-medium',
         'bg-violet-600','hover:bg-violet-700','text-white','shadow-lg','hover:shadow-xl',
         'transition-all','duration-200','focus:outline-none','focus:ring-2','focus:ring-violet-500',
-        'focus:ring-offset-2','focus:ring-offset-slate-800'
+        'focus:ring-offset-2','dark:focus:ring-offset-slate-800', 'focus:ring-offset-slate-100'
     ]);
     add('.btn.btn-accent', [
         'bg-teal-600','hover:bg-teal-700','text-white','shadow-lg','hover:shadow-xl'
@@ -433,30 +434,30 @@ function applyTailwindClassesToTools() {
 
     // Tool sections
     add('.card.tool-section', [
-        'max-w-3xl','md:max-w-4xl','mx-auto','p-4','md:p-6','bg-slate-800/50','backdrop-blur-sm','border','border-slate-700','rounded-xl','shadow-sm','space-y-5','animate-fade-in'
+        'max-w-3xl','md:max-w-4xl','mx-auto','p-4','md:p-6','bg-white/70', 'dark:bg-slate-800/50','backdrop-blur-sm','border','border-slate-200', 'dark:border-slate-700','rounded-xl','shadow-sm','space-y-5','animate-fade-in'
     ]);
-    document.querySelectorAll('.tool-section h1').forEach(h => h.classList.add('text-2xl','md:text-3xl','font-bold','text-white','mb-5','text-center'));
+    document.querySelectorAll('.tool-section h1').forEach(h => h.classList.add('text-2xl','md:text-3xl','font-bold','text-gray-900', 'dark:text-white','mb-5','text-center'));
 
     // Form elements
     add('.option-group, .options-section, .mode-section', ['max-w-md','mx-auto']);
     document.querySelectorAll('.option-group input, .option-group select, .option-group textarea').forEach(el => {
         el.classList.add(
-            'bg-slate-700','border','border-slate-600','rounded-lg','px-3','py-2','text-white',
+            'bg-slate-100', 'dark:bg-slate-700','border','border-slate-300', 'dark:border-slate-600','rounded-lg','px-3','py-2','text-gray-900', 'dark:text-white',
             'focus:border-primary-500','focus:ring-2','focus:ring-primary-500','focus:ring-opacity-50',
             'transition-all','duration-200','w-full'
         );
     });
     document.querySelectorAll('.option-group label:not(.checkbox-label-wrapper)').forEach(el => {
-        el.classList.add('block','text-sm','font-medium','text-slate-300','mb-2');
+        el.classList.add('block','text-sm','font-medium','text-slate-700', 'dark:text-slate-300','mb-2');
     });
 
     // File display area
-    add('.filename-display-area', ['bg-slate-700','border','border-slate-600','rounded-lg','p-3','text-sm','text-slate-400','mt-2']);
-    add('.clear-file-btn', ['text-slate-400','hover:text-white','transition-colors']);
+    add('.filename-display-area', ['bg-slate-100', 'dark:bg-slate-700','border','border-slate-300', 'dark:border-slate-600','rounded-lg','p-3','text-sm','text-slate-500', 'dark:text-slate-400','mt-2']);
+    add('.clear-file-btn', ['text-slate-400','hover:text-slate-800', 'dark:hover:text-white','transition-colors']);
 
     // Spinners
     add('.spinner, .spinner-backup', [
-        'w-8','h-8','rounded-full','border-4','border-slate-600','border-t-primary-500','animate-spin','my-4','mx-auto'
+        'w-8','h-8','rounded-full','border-4','border-slate-300', 'dark:border-slate-600','border-t-primary-500','animate-spin','my-4','mx-auto'
     ]);
 
     // Status messages
@@ -467,7 +468,7 @@ function applyTailwindClassesToTools() {
     add('#statusMessage.error, .status.error', ['bg-red-600','text-white']);
 
     // Tool info text
-    add('.tool-info-text', ['text-slate-400','text-sm','text-center','mt-2']);
+    add('.tool-info-text', ['text-slate-500', 'dark:text-slate-400','text-sm','text-center','mt-2']);
 
     // Lists and accordions
     add('.chapter-selection-list, .chapter-list-draggable, .advanced-options-accordion', ['max-w-xl','mx-auto']);
@@ -479,8 +480,8 @@ function applyTailwindClassesToTools() {
     add('.fr-action-buttons-grid', ['gap-3','md:gap-4','justify-items-stretch']);
 
     // Checkbox styling
-    add('.checkbox-label-wrapper', ['flex','items-center','gap-2','justify-start','text-slate-200','select-none','cursor-pointer']);
-    add('.checkbox-label-wrapper input[type="checkbox"]', ['w-4','h-4','align-middle','rounded','border-slate-500','focus:ring-2','focus:ring-primary-500','focus:ring-offset-2','focus:ring-offset-slate-800']);
+    add('.checkbox-label-wrapper', ['flex','items-center','gap-2','justify-start','text-slate-800', 'dark:text-slate-200','select-none','cursor-pointer']);
+    add('.checkbox-label-wrapper input[type="checkbox"]', ['w-4','h-4','align-middle','rounded','border-slate-400', 'dark:border-slate-500','focus:ring-2','focus:ring-primary-500','focus:ring-offset-2','focus:ring-offset-slate-100', 'dark:focus:ring-offset-slate-800']);
 
     // Toast
     const toast = document.getElementById('toast');
@@ -493,7 +494,8 @@ function applyTailwindClassesToTools() {
 
 export function initializeApp() {
     registerServiceWorker();
-
+    initializeTheme();
+    
     // Preload critical tools for mobile-first experience
     preloadCriticalTools();
 

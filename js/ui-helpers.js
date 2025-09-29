@@ -22,6 +22,46 @@ const SWIPE_EDGE_THRESHOLD = 60;
 const SIDEBAR_SWIPE_CLOSE_THRESHOLD = 80;
 const MAX_VERTICAL_SWIPE = 100; // Allow more vertical movement
 
+export function initializeTheme() {
+    const themeToggles = document.querySelectorAll('.theme-toggle-btn');
+    const sunIcons = document.querySelectorAll('.sun-icon');
+    const moonIcons = document.querySelectorAll('.moon-icon');
+
+    const applyTheme = (theme) => {
+        if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+            sunIcons.forEach(icon => icon.classList.remove('hidden'));
+            moonIcons.forEach(icon => icon.classList.add('hidden'));
+        } else {
+            document.documentElement.classList.remove('dark');
+            sunIcons.forEach(icon => icon.classList.add('hidden'));
+            moonIcons.forEach(icon => icon.classList.remove('hidden'));
+        }
+    };
+
+    const toggleTheme = () => {
+        const isDark = document.documentElement.classList.contains('dark');
+        const newTheme = isDark ? 'light' : 'dark';
+        localStorage.setItem('theme', newTheme);
+        applyTheme(newTheme);
+    };
+
+    themeToggles.forEach(btn => btn.addEventListener('click', toggleTheme));
+
+    // Apply initial theme on load
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    if (savedTheme) {
+        applyTheme(savedTheme);
+    } else if (prefersDark) {
+        applyTheme('dark');
+    } else {
+        applyTheme('light');
+    }
+}
+
+
 export function toggleMenu() {
     const el = document.getElementById('sidebar');
     if (!el) return;
