@@ -36,6 +36,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
     const chapterListUl = document.getElementById('splitterChapterList');
     const selectAllChaptersBtn = document.getElementById('splitterSelectAllChapters');
     const deselectAllChaptersBtn = document.getElementById('splitterDeselectAllChapters');
+    const chapterCountEl = document.getElementById('chapterCount');
 
     let selectedFile = null;
     let parsedChaptersForSelection = [];
@@ -43,7 +44,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
     if (!uploadInput || !splitBtn || !modeSelect || !fileNameEl || !clearFileBtn || !groupSizeGrp ||
         !statusEl || !downloadSec || !downloadLink || !tooltipTrigger || !chapterPatternEl ||
         !startNumberEl || !offsetNumberEl || !groupSizeEl ||
-        !chapterSelectionArea || !chapterListUl || !selectAllChaptersBtn || !deselectAllChaptersBtn) {
+        !chapterSelectionArea || !chapterListUl || !selectAllChaptersBtn || !deselectAllChaptersBtn || !chapterCountEl) {
         console.error("EPUB Splitter UI elements not found. Initialization failed.");
         return;
     }
@@ -188,10 +189,12 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
                 }));
 
                 if (parsedChaptersForSelection.length > 0) {
+                    if (chapterCountEl) chapterCountEl.textContent = `${parsedChaptersForSelection.length} chapters found`;
                     displayChapterSelectionUI(parsedChaptersForSelection);
                     splitBtn.disabled = false;
                     showAppToast(`Found ${parsedChaptersForSelection.length} potential chapters. Review selection.`, false);
                 } else {
+                    if (chapterCountEl) chapterCountEl.textContent = '0 chapters found';
                     showAppToast('No chapters found for selection. Check EPUB structure.', true);
                     statusEl.textContent = 'Error: No chapters found for selection. Check EPUB structure.';
                     statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
@@ -225,6 +228,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
         splitBtn.disabled = true;
         statusEl.classList.add('hidden');
         downloadSec.classList.add('hidden');
+        if (chapterCountEl) chapterCountEl.textContent = '0 chapters found';
         resetChapterSelectionUI();
     });
 

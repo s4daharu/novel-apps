@@ -22,7 +22,6 @@ if (!fs.existsSync(distDir)) {
 // Files to copy directly
 const filesToCopy = [
     'index.html',
-    'index.css',
     'jszip.min.js',
     'manifest.json',
     'service-worker.js'

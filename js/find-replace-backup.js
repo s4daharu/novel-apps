@@ -21,12 +21,20 @@ let frContainer, frUploadArea, frDownloadContainer, frSnippetPreview, frBackupFi
     frReviewSelectAll, frReviewSummaryText, frReviewList, frCancelReviewBtn,
     frConfirmReplaceAllBtn;
 
+// --- MODULE-LEVEL HELPERS ---
+let showToast;
+let toggleSpinner;
+
 
 // --- HELPER FUNCTIONS ---
 const escapeHtml = (unsafe) => unsafe.replace(/[&<>"']/g, match => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[match]);
 
 // --- INITIALIZATION ---
 export function initializeFindReplaceBackup(showAppToast, toggleAppSpinner) {
+    // --- Assign module-level helpers ---
+    showToast = showAppToast;
+    toggleSpinner = toggleAppSpinner;
+
     // --- DOM ELEMENT ASSIGNMENT ---
     frContainer = document.getElementById('findReplaceBackupApp');
     if (!frContainer) {
