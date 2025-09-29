@@ -41,17 +41,6 @@ export const bottomNavTools = {
     'augmentBackupWithZip': 'augmentBackupWithZip'
 };
 
-// Attach functions to window object for inline HTML event handlers
-window.toggleMenu = () => {
-    uiToggleMenu();
-};
-window.launchAppFromCard = (appId) => {
-    uiLaunchAppFromCard(appId, false, toolSectionsMap);
-};
-window.showDashboard = () => {
-    uiShowDashboard(false, toolSectionsMap);
-};
-
 // PWA functions removed as requested
 
 function registerServiceWorker() {
@@ -385,6 +374,42 @@ export function initializeApp() {
     registerServiceWorker();
     initializeTheme();
     
+    // Event delegation for all major UI actions
+    document.body.addEventListener('click', (event) => {
+        const target = event.target.closest('[data-action]');
+        if (!target) return;
+
+        const action = target.dataset.action;
+        const toolId = target.dataset.toolId;
+
+        switch (action) {
+            case 'toggleMenu':
+                uiToggleMenu();
+                break;
+            case 'showDashboard':
+                uiShowDashboard(false, toolSectionsMap);
+                break;
+            case 'launchApp':
+                if (toolId) {
+                    uiLaunchAppFromCard(toolId, false, toolSectionsMap);
+                }
+                break;
+        }
+    });
+
+    // Add keyboard support for tool cards for accessibility
+    document.querySelectorAll('.tool-card[data-action="launchApp"]').forEach(card => {
+        card.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                const toolId = card.dataset.toolId;
+                if (toolId) {
+                    uiLaunchAppFromCard(toolId, false, toolSectionsMap);
+                }
+            }
+        });
+    });
+
     // Preload critical tools for mobile-first experience
     preloadCriticalTools();
 
