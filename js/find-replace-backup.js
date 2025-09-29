@@ -5,19 +5,21 @@ import { triggerDownload } from './browser-helpers.js';
 
 // --- STATE ---
 let frData = null; // The loaded backup file content (as a JS object)
+let loadedFileName = ''; // Name of the loaded file
 let allMatches = []; // Array of all found matches across the selected scope
 let currentMatchIndex = -1; // Index of the currently highlighted match in `allMatches`
+let currentlyDisplayedSceneCode = null; // To avoid re-rendering the same content
 let modificationsMade = false; // Flag to enable the download button
 
-const SNIPPET_CONTEXT_LENGTH = 80; // Characters of context before and after match
-
 // --- DOM ELEMENTS (DECLARED AT MODULE LEVEL FOR WIDER ACCESS) ---
-let frContainer, frUploadArea, frDownloadContainer, frSnippetPreview, frBackupFileInput,
+let frContainer, frUploadArea, frBackupFileInput,
+    frHeader, frFileName, downloadCurrentFrBackupBtn, frCloseToolBtn,
+    frMainContent, frChapterList, frContentPreviewContainer, frContentPreview,
     frHud, findPatternInput, replaceTextInput, frReplaceToggleBtn, frReplaceRow,
-    matchCountDisplay, findPreviousBtn, findNextBtn, frDoneBtn, replaceNextBtn,
-    replaceAllBtn, frOptionsToggleBtn, frOptionsPopover, frScopeSelect,
+    matchCountDisplay, findPreviousBtn, findNextBtn,
+    replaceNextBtn, replaceAllBtn, frOptionsToggleBtn, frOptionsPopover, frScopeSelect,
     useRegexCheckbox, caseSensitiveCheckbox, wholeWordCheckbox,
-    downloadCurrentFrBackupBtn, frSpinner, frReviewModal, frCloseReviewModalBtn,
+    frSpinner, frReviewModal, frCloseReviewModalBtn,
     frReviewSelectAll, frReviewSummaryText, frReviewList, frCancelReviewBtn,
     frConfirmReplaceAllBtn;
 
@@ -33,9 +35,18 @@ export function initializeFindReplaceBackup(showAppToast, toggleAppSpinnerFunc) 
         return;
     }
     frUploadArea = document.getElementById('frUploadArea');
-    frDownloadContainer = document.getElementById('frDownloadContainer');
-    frSnippetPreview = document.getElementById('frSnippetPreview');
     frBackupFileInput = document.getElementById('frBackupFile');
+    
+    frHeader = document.getElementById('frHeader');
+    frFileName = document.getElementById('frFileName');
+    downloadCurrentFrBackupBtn = document.getElementById('downloadCurrentFrBackupBtn');
+    frCloseToolBtn = document.getElementById('frCloseToolBtn');
+
+    frMainContent = document.getElementById('frMainContent');
+    frChapterList = document.getElementById('frChapterList');
+    frContentPreviewContainer = document.getElementById('frContentPreviewContainer');
+    frContentPreview = document.getElementById('frContentPreview');
+    
     frHud = document.getElementById('frHud');
     findPatternInput = document.getElementById('findPattern');
     replaceTextInput = document.getElementById('replaceText');
@@ -44,7 +55,6 @@ export function initializeFindReplaceBackup(showAppToast, toggleAppSpinnerFunc) 
     matchCountDisplay = document.getElementById('frMatchCountDisplay');
     findPreviousBtn = document.getElementById('findPreviousBtn');
     findNextBtn = document.getElementById('findNextBtn');
-    frDoneBtn = document.getElementById('frDoneBtn');
     replaceNextBtn = document.getElementById('replaceNextBtn');
     replaceAllBtn = document.getElementById('replaceAllBtn');
     frOptionsToggleBtn = document.getElementById('frOptionsToggleBtn');
@@ -53,8 +63,8 @@ export function initializeFindReplaceBackup(showAppToast, toggleAppSpinnerFunc) 
     useRegexCheckbox = document.getElementById('useRegexBackup');
     caseSensitiveCheckbox = document.getElementById('frCaseSensitiveCheckbox');
     wholeWordCheckbox = document.getElementById('frWholeWordCheckbox');
-    downloadCurrentFrBackupBtn = document.getElementById('downloadCurrentFrBackupBtn');
     frSpinner = document.getElementById('spinnerFindReplaceBackup');
+    
     frReviewModal = document.getElementById('frReviewModal');
     frCloseReviewModalBtn = document.getElementById('frCloseReviewModalBtn');
     frReviewSelectAll = document.getElementById('frReviewSelectAll');
@@ -70,6 +80,7 @@ export function initializeFindReplaceBackup(showAppToast, toggleAppSpinnerFunc) 
 
         resetToolState();
         toggleAppSpinnerFunc(true);
+        loadedFileName = file.name;
 
         try {
             const fileText = await file.text();
@@ -78,17 +89,25 @@ export function initializeFindReplaceBackup(showAppToast, toggleAppSpinnerFunc) 
             if (!frData.revisions?.[0]?.scenes) {
                 throw new Error('Invalid backup file structure.');
             }
-
+            
+            frFileName.textContent = loadedFileName;
             populateScopeSelector();
+            populateChapterList();
             
             frUploadArea.classList.add('opacity-0', 'pointer-events-none');
+            frHeader.classList.remove('hidden');
+            frMainContent.classList.remove('hidden');
             frHud.classList.remove('hidden');
-            setTimeout(() => frHud.classList.add('translate-y-0'), 50); // Animate in
-            frDownloadContainer.classList.remove('hidden');
 
             frReplaceToggleBtn.disabled = false;
             frOptionsToggleBtn.disabled = false;
             findPatternInput.focus();
+
+            // Load first chapter content by default
+            const firstSceneCode = frData.revisions[0].scenes[0]?.code;
+            if (firstSceneCode) {
+                loadSceneContent(firstSceneCode);
+            }
 
         } catch (err) {
             showAppToast(`Error loading file: ${err.message}`, true);
@@ -101,7 +120,11 @@ export function initializeFindReplaceBackup(showAppToast, toggleAppSpinnerFunc) 
 
     // Bind all event listeners
     frBackupFileInput.addEventListener('change', handleFileLoad);
-    frDoneBtn.addEventListener('click', closeFindReplace);
+    frCloseToolBtn.addEventListener('click', closeFindReplace);
+    downloadCurrentFrBackupBtn.addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify(frData, null, 2)], { type: 'application/json' });
+        triggerDownload(blob, loadedFileName, 'application/json', showAppToast);
+    });
 
     findPatternInput.addEventListener('input', debounce(performSearch, 300));
     findNextBtn.addEventListener('click', () => navigateMatches(1));
@@ -139,19 +162,22 @@ export function initializeFindReplaceBackup(showAppToast, toggleAppSpinnerFunc) 
 
 function resetToolState() {
     frData = null;
+    loadedFileName = '';
     allMatches = [];
     currentMatchIndex = -1;
+    currentlyDisplayedSceneCode = null;
     modificationsMade = false;
     
     frUploadArea.classList.remove('opacity-0', 'pointer-events-none');
-    frHud.classList.remove('translate-y-0');
-    frHud.classList.add('translate-y-full', 'hidden');
-    frDownloadContainer.classList.add('hidden');
+    frHeader.classList.add('hidden');
+    frMainContent.classList.add('hidden');
+    frHud.classList.add('hidden');
     
     findPatternInput.value = '';
     replaceTextInput.value = '';
     matchCountDisplay.textContent = 'No results';
-    frSnippetPreview.innerHTML = '<p class="max-w-prose text-left text-slate-500 dark:text-slate-400 italic">Upload a backup file to begin.</p>';
+    frContentPreview.innerHTML = '<p class="text-slate-500 dark:text-slate-400 italic">Select a chapter to view its content.</p>';
+    frChapterList.innerHTML = '';
     
     // Reset buttons
     findPreviousBtn.disabled = true;
@@ -166,6 +192,8 @@ function resetToolState() {
 function closeFindReplace() {
     resetToolState();
     frBackupFileInput.value = '';
+    // This will trigger the main app router to show the dashboard
+    window.location.hash = '#dashboard'; 
 }
 
 
@@ -189,6 +217,8 @@ function performSearch() {
 
     if (!pattern || !frData) {
         updateMatchDisplay();
+        populateChapterList(); // Update counts (to zero)
+        if(currentlyDisplayedSceneCode) loadSceneContent(currentlyDisplayedSceneCode); // Re-render content without highlights
         return;
     }
 
@@ -207,33 +237,29 @@ function performSearch() {
 
     const scenes = frData.revisions[0].scenes;
     const scopeScene = scenes.find(s => s.code === options.scope);
-
     const scenesToSearch = options.scope === 'all' ? scenes : (scopeScene ? [scopeScene] : []);
 
     scenesToSearch.forEach(scene => {
-        try {
-            const content = JSON.parse(scene.text);
-            const plainText = content.blocks.map(b => b.text || '').join('\n');
-            
-            let match;
-            while ((match = regex.exec(plainText)) !== null) {
-                allMatches.push({
-                    sceneCode: scene.code,
-                    index: match.index,
-                    length: match[0].length,
-                    text: match[0]
-                });
-            }
-        } catch (e) {
-            console.warn(`Could not parse scene content for ${scene.code}`, e);
+        const plainText = getScenePlainText(scene);
+        let match;
+        while ((match = regex.exec(plainText)) !== null) {
+            allMatches.push({
+                sceneCode: scene.code,
+                index: match.index,
+                length: match[0].length,
+                text: match[0]
+            });
         }
     });
     
+    populateChapterList();
     updateMatchDisplay();
+
     if (allMatches.length > 0) {
         navigateMatches(0); // Go to the first match
     } else {
-        frSnippetPreview.innerHTML = '<p class="max-w-prose text-center text-slate-500 dark:text-slate-400">No results found.</p>';
+        if(currentlyDisplayedSceneCode) loadSceneContent(currentlyDisplayedSceneCode); // Re-render content without highlights
+        else frContentPreview.innerHTML = '<p class="text-slate-500 dark:text-slate-400">No results found.</p>';
     }
 }
 
@@ -254,11 +280,10 @@ function updateMatchDisplay() {
 
 function navigateMatches(direction) {
     if (allMatches.length === 0) return;
-
-    currentMatchIndex += direction;
-    if (currentMatchIndex < 0) currentMatchIndex = 0;
-    if (currentMatchIndex >= allMatches.length) currentMatchIndex = allMatches.length - 1;
-
+    const newIndex = currentMatchIndex + direction;
+    if (newIndex < 0 || newIndex >= allMatches.length) return;
+    
+    currentMatchIndex = newIndex;
     displayCurrentMatch();
     updateMatchDisplay();
 }
@@ -267,32 +292,23 @@ function displayCurrentMatch() {
     if (currentMatchIndex < 0 || currentMatchIndex >= allMatches.length) return;
 
     const match = allMatches[currentMatchIndex];
-    const scene = frData.revisions[0].scenes.find(s => s.code === match.sceneCode);
-    if (!scene) return;
-    
-    try {
-        const content = JSON.parse(scene.text);
-        const plainText = content.blocks.map(b => b.text || '').join('\n');
-
-        const start = Math.max(0, match.index - SNIPPET_CONTEXT_LENGTH);
-        const end = Math.min(plainText.length, match.index + match.length + SNIPPET_CONTEXT_LENGTH);
-        
-        const preContext = escapeHtml(plainText.substring(start, match.index));
-        const matchText = escapeHtml(plainText.substring(match.index, match.index + match.length));
-        const postContext = escapeHtml(plainText.substring(match.index + match.length, end));
-
-        frSnippetPreview.innerHTML = `
-            <div class="max-w-prose text-left">
-                <p class="text-sm text-slate-500 dark:text-slate-400 mb-2">${escapeHtml(scene.title)}</p>
-                <p>
-                    ...${preContext}<mark class="bg-primary-500/30 rounded px-1">${matchText}</mark>${postContext}...
-                </p>
-            </div>
-        `;
-    } catch (e) {
-        console.warn(`Error displaying match for scene ${scene.code}`, e);
-        frSnippetPreview.textContent = `Error displaying match for ${scene.title}.`;
+    if (match.sceneCode !== currentlyDisplayedSceneCode) {
+        loadSceneContent(match.sceneCode, currentMatchIndex);
+    } else {
+        // Just update highlights and scroll
+        frContentPreview.querySelectorAll('mark').forEach(m => m.classList.remove('bg-yellow-400', 'dark:bg-yellow-600'));
+        const currentMark = frContentPreview.querySelector(`mark[data-match-index="${currentMatchIndex}"]`);
+        if (currentMark) {
+            currentMark.classList.add('bg-yellow-400', 'dark:bg-yellow-600');
+            currentMark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
     }
+
+    // Update active chapter in list
+    frChapterList.querySelectorAll('li').forEach(li => {
+        li.classList.toggle('bg-primary-100', li.dataset.sceneCode === match.sceneCode);
+        li.classList.toggle('dark:bg-primary-900/50', li.dataset.sceneCode === match.sceneCode);
+    });
 }
 
 
@@ -313,27 +329,23 @@ function replaceNext() {
     
     replaceInScene(match.sceneCode, match.index, match.length, replacementText);
 
-    // After replacement, the text has changed, so we must re-run the search.
-    // We want to land on the match right after the one we just replaced.
     const searchFromIndex = match.index + replacementText.length;
-    
     performSearch(); // Re-calculates allMatches
     
-    // Find the new index of the next match
     const newIndex = allMatches.findIndex(m => m.sceneCode === match.sceneCode && m.index >= searchFromIndex);
     
     if (newIndex !== -1) {
-        currentMatchIndex = newIndex - 1; // prepare for navigateMatches(1)
-        navigateMatches(1);
+        currentMatchIndex = newIndex;
+        displayCurrentMatch();
+        updateMatchDisplay();
     } else {
-        // No more matches in this scene, find next match in any scene
         const nextSceneMatchIndex = allMatches.findIndex(m => m.sceneCode > match.sceneCode);
         if (nextSceneMatchIndex !== -1) {
-            currentMatchIndex = nextSceneMatchIndex - 1;
-            navigateMatches(1);
+            currentMatchIndex = nextSceneMatchIndex;
+            displayCurrentMatch();
+            updateMatchDisplay();
         } else {
-            // No more matches at all
-            displayCurrentMatch(); // Refresh view
+            // No more matches, just update display
             updateMatchDisplay();
         }
     }
@@ -343,27 +355,32 @@ function reviewReplaceAll() {
     if (allMatches.length === 0) return;
     
     frReviewSummaryText.textContent = `${allMatches.length} replacements proposed`;
-    frReviewList.innerHTML = ''; // Clear previous
+    frReviewList.innerHTML = '';
     frReviewSelectAll.checked = true;
 
     const scenes = frData.revisions[0].scenes;
 
     allMatches.forEach((match, index) => {
         const scene = scenes.find(s => s.code === match.sceneCode);
+        if (!scene) return;
+        const plainText = getScenePlainText(scene);
+
         const li = document.createElement('li');
         li.className = 'p-3 border-b border-slate-200 dark:border-slate-700 last:border-b-0 text-sm';
         
         const contextStart = Math.max(0, match.index - 30);
-        const contextEnd = Math.min(getScenePlainText(scene).length, match.index + match.length + 30);
-        const context = getScenePlainText(scene).substring(contextStart, contextEnd);
+        const contextEnd = Math.min(plainText.length, match.index + match.length + 30);
+        const preContext = escapeHtml(plainText.substring(contextStart, match.index));
+        const matchText = `<span class="bg-red-500/20 px-1 rounded"><del>${escapeHtml(match.text)}</del></span>`;
+        const postContext = escapeHtml(plainText.substring(match.index + match.length, contextEnd));
 
         li.innerHTML = `
             <div class="flex items-start gap-3">
                 <input type="checkbox" id="review-item-${index}" data-match-index="${index}" class="mt-1 w-4 h-4 rounded border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-primary-500 accent-primary-600" checked>
-                <label for="review-item-${index}" class="flex-1">
+                <label for="review-item-${index}" class="flex-1 cursor-pointer">
                     <div class="font-semibold text-slate-800 dark:text-slate-200">${escapeHtml(scene.title)}</div>
                     <div class="text-slate-600 dark:text-slate-400 mt-1">
-                        ...${escapeHtml(context).replace(escapeHtml(match.text), `<span class="bg-red-500/20 px-1 rounded"><del>${escapeHtml(match.text)}</del></span>`)}...
+                        ...${preContext}${matchText}${postContext}...
                     </div>
                 </label>
             </div>
@@ -378,7 +395,6 @@ function confirmReplaceAll() {
     const checkedItems = frReviewList.querySelectorAll('input[type="checkbox"]:checked');
     const replacementText = replaceTextInput.value;
     
-    // Process replacements from last to first to avoid index shifting issues
     const matchesToReplace = Array.from(checkedItems)
         .map(cb => allMatches[parseInt(cb.dataset.matchIndex)])
         .sort((a, b) => {
@@ -391,7 +407,7 @@ function confirmReplaceAll() {
     });
 
     closeReviewModal();
-    performSearch(); // Refresh search results
+    performSearch();
 }
 
 function replaceInScene(sceneCode, index, length, replacement) {
@@ -399,14 +415,12 @@ function replaceInScene(sceneCode, index, length, replacement) {
     if (!scene) return;
 
     try {
-        const content = JSON.parse(scene.text);
-        const plainText = content.blocks.map(b => b.text || '').join('\n');
+        let plainText = getScenePlainText(scene);
+        plainText = plainText.substring(0, index) + replacement + plainText.substring(index + length);
         
-        const newPlainText = plainText.substring(0, index) + replacement + plainText.substring(index + length);
-
         // This is a simplification. A more robust solution would map the plainText
         // indices back to the block structure. For now, we replace the whole content.
-        const newBlocks = newPlainText.split('\n').map(line => ({ type: 'text', align: 'left', text: line }));
+        const newBlocks = plainText.split('\n').map(line => ({ type: 'text', align: 'left', text: line }));
         
         scene.text = JSON.stringify({ blocks: newBlocks });
         
@@ -417,14 +431,8 @@ function replaceInScene(sceneCode, index, length, replacement) {
     }
 }
 
-// --- UTILITY ---
-function debounce(func, delay) {
-    let timeout;
-    return (...args) => {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(this, args), delay);
-    };
-}
+
+// --- UI & VIEW LOGIC ---
 
 function populateScopeSelector() {
     frScopeSelect.innerHTML = '<option value="all">All Chapters</option>';
@@ -436,13 +444,94 @@ function populateScopeSelector() {
     });
 }
 
+function populateChapterList() {
+    frChapterList.innerHTML = '';
+    const scenes = frData.revisions[0].scenes;
+    scenes.forEach(scene => {
+        const matchesInScene = allMatches.filter(m => m.sceneCode === scene.code);
+        const li = document.createElement('li');
+        li.dataset.sceneCode = scene.code;
+        li.className = 'p-2 cursor-pointer rounded-md hover:bg-slate-100 dark:hover:bg-slate-700/50 flex justify-between items-center';
+        li.innerHTML = `
+            <span class="truncate pr-2">${escapeHtml(scene.title)}</span>
+            ${matchesInScene.length > 0 ? `<span class="flex-shrink-0 bg-primary-500/20 text-primary-700 dark:text-primary-300 text-xs font-medium px-2 py-0.5 rounded-full">${matchesInScene.length}</span>` : ''}
+        `;
+        li.addEventListener('click', () => {
+            const firstMatchInSceneIndex = allMatches.findIndex(m => m.sceneCode === scene.code);
+            if (firstMatchInSceneIndex !== -1) {
+                currentMatchIndex = firstMatchInSceneIndex;
+                displayCurrentMatch();
+                updateMatchDisplay();
+            } else {
+                loadSceneContent(scene.code);
+            }
+        });
+        frChapterList.appendChild(li);
+    });
+}
+
+function loadSceneContent(sceneCode, highlightMatchIndex = -1) {
+    currentlyDisplayedSceneCode = sceneCode;
+    const scene = frData.revisions[0].scenes.find(s => s.code === sceneCode);
+    if (!scene) {
+        frContentPreview.innerHTML = '<p class="text-red-500">Error: Chapter not found.</p>';
+        return;
+    }
+    
+    let plainText = getScenePlainText(scene);
+    let htmlContent = '';
+    let lastIndex = 0;
+
+    const matchesInScene = allMatches
+        .map((match, index) => ({ ...match, originalIndex: index }))
+        .filter(m => m.sceneCode === sceneCode)
+        .sort((a,b) => a.index - b.index);
+
+    if (matchesInScene.length > 0) {
+        matchesInScene.forEach(match => {
+            htmlContent += escapeHtml(plainText.substring(lastIndex, match.index));
+            const isCurrent = match.originalIndex === highlightMatchIndex;
+            htmlContent += `<mark class="${isCurrent ? 'bg-yellow-400 dark:bg-yellow-600' : 'bg-primary-500/30'} rounded px-1" data-match-index="${match.originalIndex}">${escapeHtml(match.text)}</mark>`;
+            lastIndex = match.index + match.length;
+        });
+    }
+
+    htmlContent += escapeHtml(plainText.substring(lastIndex));
+    frContentPreview.innerHTML = htmlContent.replace(/\n/g, '<br>');
+
+    // Update active chapter in list
+    frChapterList.querySelectorAll('li').forEach(li => {
+        li.classList.toggle('bg-primary-100', li.dataset.sceneCode === sceneCode);
+        li.classList.toggle('dark:bg-primary-900/50', li.dataset.sceneCode === sceneCode);
+    });
+
+    if (highlightMatchIndex !== -1) {
+        const mark = frContentPreview.querySelector(`mark[data-match-index="${highlightMatchIndex}"]`);
+        if (mark) {
+            mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    } else {
+        frContentPreviewContainer.scrollTop = 0;
+    }
+}
+
+
 function getScenePlainText(scene) {
     try {
         const content = JSON.parse(scene.text);
-        return content.blocks.map(b => b.text || '').join('\n');
+        // Join with \n to preserve paragraph breaks for regex.
+        return content.blocks.map(b => (b.text || '')).join('\n');
     } catch {
         return '';
     }
+}
+
+function debounce(func, delay) {
+    let timeout;
+    return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), delay);
+    };
 }
 
 function toggleOptionsPopover() {

@@ -576,9 +576,9 @@
 
 
     <!-- Enhanced Find & Replace in Backup File -->
-    <div id="findReplaceBackupApp" class="tool-section p-0 sm:pb-[130px] box-border h-[calc(100vh-56px-env(safe-area-inset-top))] md:h-[calc(100vh-72px-env(safe-area-inset-top))] max-w-full relative overflow-hidden bg-slate-100 dark:bg-slate-800 hidden">
+    <div id="findReplaceBackupApp" class="tool-section max-w-full h-[calc(100vh-56px-env(safe-area-inset-top))] md:h-[calc(100vh-72px-env(safe-area-inset-top))] flex flex-col bg-slate-200 dark:bg-slate-900/80 hidden relative">
       <!-- Initial Upload View -->
-      <div id="frUploadArea" class="absolute inset-0 bg-white/80 dark:bg-slate-900/50 z-10 flex flex-col items-center justify-center p-4 transition-opacity duration-300 ease-in-out">
+      <div id="frUploadArea" class="absolute inset-0 bg-white/80 dark:bg-slate-900/50 z-20 flex flex-col items-center justify-center p-4 transition-opacity duration-300 ease-in-out">
         <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">Find & Replace in Backup</h1>
         <div class="max-w-md mx-auto">
           <label for="frBackupFile" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-violet-600 hover:bg-violet-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 w-full cursor-pointer" id="frBackupFileLabel">Upload Backup File</label>
@@ -586,75 +586,89 @@
           <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Upload a .json, .txt, or .nov backup file to begin.</p>
         </div>
       </div>
-    
-      <!-- Context Snippet Preview Area -->
-      <div id="frSnippetPreview" class="flex-grow flex items-center justify-center p-4 overflow-y-auto font-serif text-lg leading-loose text-slate-800 dark:text-slate-200">
-        <p class="max-w-prose text-left text-slate-500 dark:text-slate-400 italic">Upload a backup file to begin.</p>
+
+      <!-- Header -->
+      <div id="frHeader" class="flex-shrink-0 flex items-center justify-between p-2 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 hidden">
+        <h2 id="frFileName" class="text-sm font-medium text-slate-700 dark:text-slate-300 truncate px-2"></h2>
+        <div class="flex items-center gap-2">
+            <button id="downloadCurrentFrBackupBtn" class="inline-flex items-center justify-center px-3 py-1.5 text-sm rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed" disabled>Download</button>
+            <button id="frCloseToolBtn" class="inline-flex items-center justify-center px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 dark:text-white shadow-md transition-all">Close</button>
+        </div>
       </div>
-    
-      <!-- Download Button Container -->
-      <div id="frDownloadContainer" class="absolute top-4 right-4 z-10 transition-transform duration-300 hidden">
-        <button id="downloadCurrentFrBackupBtn" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 disabled:opacity-60 disabled:cursor-not-allowed" disabled>Download Backup</button>
-      </div>
-    
-      <!-- Floating HUD -->
-      <div id="frHud" class="fixed bottom-0 left-0 right-0 z-20 p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] transform translate-y-full transition-transform duration-300 ease-out hidden">
-        <div class="relative max-w-3xl mx-auto bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-300 dark:border-slate-700 rounded-xl shadow-2xl p-3 transition-height">
-          <!-- Options Popover -->
-          <div id="frOptionsPopover" class="absolute bottom-[calc(100%+8px)] right-0 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-4 w-72 shadow-lg z-20 hidden">
-            <div class="mb-3">
-                <label for="frScopeSelect" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Search In</label>
-                <select id="frScopeSelect" class="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm text-gray-900 dark:text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all"></select>
-            </div>
-            <div class="flex justify-between bg-slate-100 dark:bg-slate-700 rounded-md">
-                <label class="flex-1 flex justify-center p-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="useRegexBackup" title="Use Regular Expression">
-                    <input type="checkbox" id="useRegexBackup" class="hidden">
-                    <span class="text-sm font-mono text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600">Regex</span>
-                </label>
-                <label class="flex-1 flex justify-center p-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="frCaseSensitiveCheckbox" title="Case Sensitive">
-                    <input type="checkbox" id="frCaseSensitiveCheckbox" class="hidden">
-                    <span class="text-sm font-medium text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600">Aa</span>
-                </label>
-                <label class="flex-1 flex justify-center p-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="frWholeWordCheckbox" title="Match Whole Word">
-                    <input type="checkbox" id="frWholeWordCheckbox" class="hidden">
-                    <span class="text-sm font-medium text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600">" "</span>
-                </label>
-            </div>
+
+      <!-- Main Content Area -->
+      <div id="frMainContent" class="flex-grow flex flex-col md:flex-row overflow-hidden hidden">
+        <!-- Chapter List -->
+        <div id="frChapterListContainer" class="w-full md:w-1/3 lg:w-1/4 h-1/3 md:h-full bg-white dark:bg-slate-800/50 border-r border-slate-200 dark:border-slate-700 overflow-y-auto">
+          <ul id="frChapterList" class="p-1 text-sm">
+            <!-- JS Populated -->
+          </ul>
+        </div>
+        <!-- Content Preview -->
+        <div id="frContentPreviewContainer" class="flex-grow h-2/3 md:h-full overflow-y-auto font-serif text-base leading-relaxed bg-slate-50 dark:bg-slate-800">
+          <div id="frContentPreview" class="max-w-prose mx-auto p-4 md:p-6 text-slate-800 dark:text-slate-200">
+             <p class="text-slate-500 dark:text-slate-400 italic">Select a chapter to view its content.</p>
           </div>
+        </div>
+      </div>
     
-          <!-- Main HUD controls -->
-          <div class="flex items-start gap-2">
-            <div class="flex-shrink-0">
-                <button id="frReplaceToggleBtn" class="bg-transparent border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-9 h-9 rounded-md inline-flex items-center justify-center text-xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed" aria-expanded="false" title="Toggle Replace">
-                    <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                </button>
-            </div>
-            <div class="flex-grow">
-                <div class="relative flex items-center">
-                    <input type="text" id="findPattern" placeholder="Find" class="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md px-2 py-1.5 pr-20 text-sm text-slate-800 dark:text-slate-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500">
-                    <div id="frMatchCountDisplay" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1 pointer-events-none">No results</div>
+      <!-- Controls Panel (replaces floating HUD) -->
+      <div id="frHud" class="flex-shrink-0 bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-md border-t border-slate-300 dark:border-slate-700 p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] hidden">
+        <div class="relative max-w-3xl mx-auto">
+            <!-- Options Popover -->
+            <div id="frOptionsPopover" class="absolute bottom-[calc(100%+8px)] right-0 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-4 w-72 shadow-lg z-20 hidden">
+                <div class="mb-3">
+                    <label for="frScopeSelect" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Search In</label>
+                    <select id="frScopeSelect" class="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm text-gray-900 dark:text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all"></select>
                 </div>
-                <div id="frReplaceRow" class="relative flex items-center mt-1 hidden">
-                    <input type="text" id="replaceText" placeholder="Replace" class="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500">
-                    <div class="absolute right-0 top-1/2 -translate-y-1/2 flex items-center">
-                        <button id="replaceNextBtn" class="bg-transparent border-none text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400 p-1.5" title="Replace">
-                            <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z"></path><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd"></path></svg>
-                        </button>
-                        <button id="replaceAllBtn" class="bg-transparent border-none text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400 p-1.5" title="Replace All">
-                           <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm3.47 3.97a.75.75 0 011.06 0l2.5 2.5a.75.75 0 010 1.06l-2.5 2.5a.75.75 0 11-1.06-1.06L11.94 9 9.47 6.53a.75.75 0 010-1.06z" clip-rule="evenodd"></path></svg>
-                        </button>
+                <div class="flex justify-between bg-slate-100 dark:bg-slate-700 rounded-md">
+                    <label class="flex-1 flex justify-center p-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="useRegexBackup" title="Use Regular Expression">
+                        <input type="checkbox" id="useRegexBackup" class="hidden">
+                        <span class="text-sm font-mono text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600">Regex</span>
+                    </label>
+                    <label class="flex-1 flex justify-center p-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="frCaseSensitiveCheckbox" title="Case Sensitive">
+                        <input type="checkbox" id="frCaseSensitiveCheckbox" class="hidden">
+                        <span class="text-sm font-medium text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600">Aa</span>
+                    </label>
+                    <label class="flex-1 flex justify-center p-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="frWholeWordCheckbox" title="Match Whole Word">
+                        <input type="checkbox" id="frWholeWordCheckbox" class="hidden">
+                        <span class="text-sm font-medium text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600">" "</span>
+                    </label>
+                </div>
+            </div>
+    
+            <!-- Main controls -->
+            <div class="flex items-start gap-2">
+                <div class="flex-shrink-0">
+                    <button id="frReplaceToggleBtn" class="bg-transparent border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-9 h-9 rounded-md inline-flex items-center justify-center text-xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed" aria-expanded="false" title="Toggle Replace">
+                        <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+                </div>
+                <div class="flex-grow">
+                    <div class="relative flex items-center">
+                        <input type="text" id="findPattern" placeholder="Find" class="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md px-2 py-1.5 pr-20 text-sm text-slate-800 dark:text-slate-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500">
+                        <div id="frMatchCountDisplay" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1 pointer-events-none">No results</div>
+                    </div>
+                    <div id="frReplaceRow" class="relative flex items-center mt-1 hidden">
+                        <input type="text" id="replaceText" placeholder="Replace" class="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500">
+                        <div class="absolute right-0 top-1/2 -translate-y-1/2 flex items-center">
+                            <button id="replaceNextBtn" class="bg-transparent border-none text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400 p-1.5" title="Replace">
+                                <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z"></path><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd"></path></svg>
+                            </button>
+                            <button id="replaceAllBtn" class="bg-transparent border-none text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400 p-1.5" title="Replace All">
+                               <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm3.47 3.97a.75.75 0 011.06 0l2.5 2.5a.75.75 0 010 1.06l-2.5 2.5a.75.75 0 11-1.06-1.06L11.94 9 9.47 6.53a.75.75 0 010-1.06z" clip-rule="evenodd"></path></svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
+                <div class="flex-shrink-0 flex gap-2">
+                    <button id="findPreviousBtn" class="bg-transparent border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-9 h-9 rounded-md inline-flex items-center justify-center text-xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Find Previous">‹</button>
+                    <button id="findNextBtn" class="bg-transparent border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-9 h-9 rounded-md inline-flex items-center justify-center text-xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Find Next">›</button>
+                    <button id="frOptionsToggleBtn" class="bg-transparent border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-9 h-9 rounded-md inline-flex items-center justify-center text-xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Search Options">
+                        <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg>
+                    </button>
+                </div>
             </div>
-            <div class="flex-shrink-0 flex gap-2">
-                <button id="findPreviousBtn" class="bg-transparent border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-9 h-9 rounded-md inline-flex items-center justify-center text-xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Find Previous">‹</button>
-                <button id="findNextBtn" class="bg-transparent border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-9 h-9 rounded-md inline-flex items-center justify-center text-xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Find Next">›</button>
-                <button id="frOptionsToggleBtn" class="bg-transparent border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-9 h-9 rounded-md inline-flex items-center justify-center text-xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Search Options">
-                    <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg>
-                </button>
-                <button id="frDoneBtn" class="bg-transparent border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-9 h-9 rounded-md inline-flex items-center justify-center text-xl transition-all hover:bg-red-600 hover:text-white hover:border-red-600" aria-label="Close Find/Replace">&times;</button>
-            </div>
-          </div>
         </div>
       </div>
     

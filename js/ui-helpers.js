@@ -88,7 +88,7 @@ export function handleTouchStart(event) {
     if (!sidebarEl.classList.contains('open') && touchStartX > window.innerWidth - SWIPE_EDGE_THRESHOLD) {
         isSwipeInitiatedFromEdge = true;
         isPotentiallySwipingSidebar = true;
-    } else if (sidebarEl.classList.contains('open') && touchStartX < sidebarEl.offsetWidth + SIDEBAR_SWIPE_CLOSE_THRESHOLD) {
+    } else if (sidebarEl.classList.contains('open') && touchStartX < sidebarEl.offsetWidth) {
         isSwipeInitiatedFromEdge = true;
         isPotentiallySwipingSidebar = true;
     }
