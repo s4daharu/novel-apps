@@ -1,16 +1,16 @@
 // service-worker.js - Enhanced Mobile-First PWA Service Worker
 
-const CACHE_VERSION = 'v1.3';
+const CACHE_VERSION = 'v1.4';
 const STATIC_CACHE = `novel-apps-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `novel-apps-dynamic-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `novel-apps-runtime-${CACHE_VERSION}`;
 
 // Mobile-first caching strategy
 const STATIC_PATHS = new Set([
-  '/',
-  '/index.html',
-  '/index.css',
-  '/manifest.json',
+  './',
+  './index.html',
+  // './index.css', // Removed as it's an empty file causing a 404, which fails the SW installation.
+  './manifest.json',
   './jszip.min.js'
 ]);
 
