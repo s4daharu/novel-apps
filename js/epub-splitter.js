@@ -359,11 +359,9 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
             }
             const blob = await zip.generateAsync({ type: 'blob' });
 
-            if (downloadLink) {
-                const downloadFilename = `${pattern}_chapters.zip`;
-                await triggerDownload(blob, downloadFilename, 'application/zip', showAppToast);
-            }
-            downloadSec.classList.remove('hidden');
+            const downloadFilename = `${pattern}_chapters.zip`;
+            await triggerDownload(blob, downloadFilename, 'application/zip', showAppToast);
+
             statusEl.textContent = `Extracted ${usableChaps.length} chapter(s) from your selection. Download started.`;
             statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-green-50 dark:bg-green-600/10 border border-green-200 dark:border-green-500/30 text-green-700 dark:text-green-400';
             statusEl.classList.remove('hidden');

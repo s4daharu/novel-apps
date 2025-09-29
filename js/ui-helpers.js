@@ -75,6 +75,14 @@ export function toggleMenu() {
 }
 
 export function handleTouchStart(event) {
+    const targetElement = event.target;
+    // Check if the touch starts on an interactive element. If so, bail out of swipe logic.
+    if (targetElement.closest('button, a, input, select, textarea, [role="button"]')) {
+        isPotentiallySwipingSidebar = false;
+        isSwipeInitiatedFromEdge = false;
+        return;
+    }
+
     sidebarEl = sidebarEl || document.getElementById('sidebar');
     const touch = event.touches[0];
     touchStartX = touch.clientX;
@@ -122,7 +130,7 @@ export function handleTouchEnd() {
         if (Math.abs(deltaY) < MAX_VERTICAL_SWIPE) {
             if (!sidebarEl.classList.contains('open') && deltaX < -SWIPE_THRESHOLD && touchStartX > window.innerWidth - SWIPE_EDGE_THRESHOLD) {
                 toggleMenu();
-            } else if (sidebarEl.classList.contains('open') && deltaX > SWIPE_THRESHOLD && touchStartX < sidebarEl.offsetWidth + SIDEBAR_SWIPE_CLOSE_THRESHOLD) {
+            } else if (sidebarEl.classList.contains('open') && deltaX > SWIPE_THRESHOLD && touchStartX < sidebarEl.offsetWidth) {
                 toggleMenu();
             }
         }
@@ -171,15 +179,8 @@ function hideFindReplaceOverlays() {
         frReviewModal.classList.add('hidden');
     }
 
-    const frHud = document.getElementById('frHud');
-    if (frHud) {
-        // The HUD is shown by translating it into view. We remove the class that does this.
-        frHud.classList.remove('translate-y-0');
-    }
-
     const frOptionsPopover = document.getElementById('frOptionsPopover');
     if (frOptionsPopover) {
-        // The options popover is also a floating element to hide.
         frOptionsPopover.classList.add('hidden');
     }
 }
@@ -188,9 +189,15 @@ function hideFindReplaceOverlays() {
 function displayTool(appId, currentToolSectionsMap) {
     const dashboardAppEl = document.getElementById('dashboardApp');
     const appTitleEl = document.getElementById('appTitle');
+    const mainContentEl = document.getElementById('main-content');
+
 
     if (dashboardAppEl) dashboardAppEl.classList.add('hidden');
     hideFindReplaceOverlays();
+    
+    if (mainContentEl) {
+        mainContentEl.style.paddingBottom = (appId === 'findReplaceBackup') ? '0' : '';
+    }
 
     let currentTitle = 'Novel-Apps';
     let toolDisplayed = false;
@@ -229,9 +236,14 @@ function displayTool(appId, currentToolSectionsMap) {
 export function showDashboard(fromPopStateUpdate = false, currentToolSectionsMap) {
     const dashboardAppEl = document.getElementById('dashboardApp');
     const appTitleEl = document.getElementById('appTitle');
+    const mainContentEl = document.getElementById('main-content');
     
     if (dashboardAppEl) dashboardAppEl.classList.remove('hidden');
     hideFindReplaceOverlays();
+    
+    if (mainContentEl) {
+        mainContentEl.style.paddingBottom = '';
+    }
 
     for (const id in currentToolSectionsMap) {
         const toolInfo = currentToolSectionsMap[id];
