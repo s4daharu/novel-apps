@@ -1,6 +1,6 @@
 // service-worker.js - Enhanced Mobile-First PWA Service Worker
 
-const CACHE_VERSION = 'v1.1';
+const CACHE_VERSION = 'v1.3';
 const STATIC_CACHE = `novel-apps-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `novel-apps-dynamic-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `novel-apps-runtime-${CACHE_VERSION}`;

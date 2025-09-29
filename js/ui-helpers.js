@@ -2,8 +2,8 @@
  * Browser-compatible UI helper functions
  */
 
-const toastEl = document.getElementById('toast');
-const sidebarEl = document.getElementById('sidebar');
+let toastEl = null;
+let sidebarEl = null;
 
 
 
@@ -63,18 +63,19 @@ export function initializeTheme() {
 
 
 export function toggleMenu() {
-    const el = document.getElementById('sidebar');
-    if (!el) return;
-    if (el.classList.contains('translate-x-full')) {
-        el.classList.remove('translate-x-full');
-        el.classList.add('translate-x-0', 'open');
+    sidebarEl = sidebarEl || document.getElementById('sidebar');
+    if (!sidebarEl) return;
+    if (sidebarEl.classList.contains('translate-x-full')) {
+        sidebarEl.classList.remove('translate-x-full');
+        sidebarEl.classList.add('translate-x-0', 'open');
     } else {
-        el.classList.add('translate-x-full');
-        el.classList.remove('translate-x-0', 'open');
+        sidebarEl.classList.add('translate-x-full');
+        sidebarEl.classList.remove('translate-x-0', 'open');
     }
 }
 
 export function handleTouchStart(event) {
+    sidebarEl = sidebarEl || document.getElementById('sidebar');
     const touch = event.touches[0];
     touchStartX = touch.clientX;
     touchStartY = touch.clientY;
@@ -112,6 +113,7 @@ export function handleTouchMove(event) {
 }
 
 export function handleTouchEnd() {
+    sidebarEl = sidebarEl || document.getElementById('sidebar');
     const deltaX = touchEndX - touchStartX;
     const deltaY = touchEndY - touchStartY;
 
@@ -135,6 +137,7 @@ export function handleTouchEnd() {
 
 
 export function showToast(msg, isError = false) {
+    toastEl = toastEl || document.getElementById('toast');
     if (!toastEl) {
         console.error("Toast element not found");
         return;
@@ -216,6 +219,7 @@ function displayTool(appId, currentToolSectionsMap) {
     }
     if (appTitleEl) appTitleEl.textContent = currentTitle;
 
+    sidebarEl = sidebarEl || document.getElementById('sidebar');
     if (sidebarEl && sidebarEl.classList.contains('translate-x-0')) {
         toggleMenu();
     }
@@ -240,6 +244,7 @@ export function showDashboard(fromPopStateUpdate = false, currentToolSectionsMap
 
     if (appTitleEl) appTitleEl.textContent = 'Novel-Apps';
 
+    sidebarEl = sidebarEl || document.getElementById('sidebar');
     if (sidebarEl && sidebarEl.classList.contains('translate-x-0')) {
         toggleMenu();
     }

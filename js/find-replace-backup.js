@@ -11,46 +11,445 @@ let modificationsMade = false; // Flag to enable the download button
 
 const SNIPPET_CONTEXT_LENGTH = 80; // Characters of context before and after match
 
-// --- DOM ELEMENTS ---
-// Main containers
-const frContainer = document.getElementById('findReplaceBackupApp');
-const frUploadArea = document.getElementById('frUploadArea');
-const frDownloadContainer = document.getElementById('frDownloadContainer');
-const frSnippetPreview = document.getElementById('frSnippetPreview');
-// Upload
-const frBackupFileInput = document.getElementById('frBackupFile');
-// HUD
-const frHud = document.getElementById('frHud');
-const findPatternInput = document.getElementById('findPattern');
-const replaceTextInput = document.getElementById('replaceText');
-const frReplaceToggleBtn = document.getElementById('frReplaceToggleBtn');
-const frReplaceRow = document.getElementById('frReplaceRow');
-const matchCountDisplay = document.getElementById('frMatchCountDisplay');
-const findPreviousBtn = document.getElementById('findPreviousBtn');
-const findNextBtn = document.getElementById('findNextBtn');
-const frDoneBtn = document.getElementById('frDoneBtn');
-// HUD Actions
-const replaceNextBtn = document.getElementById('replaceNextBtn');
-const replaceAllBtn = document.getElementById('replaceAllBtn');
-// Options Popover
-const frOptionsToggleBtn = document.getElementById('frOptionsToggleBtn');
-const frOptionsPopover = document.getElementById('frOptionsPopover');
-const frScopeSelect = document.getElementById('frScopeSelect');
-const useRegexCheckbox = document.getElementById('useRegexBackup');
-const caseSensitiveCheckbox = document.getElementById('frCaseSensitiveCheckbox');
-const wholeWordCheckbox = document.getElementById('frWholeWordCheckbox');
-// Common
-const downloadCurrentFrBackupBtn = document.getElementById('downloadCurrentFrBackupBtn');
-let frSpinner = null;
-// Review Modal
-const frReviewModal = document.getElementById('frReviewModal');
-const frCloseReviewModalBtn = document.getElementById('frCloseReviewModalBtn');
-const frReviewSelectAll = document.getElementById('frReviewSelectAll');
-const frReviewSummaryText = document.getElementById('frReviewSummaryText');
-const frReviewList = document.getElementById('frReviewList');
-const frCancelReviewBtn = document.getElementById('frCancelReviewBtn');
-const frConfirmReplaceAllBtn = document.getElementById('frConfirmReplaceAllBtn');
+// --- DOM ELEMENTS (DECLARED) ---
+let frContainer, frUploadArea, frDownloadContainer, frSnippetPreview, frBackupFileInput,
+    frHud, findPatternInput, replaceTextInput, frReplaceToggleBtn, frReplaceRow,
+    matchCountDisplay, findPreviousBtn, findNextBtn, frDoneBtn, replaceNextBtn,
+    replaceAllBtn, frOptionsToggleBtn, frOptionsPopover, frScopeSelect,
+    useRegexCheckbox, caseSensitiveCheckbox, wholeWordCheckbox,
+    downloadCurrentFrBackupBtn, frSpinner, frReviewModal, frCloseReviewModalBtn,
+    frReviewSelectAll, frReviewSummaryText, frReviewList, frCancelReviewBtn,
+    frConfirmReplaceAllBtn;
 
 
 // --- HELPER FUNCTIONS ---
-const escapeHtml = (unsafe) => unsafe.replace(/[&<>"']/g, match => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[
+const escapeHtml = (unsafe) => unsafe.replace(/[&<>"']/g, match => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[match]);
+
+// --- INITIALIZATION ---
+export function initializeFindReplaceBackup(showAppToast, toggleAppSpinner) {
+    // --- DOM ELEMENT ASSIGNMENT ---
+    frContainer = document.getElementById('findReplaceBackupApp');
+    if (!frContainer) {
+        console.error("Find & Replace tool root element not found. Initialization failed.");
+        return;
+    }
+    frUploadArea = document.getElementById('frUploadArea');
+    frDownloadContainer = document.getElementById('frDownloadContainer');
+    frSnippetPreview = document.getElementById('frSnippetPreview');
+    frBackupFileInput = document.getElementById('frBackupFile');
+    frHud = document.getElementById('frHud');
+    findPatternInput = document.getElementById('findPattern');
+    replaceTextInput = document.getElementById('replaceText');
+    frReplaceToggleBtn = document.getElementById('frReplaceToggleBtn');
+    frReplaceRow = document.getElementById('frReplaceRow');
+    matchCountDisplay = document.getElementById('frMatchCountDisplay');
+    findPreviousBtn = document.getElementById('findPreviousBtn');
+    findNextBtn = document.getElementById('findNextBtn');
+    frDoneBtn = document.getElementById('frDoneBtn');
+    replaceNextBtn = document.getElementById('replaceNextBtn');
+    replaceAllBtn = document.getElementById('replaceAllBtn');
+    frOptionsToggleBtn = document.getElementById('frOptionsToggleBtn');
+    frOptionsPopover = document.getElementById('frOptionsPopover');
+    frScopeSelect = document.getElementById('frScopeSelect');
+    useRegexCheckbox = document.getElementById('useRegexBackup');
+    caseSensitiveCheckbox = document.getElementById('frCaseSensitiveCheckbox');
+    wholeWordCheckbox = document.getElementById('frWholeWordCheckbox');
+    downloadCurrentFrBackupBtn = document.getElementById('downloadCurrentFrBackupBtn');
+    frSpinner = document.getElementById('spinnerFindReplaceBackup');
+    frReviewModal = document.getElementById('frReviewModal');
+    frCloseReviewModalBtn = document.getElementById('frCloseReviewModalBtn');
+    frReviewSelectAll = document.getElementById('frReviewSelectAll');
+    frReviewSummaryText = document.getElementById('frReviewSummaryText');
+    frReviewList = document.getElementById('frReviewList');
+    frCancelReviewBtn = document.getElementById('frCancelReviewBtn');
+    frConfirmReplaceAllBtn = document.getElementById('frConfirmReplaceAllBtn');
+
+    
+    // Bind all event listeners
+    frBackupFileInput.addEventListener('change', handleFileLoad);
+    frDoneBtn.addEventListener('click', closeFindReplace);
+
+    findPatternInput.addEventListener('input', debounce(performSearch, 300));
+    findNextBtn.addEventListener('click', () => navigateMatches(1));
+    findPreviousBtn.addEventListener('click', () => navigateMatches(-1));
+    
+    frReplaceToggleBtn.addEventListener('click', toggleReplaceUI);
+    replaceNextBtn.addEventListener('click', replaceNext);
+    replaceAllBtn.addEventListener('click', reviewReplaceAll);
+    frConfirmReplaceAllBtn.addEventListener('click', confirmReplaceAll);
+    
+    // Options listeners
+    frOptionsToggleBtn.addEventListener('click', toggleOptionsPopover);
+    document.addEventListener('click', (e) => {
+        if (frOptionsPopover && !frOptionsPopover.classList.contains('hidden') && 
+            !frOptionsPopover.contains(e.target) && !frOptionsToggleBtn.contains(e.target)) {
+            frOptionsPopover.classList.add('hidden');
+        }
+    });
+
+    [frScopeSelect, useRegexCheckbox, caseSensitiveCheckbox, wholeWordCheckbox].forEach(el => {
+        el.addEventListener('change', () => performSearch());
+    });
+    
+    // Review Modal listeners
+    frCloseReviewModalBtn.addEventListener('click', closeReviewModal);
+    frCancelReviewBtn.addEventListener('click', closeReviewModal);
+    frReviewSelectAll.addEventListener('change', () => {
+        frReviewList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.checked = frReviewSelectAll.checked;
+        });
+    });
+}
+
+// --- CORE LOGIC ---
+
+function resetToolState() {
+    frData = null;
+    allMatches = [];
+    currentMatchIndex = -1;
+    modificationsMade = false;
+    
+    frUploadArea.classList.remove('opacity-0', 'pointer-events-none');
+    frHud.classList.remove('translate-y-0');
+    frHud.classList.add('translate-y-full', 'hidden');
+    frDownloadContainer.classList.add('hidden');
+    
+    findPatternInput.value = '';
+    replaceTextInput.value = '';
+    matchCountDisplay.textContent = 'No results';
+    frSnippetPreview.innerHTML = '<p class="max-w-prose text-left text-slate-500 dark:text-slate-400 italic">Upload a backup file to begin.</p>';
+    
+    // Reset buttons
+    findPreviousBtn.disabled = true;
+    findNextBtn.disabled = true;
+    replaceNextBtn.disabled = true;
+    replaceAllBtn.disabled = true;
+    downloadCurrentFrBackupBtn.disabled = true;
+    frReplaceToggleBtn.disabled = true;
+    frOptionsToggleBtn.disabled = true;
+}
+
+async function handleFileLoad(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    resetToolState();
+    toggleSpinner(frSpinner, true);
+
+    try {
+        const fileText = await file.text();
+        frData = JSON.parse(fileText);
+
+        if (!frData.revisions?.[0]?.scenes) {
+            throw new Error('Invalid backup file structure.');
+        }
+
+        populateScopeSelector();
+        
+        frUploadArea.classList.add('opacity-0', 'pointer-events-none');
+        frHud.classList.remove('hidden');
+        setTimeout(() => frHud.classList.add('translate-y-0'), 50); // Animate in
+        frDownloadContainer.classList.remove('hidden');
+
+        frReplaceToggleBtn.disabled = false;
+        frOptionsToggleBtn.disabled = false;
+        findPatternInput.focus();
+
+    } catch (err) {
+        showToast(`Error loading file: ${err.message}`, true);
+        frBackupFileInput.value = ''; // Clear input
+        resetToolState();
+    } finally {
+        toggleSpinner(frSpinner, false);
+    }
+}
+
+function closeFindReplace() {
+    resetToolState();
+    frBackupFileInput.value = '';
+}
+
+
+// --- SEARCH LOGIC ---
+
+function getSearchOptions() {
+    return {
+        scope: frScopeSelect.value,
+        useRegex: useRegexCheckbox.checked,
+        caseSensitive: caseSensitiveCheckbox.checked,
+        wholeWord: wholeWordCheckbox.checked,
+    };
+}
+
+function performSearch() {
+    const pattern = findPatternInput.value;
+    const options = getSearchOptions();
+    
+    allMatches = [];
+    currentMatchIndex = -1;
+
+    if (!pattern || !frData) {
+        updateMatchDisplay();
+        return;
+    }
+
+    let regex;
+    try {
+        const flags = options.caseSensitive ? 'g' : 'gi';
+        let finalPattern = options.useRegex ? pattern : pattern.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        if (options.wholeWord) {
+            finalPattern = `\\b${finalPattern}\\b`;
+        }
+        regex = new RegExp(finalPattern, flags);
+    } catch (e) {
+        matchCountDisplay.textContent = 'Invalid Regex';
+        return;
+    }
+
+    const scenes = frData.revisions[0].scenes;
+    const scopeScene = scenes.find(s => s.code === options.scope);
+
+    const scenesToSearch = options.scope === 'all' ? scenes : (scopeScene ? [scopeScene] : []);
+
+    scenesToSearch.forEach(scene => {
+        try {
+            const content = JSON.parse(scene.text);
+            const plainText = content.blocks.map(b => b.text || '').join('\n');
+            
+            let match;
+            while ((match = regex.exec(plainText)) !== null) {
+                allMatches.push({
+                    sceneCode: scene.code,
+                    index: match.index,
+                    length: match[0].length,
+                    text: match[0]
+                });
+            }
+        } catch (e) {
+            console.warn(`Could not parse scene content for ${scene.code}`, e);
+        }
+    });
+    
+    updateMatchDisplay();
+    if (allMatches.length > 0) {
+        navigateMatches(0); // Go to the first match
+    } else {
+        frSnippetPreview.innerHTML = '<p class="max-w-prose text-center text-slate-500 dark:text-slate-400">No results found.</p>';
+    }
+}
+
+function updateMatchDisplay() {
+    const count = allMatches.length;
+    if (count === 0) {
+        matchCountDisplay.textContent = 'No results';
+    } else {
+        const current = currentMatchIndex + 1;
+        matchCountDisplay.textContent = `${current} of ${count}`;
+    }
+    
+    findNextBtn.disabled = count === 0 || currentMatchIndex >= count - 1;
+    findPreviousBtn.disabled = count === 0 || currentMatchIndex <= 0;
+    replaceAllBtn.disabled = count === 0;
+    replaceNextBtn.disabled = count === 0;
+}
+
+function navigateMatches(direction) {
+    if (allMatches.length === 0) return;
+
+    currentMatchIndex += direction;
+    if (currentMatchIndex < 0) currentMatchIndex = 0;
+    if (currentMatchIndex >= allMatches.length) currentMatchIndex = allMatches.length - 1;
+
+    displayCurrentMatch();
+    updateMatchDisplay();
+}
+
+function displayCurrentMatch() {
+    if (currentMatchIndex < 0 || currentMatchIndex >= allMatches.length) return;
+
+    const match = allMatches[currentMatchIndex];
+    const scene = frData.revisions[0].scenes.find(s => s.code === match.sceneCode);
+    if (!scene) return;
+    
+    try {
+        const content = JSON.parse(scene.text);
+        const plainText = content.blocks.map(b => b.text || '').join('\n');
+
+        const start = Math.max(0, match.index - SNIPPET_CONTEXT_LENGTH);
+        const end = Math.min(plainText.length, match.index + match.length + SNIPPET_CONTEXT_LENGTH);
+        
+        const preContext = escapeHtml(plainText.substring(start, match.index));
+        const matchText = escapeHtml(plainText.substring(match.index, match.index + match.length));
+        const postContext = escapeHtml(plainText.substring(match.index + match.length, end));
+
+        frSnippetPreview.innerHTML = `
+            <div class="max-w-prose text-left">
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-2">${escapeHtml(scene.title)}</p>
+                <p>
+                    ...${preContext}<mark class="bg-primary-500/30 rounded px-1">${matchText}</mark>${postContext}...
+                </p>
+            </div>
+        `;
+    } catch (e) {
+        console.warn(`Error displaying match for scene ${scene.code}`, e);
+        frSnippetPreview.textContent = `Error displaying match for ${scene.title}.`;
+    }
+}
+
+
+// --- REPLACE LOGIC ---
+
+function toggleReplaceUI() {
+    const isExpanded = frReplaceToggleBtn.getAttribute('aria-expanded') === 'true';
+    frReplaceToggleBtn.setAttribute('aria-expanded', !isExpanded);
+    frReplaceRow.classList.toggle('hidden');
+    frReplaceToggleBtn.querySelector('svg').classList.toggle('rotate-90');
+}
+
+function replaceNext() {
+    if (currentMatchIndex < 0 || currentMatchIndex >= allMatches.length) return;
+    
+    const match = allMatches[currentMatchIndex];
+    const replacementText = replaceTextInput.value;
+    
+    replaceInScene(match.sceneCode, match.index, match.length, replacementText);
+
+    // After replacement, the text has changed, so we must re-run the search.
+    // We want to land on the match right after the one we just replaced.
+    const searchFromIndex = match.index + replacementText.length;
+    
+    performSearch(); // Re-calculates allMatches
+    
+    // Find the new index of the next match
+    const newIndex = allMatches.findIndex(m => m.sceneCode === match.sceneCode && m.index >= searchFromIndex);
+    
+    if (newIndex !== -1) {
+        currentMatchIndex = newIndex - 1; // prepare for navigateMatches(1)
+        navigateMatches(1);
+    } else {
+        // No more matches in this scene, find next match in any scene
+        const nextSceneMatchIndex = allMatches.findIndex(m => m.sceneCode > match.sceneCode);
+        if (nextSceneMatchIndex !== -1) {
+            currentMatchIndex = nextSceneMatchIndex - 1;
+            navigateMatches(1);
+        } else {
+            // No more matches at all
+            displayCurrentMatch(); // Refresh view
+            updateMatchDisplay();
+        }
+    }
+}
+
+function reviewReplaceAll() {
+    if (allMatches.length === 0) return;
+    
+    frReviewSummaryText.textContent = `${allMatches.length} replacements proposed`;
+    frReviewList.innerHTML = ''; // Clear previous
+    frReviewSelectAll.checked = true;
+
+    const scenes = frData.revisions[0].scenes;
+
+    allMatches.forEach((match, index) => {
+        const scene = scenes.find(s => s.code === match.sceneCode);
+        const li = document.createElement('li');
+        li.className = 'p-3 border-b border-slate-200 dark:border-slate-700 last:border-b-0 text-sm';
+        
+        const contextStart = Math.max(0, match.index - 30);
+        const contextEnd = Math.min(getScenePlainText(scene).length, match.index + match.length + 30);
+        const context = getScenePlainText(scene).substring(contextStart, contextEnd);
+
+        li.innerHTML = `
+            <div class="flex items-start gap-3">
+                <input type="checkbox" id="review-item-${index}" data-match-index="${index}" class="mt-1 w-4 h-4 rounded border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-primary-500 accent-primary-600" checked>
+                <label for="review-item-${index}" class="flex-1">
+                    <div class="font-semibold text-slate-800 dark:text-slate-200">${escapeHtml(scene.title)}</div>
+                    <div class="text-slate-600 dark:text-slate-400 mt-1">
+                        ...${escapeHtml(context).replace(escapeHtml(match.text), `<span class="bg-red-500/20 px-1 rounded"><del>${escapeHtml(match.text)}</del></span>`)}...
+                    </div>
+                </label>
+            </div>
+        `;
+        frReviewList.appendChild(li);
+    });
+
+    frReviewModal.classList.remove('hidden');
+}
+
+function confirmReplaceAll() {
+    const checkedItems = frReviewList.querySelectorAll('input[type="checkbox"]:checked');
+    const replacementText = replaceTextInput.value;
+    
+    // Process replacements from last to first to avoid index shifting issues
+    const matchesToReplace = Array.from(checkedItems)
+        .map(cb => allMatches[parseInt(cb.dataset.matchIndex)])
+        .sort((a, b) => {
+            if (a.sceneCode !== b.sceneCode) return b.sceneCode.localeCompare(a.sceneCode);
+            return b.index - a.index;
+        });
+
+    matchesToReplace.forEach(match => {
+        replaceInScene(match.sceneCode, match.index, match.length, replacementText);
+    });
+
+    closeReviewModal();
+    performSearch(); // Refresh search results
+}
+
+function replaceInScene(sceneCode, index, length, replacement) {
+    const scene = frData.revisions[0].scenes.find(s => s.code === sceneCode);
+    if (!scene) return;
+
+    try {
+        const content = JSON.parse(scene.text);
+        const plainText = content.blocks.map(b => b.text || '').join('\n');
+        
+        const newPlainText = plainText.substring(0, index) + replacement + plainText.substring(index + length);
+
+        // This is a simplification. A more robust solution would map the plainText
+        // indices back to the block structure. For now, we replace the whole content.
+        const newBlocks = newPlainText.split('\n').map(line => ({ type: 'text', align: 'left', text: line }));
+        
+        scene.text = JSON.stringify({ blocks: newBlocks });
+        
+        modificationsMade = true;
+        downloadCurrentFrBackupBtn.disabled = false;
+    } catch (e) {
+        console.error(`Failed to replace content in scene ${sceneCode}`, e);
+    }
+}
+
+// --- UTILITY ---
+function debounce(func, delay) {
+    let timeout;
+    return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), delay);
+    };
+}
+
+function populateScopeSelector() {
+    frScopeSelect.innerHTML = '<option value="all">All Chapters</option>';
+    frData.revisions[0].scenes.forEach(scene => {
+        const option = document.createElement('option');
+        option.value = scene.code;
+        option.textContent = scene.title;
+        frScopeSelect.appendChild(option);
+    });
+}
+
+function getScenePlainText(scene) {
+    try {
+        const content = JSON.parse(scene.text);
+        return content.blocks.map(b => b.text || '').join('\n');
+    } catch {
+        return '';
+    }
+}
+
+function toggleOptionsPopover() {
+    frOptionsPopover.classList.toggle('hidden');
+}
+
+function closeReviewModal() {
+    frReviewModal.classList.add('hidden');
+}
