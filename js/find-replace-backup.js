@@ -9,8 +9,6 @@ let allMatches = []; // Array of all found matches across the selected scope
 let currentMatchIndex = -1; // Index of the currently highlighted match in `allMatches`
 let modificationsMade = false; // Flag to enable the download button
 
-const SNIPPET_CONTEXT_LENGTH = 80; // Characters of context before and after match
-
 // --- DOM ELEMENTS (DECLARED AT MODULE LEVEL FOR WIDER ACCESS) ---
 let frContainer, frUploadArea, frDownloadContainer, frSnippetPreview, frBackupFileInput,
     frHud, findPatternInput, replaceTextInput, frReplaceToggleBtn, frReplaceRow,
@@ -19,7 +17,7 @@ let frContainer, frUploadArea, frDownloadContainer, frSnippetPreview, frBackupFi
     useRegexCheckbox, caseSensitiveCheckbox, wholeWordCheckbox,
     downloadCurrentFrBackupBtn, frSpinner, frReviewModal, frCloseReviewModalBtn,
     frReviewSelectAll, frReviewSummaryText, frReviewList, frCancelReviewBtn,
-    frConfirmReplaceAllBtn;
+    frConfirmReplaceAllBtn, frChapterListPanel, frChapterList;
 
 // --- HELPER FUNCTIONS ---
 const escapeHtml = (unsafe) => unsafe.replace(/[&<>"']/g, match => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[match]);
@@ -62,6 +60,8 @@ export function initializeFindReplaceBackup(showAppToast, toggleAppSpinnerFunc) 
     frReviewList = document.getElementById('frReviewList');
     frCancelReviewBtn = document.getElementById('frCancelReviewBtn');
     frConfirmReplaceAllBtn = document.getElementById('frConfirmReplaceAllBtn');
+    frChapterListPanel = document.getElementById('frChapterListPanel');
+    frChapterList = document.getElementById('frChapterList');
 
     // Moved into initializer for closure
     async function handleFileLoad(event) {
@@ -80,15 +80,20 @@ export function initializeFindReplaceBackup(showAppToast, toggleAppSpinnerFunc) 
             }
 
             populateScopeSelector();
+            populateChapterList();
             
             frUploadArea.classList.add('opacity-0', 'pointer-events-none');
             frHud.classList.remove('hidden');
-            setTimeout(() => frHud.classList.add('translate-y-0'), 50); // Animate in
             frDownloadContainer.classList.remove('hidden');
 
             frReplaceToggleBtn.disabled = false;
             frOptionsToggleBtn.disabled = false;
             findPatternInput.focus();
+
+            // Display first chapter's content
+            if (frData.revisions[0].scenes.length > 0) {
+                displayChapterContent(frData.revisions[0].scenes[0].code);
+            }
 
         } catch (err) {
             showAppToast(`Error loading file: ${err.message}`, true);
@@ -133,6 +138,13 @@ export function initializeFindReplaceBackup(showAppToast, toggleAppSpinnerFunc) 
             cb.checked = frReviewSelectAll.checked;
         });
     });
+
+    frChapterList.addEventListener('click', (e) => {
+        const targetButton = e.target.closest('button[data-scene-code]');
+        if (targetButton) {
+            displayChapterContent(targetButton.dataset.sceneCode);
+        }
+    });
 }
 
 // --- CORE LOGIC ---
@@ -144,15 +156,15 @@ function resetToolState() {
     modificationsMade = false;
     
     frUploadArea.classList.remove('opacity-0', 'pointer-events-none');
-    frHud.classList.remove('translate-y-0');
-    frHud.classList.add('translate-y-full', 'hidden');
+    frHud.classList.add('hidden');
     frDownloadContainer.classList.add('hidden');
     
     findPatternInput.value = '';
     replaceTextInput.value = '';
     matchCountDisplay.textContent = 'No results';
-    frSnippetPreview.innerHTML = '<p class="max-w-prose text-left text-slate-500 dark:text-slate-400 italic">Upload a backup file to begin.</p>';
-    
+    frSnippetPreview.innerHTML = '<p class="text-slate-500 dark:text-slate-400 italic">Upload a backup file to begin.</p>';
+    frChapterList.innerHTML = '<li class="p-2 text-sm text-slate-500 italic">Upload a backup file to see chapters.</li>';
+
     // Reset buttons
     findPreviousBtn.disabled = true;
     findNextBtn.disabled = true;
@@ -189,6 +201,11 @@ function performSearch() {
 
     if (!pattern || !frData) {
         updateMatchDisplay();
+        // Re-display current chapter without highlights
+        const activeChapterBtn = frChapterList.querySelector('button.bg-primary-500\/10');
+        if (activeChapterBtn) {
+            displayChapterContent(activeChapterBtn.dataset.sceneCode);
+        }
         return;
     }
 
@@ -233,7 +250,7 @@ function performSearch() {
     if (allMatches.length > 0) {
         navigateMatches(0); // Go to the first match
     } else {
-        frSnippetPreview.innerHTML = '<p class="max-w-prose text-center text-slate-500 dark:text-slate-400">No results found.</p>';
+        frSnippetPreview.innerHTML = '<p class="text-slate-500 dark:text-slate-400">No results found.</p>';
     }
 }
 
@@ -255,7 +272,12 @@ function updateMatchDisplay() {
 function navigateMatches(direction) {
     if (allMatches.length === 0) return;
 
-    currentMatchIndex += direction;
+    if (currentMatchIndex === -1 && direction === 0) {
+        currentMatchIndex = 0;
+    } else {
+        currentMatchIndex += direction;
+    }
+
     if (currentMatchIndex < 0) currentMatchIndex = 0;
     if (currentMatchIndex >= allMatches.length) currentMatchIndex = allMatches.length - 1;
 
@@ -264,35 +286,15 @@ function navigateMatches(direction) {
 }
 
 function displayCurrentMatch() {
-    if (currentMatchIndex < 0 || currentMatchIndex >= allMatches.length) return;
-
+    if (currentMatchIndex < 0 || currentMatchIndex >= allMatches.length) {
+        if(frData) {
+            const firstScene = frData.revisions[0].scenes[0];
+            if(firstScene) displayChapterContent(firstScene.code);
+        }
+        return;
+    };
     const match = allMatches[currentMatchIndex];
-    const scene = frData.revisions[0].scenes.find(s => s.code === match.sceneCode);
-    if (!scene) return;
-    
-    try {
-        const content = JSON.parse(scene.text);
-        const plainText = content.blocks.map(b => b.text || '').join('\n');
-
-        const start = Math.max(0, match.index - SNIPPET_CONTEXT_LENGTH);
-        const end = Math.min(plainText.length, match.index + match.length + SNIPPET_CONTEXT_LENGTH);
-        
-        const preContext = escapeHtml(plainText.substring(start, match.index));
-        const matchText = escapeHtml(plainText.substring(match.index, match.index + match.length));
-        const postContext = escapeHtml(plainText.substring(match.index + match.length, end));
-
-        frSnippetPreview.innerHTML = `
-            <div class="max-w-prose text-left">
-                <p class="text-sm text-slate-500 dark:text-slate-400 mb-2">${escapeHtml(scene.title)}</p>
-                <p>
-                    ...${preContext}<mark class="bg-primary-500/30 rounded px-1">${matchText}</mark>${postContext}...
-                </p>
-            </div>
-        `;
-    } catch (e) {
-        console.warn(`Error displaying match for scene ${scene.code}`, e);
-        frSnippetPreview.textContent = `Error displaying match for ${scene.title}.`;
-    }
+    displayChapterContent(match.sceneCode, match);
 }
 
 
@@ -417,6 +419,59 @@ function replaceInScene(sceneCode, index, length, replacement) {
     }
 }
 
+// --- UI AND DISPLAY ---
+
+function displayChapterContent(sceneCode, matchToHighlight = null) {
+    const scene = frData.revisions[0].scenes.find(s => s.code === sceneCode);
+    if (!scene) return;
+
+    // Update active chapter in the list
+    frChapterList.querySelectorAll('button').forEach(btn => {
+        if (btn.dataset.sceneCode === sceneCode) {
+            btn.classList.add('bg-primary-500/10', 'text-primary-600', 'dark:text-primary-300');
+        } else {
+            btn.classList.remove('bg-primary-500/10', 'text-primary-600', 'dark:text-primary-300');
+        }
+    });
+
+    const plainText = getScenePlainText(scene);
+    let contentHtml;
+    
+    if (matchToHighlight) {
+        const { index, length } = matchToHighlight;
+        const pre = escapeHtml(plainText.substring(0, index));
+        const matchText = escapeHtml(plainText.substring(index, index + length));
+        const post = escapeHtml(plainText.substring(index + length));
+        contentHtml = `${pre}<mark id="current-match" class="bg-primary-500/30 rounded px-1">${matchText}</mark>${post}`;
+    } else {
+        contentHtml = escapeHtml(plainText);
+    }
+    
+    frSnippetPreview.innerHTML = `<pre class="whitespace-pre-wrap break-words">${contentHtml}</pre>`;
+
+    if (matchToHighlight) {
+        const mark = document.getElementById('current-match');
+        if (mark) {
+            mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+}
+
+function populateChapterList() {
+    if (!frData || !frChapterList) return;
+    const scenes = frData.revisions[0].scenes;
+    frChapterList.innerHTML = '';
+    scenes.forEach(scene => {
+        const li = document.createElement('li');
+        const button = document.createElement('button');
+        button.dataset.sceneCode = scene.code;
+        button.textContent = scene.title;
+        button.className = 'w-full text-left px-2 py-1.5 text-sm rounded-md transition-colors text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/50';
+        li.appendChild(button);
+        frChapterList.appendChild(li);
+    });
+}
+
 // --- UTILITY ---
 function debounce(func, delay) {
     let timeout;
@@ -437,6 +492,7 @@ function populateScopeSelector() {
 }
 
 function getScenePlainText(scene) {
+    if (!scene || !scene.text) return '';
     try {
         const content = JSON.parse(scene.text);
         return content.blocks.map(b => b.text || '').join('\n');
