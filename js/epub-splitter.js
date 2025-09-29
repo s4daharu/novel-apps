@@ -192,6 +192,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
                 displayChapterSelectionUI(parsedChaptersForSelection);
 
                 if (parsedChaptersForSelection.length > 0) {
+                    chapterCountEl.textContent = `${parsedChaptersForSelection.length} chapters found`;
                     splitBtn.disabled = false;
                     showAppToast(`Found ${parsedChaptersForSelection.length} potential chapters. Review selection.`, false);
                 } else {

@@ -11,7 +11,7 @@ let modificationsMade = false; // Flag to enable the download button
 
 const SNIPPET_CONTEXT_LENGTH = 80; // Characters of context before and after match
 
-// --- DOM ELEMENTS (DECLARED) ---
+// --- DOM ELEMENTS (DECLARED AT MODULE LEVEL FOR WIDER ACCESS) ---
 let frContainer, frUploadArea, frDownloadContainer, frSnippetPreview, frBackupFileInput,
     frHud, findPatternInput, replaceTextInput, frReplaceToggleBtn, frReplaceRow,
     matchCountDisplay, findPreviousBtn, findNextBtn, frDoneBtn, replaceNextBtn,
@@ -21,20 +21,11 @@ let frContainer, frUploadArea, frDownloadContainer, frSnippetPreview, frBackupFi
     frReviewSelectAll, frReviewSummaryText, frReviewList, frCancelReviewBtn,
     frConfirmReplaceAllBtn;
 
-// --- MODULE-LEVEL HELPERS ---
-let showToast;
-let toggleSpinner;
-
-
 // --- HELPER FUNCTIONS ---
 const escapeHtml = (unsafe) => unsafe.replace(/[&<>"']/g, match => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[match]);
 
 // --- INITIALIZATION ---
 export function initializeFindReplaceBackup(showAppToast, toggleAppSpinnerFunc) {
-    // --- Assign module-level helpers ---
-    showToast = showAppToast;
-    toggleSpinner = toggleAppSpinnerFunc;
-
     // --- DOM ELEMENT ASSIGNMENT ---
     frContainer = document.getElementById('findReplaceBackupApp');
     if (!frContainer) {
@@ -72,7 +63,42 @@ export function initializeFindReplaceBackup(showAppToast, toggleAppSpinnerFunc) 
     frCancelReviewBtn = document.getElementById('frCancelReviewBtn');
     frConfirmReplaceAllBtn = document.getElementById('frConfirmReplaceAllBtn');
 
-    
+    // Moved into initializer for closure
+    async function handleFileLoad(event) {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        resetToolState();
+        toggleAppSpinnerFunc(true);
+
+        try {
+            const fileText = await file.text();
+            frData = JSON.parse(fileText);
+
+            if (!frData.revisions?.[0]?.scenes) {
+                throw new Error('Invalid backup file structure.');
+            }
+
+            populateScopeSelector();
+            
+            frUploadArea.classList.add('opacity-0', 'pointer-events-none');
+            frHud.classList.remove('hidden');
+            setTimeout(() => frHud.classList.add('translate-y-0'), 50); // Animate in
+            frDownloadContainer.classList.remove('hidden');
+
+            frReplaceToggleBtn.disabled = false;
+            frOptionsToggleBtn.disabled = false;
+            findPatternInput.focus();
+
+        } catch (err) {
+            showAppToast(`Error loading file: ${err.message}`, true);
+            frBackupFileInput.value = ''; // Clear input
+            resetToolState();
+        } finally {
+            toggleAppSpinnerFunc(false);
+        }
+    }
+
     // Bind all event listeners
     frBackupFileInput.addEventListener('change', handleFileLoad);
     frDoneBtn.addEventListener('click', closeFindReplace);
@@ -135,41 +161,6 @@ function resetToolState() {
     downloadCurrentFrBackupBtn.disabled = true;
     frReplaceToggleBtn.disabled = true;
     frOptionsToggleBtn.disabled = true;
-}
-
-async function handleFileLoad(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    resetToolState();
-    toggleSpinner(frSpinner, true);
-
-    try {
-        const fileText = await file.text();
-        frData = JSON.parse(fileText);
-
-        if (!frData.revisions?.[0]?.scenes) {
-            throw new Error('Invalid backup file structure.');
-        }
-
-        populateScopeSelector();
-        
-        frUploadArea.classList.add('opacity-0', 'pointer-events-none');
-        frHud.classList.remove('hidden');
-        setTimeout(() => frHud.classList.add('translate-y-0'), 50); // Animate in
-        frDownloadContainer.classList.remove('hidden');
-
-        frReplaceToggleBtn.disabled = false;
-        frOptionsToggleBtn.disabled = false;
-        findPatternInput.focus();
-
-    } catch (err) {
-        showToast(`Error loading file: ${err.message}`, true);
-        frBackupFileInput.value = ''; // Clear input
-        resetToolState();
-    } finally {
-        toggleSpinner(frSpinner, false);
-    }
 }
 
 function closeFindReplace() {
