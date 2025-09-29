@@ -26,25 +26,6 @@
       darkMode: 'class',
       theme: {
         extend: {
-          typography: (theme) => ({
-            DEFAULT: {
-              css: {
-                '--tw-prose-body': theme('colors.slate[800]'),
-                '--tw-prose-invert-body': theme('colors.slate[200]'),
-                pre: {
-                  padding: '0',
-                  margin: '0',
-                  backgroundColor: 'transparent',
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                },
-                p: {
-                  marginTop: '0.25em',
-                  marginBottom: '0.25em',
-                }
-              },
-            },
-          }),
           colors: {
             primary: {
               50: '#f0fdfa',
@@ -94,13 +75,9 @@
             },
           }
         }
-      },
-      plugins: [
-        require('@tailwindcss/typography'),
-      ],
+      }
     }
   </script>
-  <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
 
 
 <script type="importmap">
@@ -113,7 +90,7 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
+
 </head>
 
 <body class="bg-slate-50 text-slate-800 dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 dark:text-slate-100 min-h-screen font-sans antialiased text-base leading-relaxed transition-colors duration-300">
@@ -599,9 +576,9 @@
 
 
     <!-- Enhanced Find & Replace in Backup File -->
-    <div id="findReplaceBackupApp" class="tool-section box-border h-[calc(100vh-56px-env(safe-area-inset-top))] md:h-[calc(100vh-72px-env(safe-area-inset-top))] max-w-full relative bg-slate-100 dark:bg-slate-900 hidden flex flex-col">
+    <div id="findReplaceBackupApp" class="tool-section p-0 sm:pb-[130px] box-border h-[calc(100vh-56px-env(safe-area-inset-top))] md:h-[calc(100vh-72px-env(safe-area-inset-top))] max-w-full relative overflow-hidden bg-slate-100 dark:bg-slate-800 hidden">
       <!-- Initial Upload View -->
-      <div id="frUploadArea" class="absolute inset-0 bg-white/80 dark:bg-slate-900/50 z-30 flex flex-col items-center justify-center p-4 transition-opacity duration-300 ease-in-out">
+      <div id="frUploadArea" class="absolute inset-0 bg-white/80 dark:bg-slate-900/50 z-10 flex flex-col items-center justify-center p-4 transition-opacity duration-300 ease-in-out">
         <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">Find & Replace in Backup</h1>
         <div class="max-w-md mx-auto">
           <label for="frBackupFile" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-violet-600 hover:bg-violet-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 w-full cursor-pointer" id="frBackupFileLabel">Upload Backup File</label>
@@ -609,32 +586,20 @@
           <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Upload a .json, .txt, or .nov backup file to begin.</p>
         </div>
       </div>
-      
+    
+      <!-- Context Snippet Preview Area -->
+      <div id="frSnippetPreview" class="flex-grow flex items-center justify-center p-4 overflow-y-auto font-serif text-lg leading-loose text-slate-800 dark:text-slate-200">
+        <p class="max-w-prose text-left text-slate-500 dark:text-slate-400 italic">Upload a backup file to begin.</p>
+      </div>
+    
       <!-- Download Button Container -->
       <div id="frDownloadContainer" class="absolute top-4 right-4 z-10 transition-transform duration-300 hidden">
         <button id="downloadCurrentFrBackupBtn" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 disabled:opacity-60 disabled:cursor-not-allowed" disabled>Download Backup</button>
       </div>
     
-      <!-- Main Content Area -->
-      <div class="flex-grow flex overflow-hidden">
-        <!-- Chapter List Panel (Desktop) -->
-        <div id="frChapterListPanel" class="hidden md:flex flex-col w-72 h-full border-r border-slate-200 dark:border-slate-700 flex-shrink-0 bg-white dark:bg-slate-800">
-            <div class="p-3 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
-                <h2 class="text-md font-semibold text-slate-800 dark:text-slate-200">Chapters</h2>
-            </div>
-            <ul id="frChapterList" class="overflow-y-auto flex-grow p-2 space-y-1">
-                <li class="p-2 text-sm text-slate-500 italic">Upload a backup file to see chapters.</li>
-            </ul>
-        </div>
-        <!-- Text Content Preview -->
-        <div id="frSnippetPreview" class="flex-grow p-4 md:p-6 overflow-y-auto prose dark:prose-invert max-w-none bg-white dark:bg-slate-800/50">
-            <p class="text-slate-500 dark:text-slate-400 italic">Upload a backup file to begin.</p>
-        </div>
-      </div>
-
-      <!-- Docked HUD -->
-      <div id="frHud" class="flex-shrink-0 z-20 p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-sm border-t border-slate-200 dark:border-slate-700 hidden">
-        <div class="relative max-w-3xl mx-auto">
+      <!-- Floating HUD -->
+      <div id="frHud" class="fixed bottom-0 left-0 right-0 z-20 p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] transform translate-y-full transition-transform duration-300 ease-out hidden">
+        <div class="relative max-w-3xl mx-auto bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-300 dark:border-slate-700 rounded-xl shadow-2xl p-3 transition-height">
           <!-- Options Popover -->
           <div id="frOptionsPopover" class="absolute bottom-[calc(100%+8px)] right-0 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-4 w-72 shadow-lg z-20 hidden">
             <div class="mb-3">
@@ -666,11 +631,11 @@
             </div>
             <div class="flex-grow">
                 <div class="relative flex items-center">
-                    <input type="text" id="findPattern" placeholder="Find" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md px-2 py-1.5 pr-20 text-sm text-slate-800 dark:text-slate-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500">
-                    <div id="frMatchCountDisplay" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-700 px-1 pointer-events-none">No results</div>
+                    <input type="text" id="findPattern" placeholder="Find" class="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md px-2 py-1.5 pr-20 text-sm text-slate-800 dark:text-slate-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500">
+                    <div id="frMatchCountDisplay" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1 pointer-events-none">No results</div>
                 </div>
                 <div id="frReplaceRow" class="relative flex items-center mt-1 hidden">
-                    <input type="text" id="replaceText" placeholder="Replace" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500">
+                    <input type="text" id="replaceText" placeholder="Replace" class="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500">
                     <div class="absolute right-0 top-1/2 -translate-y-1/2 flex items-center">
                         <button id="replaceNextBtn" class="bg-transparent border-none text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400 p-1.5" title="Replace">
                             <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z"></path><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd"></path></svg>
@@ -987,6 +952,6 @@
   <script src="jszip.min.js"></script>
 
   <script type="module" src="./js/index.js"></script>
-<script type="module" src="/index.tsx"></script>
+
 </body>
 </html>

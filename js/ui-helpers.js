@@ -173,8 +173,8 @@ function hideFindReplaceOverlays() {
 
     const frHud = document.getElementById('frHud');
     if (frHud) {
-        // The HUD is no longer transformed, just hidden
-        frHud.classList.add('hidden');
+        // The HUD is shown by translating it into view. We remove the class that does this.
+        frHud.classList.remove('translate-y-0');
     }
 
     const frOptionsPopover = document.getElementById('frOptionsPopover');
@@ -201,10 +201,19 @@ function displayTool(appId, currentToolSectionsMap) {
         if (appElement) {
             if (id === appId) {
                 appElement.classList.remove('hidden');
+                // The find & replace tool has a flex layout, others are block
+                if (id === 'findReplaceBackup') {
+                    appElement.classList.add('flex');
+                    appElement.classList.remove('block');
+                } else {
+                    appElement.classList.add('block');
+                    appElement.classList.remove('flex');
+                }
                 currentTitle = toolInfo.title;
                 toolDisplayed = true;
             } else {
                 appElement.classList.add('hidden');
+                appElement.classList.remove('flex', 'block');
             }
         }
     }
@@ -229,6 +238,7 @@ export function showDashboard(fromPopStateUpdate = false, currentToolSectionsMap
         const appElement = document.getElementById(toolInfo.elementId);
         if (appElement) {
             appElement.classList.add('hidden');
+            appElement.classList.remove('flex', 'block');
         }
     }
 
