@@ -36,33 +36,33 @@ export function initializeCreateBackupFromZip(showAppToast, toggleAppSpinner) {
 
     zipFileInput.addEventListener('change', () => {
         createBtn.disabled = !(zipFileInput.files && zipFileInput.files.length > 0);
-        if(statusMessageEl) statusMessageEl.style.display = 'none';
+        if(statusMessageEl) statusMessageEl.classList.add('hidden');
         if (zipFileInput.files && zipFileInput.files.length > 0) {
             zipFileNameEl.textContent = `Selected: ${zipFileInput.files[0].name}`;
-            if(clearZipFileBtn) clearZipFileBtn.style.display = 'inline-block';
+            if(clearZipFileBtn) clearZipFileBtn.classList.remove('hidden');
         } else {
             zipFileNameEl.textContent = '';
-            if(clearZipFileBtn) clearZipFileBtn.style.display = 'none';
+            if(clearZipFileBtn) clearZipFileBtn.classList.add('hidden');
         }
     });
 
     clearZipFileBtn.addEventListener('click', () => {
         zipFileInput.value = '';
         zipFileNameEl.textContent = '';
-        clearZipFileBtn.style.display = 'none';
+        clearZipFileBtn.classList.add('hidden');
         createBtn.disabled = true;
-        if(statusMessageEl) statusMessageEl.style.display = 'none';
+        if(statusMessageEl) statusMessageEl.classList.add('hidden');
     });
 
     createBtn.addEventListener('click', async () => {
-        if(statusMessageEl) statusMessageEl.style.display = 'none';
+        if(statusMessageEl) statusMessageEl.classList.add('hidden');
 
         if (!zipFileInput.files || zipFileInput.files.length === 0) {
             showAppToast('Please upload a ZIP file.', true);
             if(statusMessageEl) {
                 statusMessageEl.textContent = 'Error: Please upload a ZIP file.';
-                statusMessageEl.className = 'status error';
-                statusMessageEl.style.display = 'block';
+                statusMessageEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+                statusMessageEl.classList.remove('hidden');
             }
             zipFileInput.focus();
             return;
@@ -73,8 +73,8 @@ export function initializeCreateBackupFromZip(showAppToast, toggleAppSpinner) {
             showAppToast('Project Title is required.', true);
             if(statusMessageEl) {
                 statusMessageEl.textContent = 'Error: Project Title is required.';
-                statusMessageEl.className = 'status error';
-                statusMessageEl.style.display = 'block';
+                statusMessageEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+                statusMessageEl.classList.remove('hidden');
             }
             projectTitleInput.focus();
             return;
@@ -85,8 +85,8 @@ export function initializeCreateBackupFromZip(showAppToast, toggleAppSpinner) {
             showAppToast('Start Number must be 1 or greater.', true);
              if(statusMessageEl) {
                 statusMessageEl.textContent = 'Error: Start Number must be 1 or greater.';
-                statusMessageEl.className = 'status error';
-                statusMessageEl.style.display = 'block';
+                statusMessageEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+                statusMessageEl.classList.remove('hidden');
             }
             startNumberInput.focus();
             return;
@@ -97,8 +97,8 @@ export function initializeCreateBackupFromZip(showAppToast, toggleAppSpinner) {
             showAppToast('Extra Empty Chapters must be 0 or greater.', true);
             if(statusMessageEl) {
                 statusMessageEl.textContent = 'Error: Extra Chapters must be 0 or greater.';
-                statusMessageEl.className = 'status error';
-                statusMessageEl.style.display = 'block';
+                statusMessageEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+                statusMessageEl.classList.remove('hidden');
             }
             extraChaptersInput.focus();
             return;
@@ -210,8 +210,8 @@ export function initializeCreateBackupFromZip(showAppToast, toggleAppSpinner) {
                  showAppToast('No .txt files found in ZIP and no extra chapters requested. Backup not created.', true);
                  if(statusMessageEl) {
                     statusMessageEl.textContent = 'Error: No chapters to include in backup.';
-                    statusMessageEl.className = 'status error';
-                    statusMessageEl.style.display = 'block';
+                    statusMessageEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+                    statusMessageEl.classList.remove('hidden');
                  }
                  toggleAppSpinner(false);
                  return;
@@ -252,8 +252,8 @@ export function initializeCreateBackupFromZip(showAppToast, toggleAppSpinner) {
 
             if (statusMessageEl) {
                 statusMessageEl.textContent = `Backup file created with ${scenes.length} chapter(s). Download started.`;
-                statusMessageEl.className = 'status success';
-                statusMessageEl.style.display = 'block';
+                statusMessageEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-green-50 dark:bg-green-600/10 border border-green-200 dark:border-green-500/30 text-green-700 dark:text-green-400';
+                statusMessageEl.classList.remove('hidden');
             }
             showAppToast(`Backup file created with ${scenes.length} chapter(s).`);
 
@@ -261,8 +261,8 @@ export function initializeCreateBackupFromZip(showAppToast, toggleAppSpinner) {
             console.error("Create Backup from ZIP Error:", err);
             if (statusMessageEl) {
                 statusMessageEl.textContent = `Error: ${err.message}`;
-                statusMessageEl.className = 'status error';
-                statusMessageEl.style.display = 'block';
+                statusMessageEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+                statusMessageEl.classList.remove('hidden');
             }
             showAppToast(`Error: ${err.message}`, true);
         } finally {

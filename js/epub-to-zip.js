@@ -310,15 +310,21 @@ export function initializeEpubToZip(showAppToast, toggleAppSpinner) {
     enableRemoveLinesToggle.addEventListener('change', (e) => {
         const target = e.target;
         if (removeLinesOptionsGroup) {
-            removeLinesOptionsGroup.style.display = target.checked ? 'block' : 'none';
+            if (target.checked) {
+                removeLinesOptionsGroup.classList.remove('hidden');
+            } else {
+                removeLinesOptionsGroup.classList.add('hidden');
+            }
         }
     });
 
     function updateLocalStatus(message, isError = false) {
         if (statusEl) {
             statusEl.textContent = message;
-            statusEl.style.display = 'block';
-            statusEl.className = isError ? 'status error' : 'status success';
+            statusEl.classList.remove('hidden');
+            statusEl.className = isError 
+                ? 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400' 
+                : 'rounded-xl p-4 mt-5 text-center text-sm bg-green-50 dark:bg-green-600/10 border border-green-200 dark:border-green-500/30 text-green-700 dark:text-green-400';
         }
         if (isError) showAppToast(message, true);
         else if (message.toLowerCase().includes("download started") || message.toLowerCase().includes("file saved") || message.toLowerCase().includes("found") || message.toLowerCase().includes("reading")) {
@@ -328,7 +334,7 @@ export function initializeEpubToZip(showAppToast, toggleAppSpinner) {
 
     function resetChapterSelectionUI() {
         if (chapterListUl) chapterListUl.innerHTML = '';
-        if (chapterSelectionArea) chapterSelectionArea.style.display = 'none';
+        if (chapterSelectionArea) chapterSelectionArea.classList.add('hidden');
     }
 
     function displayChapterSelectionList(tocEntries) {
@@ -336,7 +342,7 @@ export function initializeEpubToZip(showAppToast, toggleAppSpinner) {
         chapterListUl.innerHTML = '';
 
         if (tocEntries.length === 0) {
-            chapterSelectionArea.style.display = 'none';
+            chapterSelectionArea.classList.add('hidden');
             return;
         }
 
@@ -357,7 +363,7 @@ export function initializeEpubToZip(showAppToast, toggleAppSpinner) {
             li.appendChild(label);
             chapterListUl.appendChild(li);
         });
-        chapterSelectionArea.style.display = 'block';
+        chapterSelectionArea.classList.remove('hidden');
     }
 
     selectAllChaptersBtn.addEventListener('click', () => {
@@ -370,7 +376,7 @@ export function initializeEpubToZip(showAppToast, toggleAppSpinner) {
 
     function resetUIState(fullReset = true) {
         updateLocalStatus('Select an EPUB file.');
-        if (downloadSec) downloadSec.style.display = 'none';
+        if (downloadSec) downloadSec.classList.add('hidden');
         extractBtn.disabled = true;
         currentZipInstance = null;
         currentTocEntries = [];
@@ -381,11 +387,11 @@ export function initializeEpubToZip(showAppToast, toggleAppSpinner) {
         if (fullReset) {
             fileInput.value = '';
             fileNameEl.textContent = '';
-            if (clearFileBtn) clearFileBtn.style.display = 'none';
+            if (clearFileBtn) clearFileBtn.classList.add('hidden');
         }
 
         if (enableRemoveLinesToggle) enableRemoveLinesToggle.checked = false;
-        if (removeLinesOptionsGroup) removeLinesOptionsGroup.style.display = 'none';
+        if (removeLinesOptionsGroup) removeLinesOptionsGroup.classList.add('hidden');
         if (linesToRemoveInput) linesToRemoveInput.value = '1';
     }
 
@@ -401,7 +407,7 @@ export function initializeEpubToZip(showAppToast, toggleAppSpinner) {
 
         if (!file) {
             fileNameEl.textContent = '';
-            if (clearFileBtn) clearFileBtn.style.display = 'none';
+            if (clearFileBtn) clearFileBtn.classList.add('hidden');
             extractBtn.disabled = true;
             return;
         }
@@ -409,14 +415,14 @@ export function initializeEpubToZip(showAppToast, toggleAppSpinner) {
             updateLocalStatus('Error: Please select a valid .epub file.', true);
             fileInput.value = '';
             fileNameEl.textContent = '';
-            if (clearFileBtn) clearFileBtn.style.display = 'none';
+            if (clearFileBtn) clearFileBtn.classList.add('hidden');
             extractBtn.disabled = true;
             return;
         }
 
         currentEpubFilename = file.name;
         fileNameEl.textContent = `Selected: ${file.name}`;
-        if (clearFileBtn) clearFileBtn.style.display = 'inline-block';
+        if (clearFileBtn) clearFileBtn.classList.remove('hidden');
         updateLocalStatus(`Reading ${file.name}...`);
         toggleAppSpinner(true);
 
@@ -452,7 +458,7 @@ export function initializeEpubToZip(showAppToast, toggleAppSpinner) {
     });
 
     extractBtn.addEventListener('click', async () => {
-        statusEl.style.display = 'none';
+        statusEl.classList.add('hidden');
 
         if (!currentZipInstance || currentTocEntries.length === 0) {
             updateLocalStatus("Cannot extract: No EPUB loaded or no chapters found.", true);
@@ -482,8 +488,8 @@ export function initializeEpubToZip(showAppToast, toggleAppSpinner) {
             if (isNaN(numLinesToRemove) || numLinesToRemove < 0) {
                 showAppToast('Invalid "Number of lines to remove". Must be 0 or greater.', true);
                 statusEl.textContent = 'Error: "Number of lines to remove" must be 0 or greater.';
-                statusEl.className = 'status error';
-                statusEl.style.display = 'block';
+                statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+                statusEl.classList.remove('hidden');
                 linesToRemoveInput.focus();
                 return;
             }
@@ -558,7 +564,7 @@ export function initializeEpubToZip(showAppToast, toggleAppSpinner) {
                     downloadLink.href = "#";
                     downloadLink.setAttribute('download', finalFilename);
                     downloadLink.textContent = `Download ${finalFilename}`;
-                    downloadSec.style.display = 'block';
+                    downloadSec.classList.remove('hidden');
                 }
             } else {
                 updateLocalStatus("Extraction complete, but no chapter content was retrieved or all content was removed. Check EPUB and options.", true);

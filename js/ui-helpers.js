@@ -141,7 +141,7 @@ export function showToast(msg, isError = false) {
     }
     toastEl.textContent = msg;
     // Apply Tailwind color classes directly instead of relying on @apply-based CSS classes
-    toastEl.classList.remove('bg-green-600', 'bg-red-600', 'toast-success', 'toast-error');
+    toastEl.classList.remove('bg-green-600', 'bg-red-600');
     toastEl.classList.add(isError ? 'bg-red-600' : 'bg-green-600');
     toastEl.style.opacity = '1';
     setTimeout(() => { toastEl.style.opacity = '0'; }, 3000);
@@ -154,11 +154,36 @@ export function toggleSpinner(spinnerElement, show) {
     spinnerElement.style.display = show ? 'block' : 'none';
 }
 
+/**
+ * Hides all floating UI elements specific to the Find & Replace tool.
+ * This ensures a clean state when navigating away from the tool.
+ */
+function hideFindReplaceOverlays() {
+    const frReviewModal = document.getElementById('frReviewModal');
+    if (frReviewModal) {
+        frReviewModal.style.display = 'none';
+    }
+
+    const frHud = document.getElementById('frHud');
+    if (frHud) {
+        // The HUD is shown by translating it into view. We remove the class that does this.
+        frHud.classList.remove('translate-y-0');
+    }
+
+    const frOptionsPopover = document.getElementById('frOptionsPopover');
+    if (frOptionsPopover) {
+        // The options popover is also a floating element to hide.
+        frOptionsPopover.style.display = 'none';
+    }
+}
+
+
 function displayTool(appId, currentToolSectionsMap) {
     const dashboardAppEl = document.getElementById('dashboardApp');
     const appTitleEl = document.getElementById('appTitle');
 
     if (dashboardAppEl) dashboardAppEl.style.display = 'none';
+    hideFindReplaceOverlays();
 
     let currentTitle = 'Novel-Apps';
     let toolDisplayed = false;
@@ -168,7 +193,7 @@ function displayTool(appId, currentToolSectionsMap) {
         const appElement = document.getElementById(toolInfo.elementId);
         if (appElement) {
             if (id === appId) {
-                appElement.style.display = 'block';
+                appElement.style.display = (id === 'findReplaceBackup') ? 'flex' : 'block';
                 currentTitle = toolInfo.title;
                 toolDisplayed = true;
             } else {
@@ -187,8 +212,9 @@ function displayTool(appId, currentToolSectionsMap) {
 export function showDashboard(fromPopStateUpdate = false, currentToolSectionsMap) {
     const dashboardAppEl = document.getElementById('dashboardApp');
     const appTitleEl = document.getElementById('appTitle');
-
+    
     if (dashboardAppEl) dashboardAppEl.style.display = 'block';
+    hideFindReplaceOverlays();
 
     for (const id in currentToolSectionsMap) {
         const toolInfo = currentToolSectionsMap[id];

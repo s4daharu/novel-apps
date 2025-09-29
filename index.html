@@ -90,13 +90,12 @@
   }
 }
 </script>
-<link rel="stylesheet" href="index.css">
 <link rel="stylesheet" href="/index.css">
 </head>
 
-<body class="bg-slate-50 text-slate-800 dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 dark:text-slate-100 min-h-screen">
+<body class="bg-slate-50 text-slate-800 dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 dark:text-slate-100 min-h-screen font-sans antialiased text-base leading-relaxed transition-colors duration-300">
   <!-- Mobile-first header -->
-  <header class="flex items-center justify-between p-4 bg-white/80 dark:bg-slate-800/50 backdrop-blur-sm border-b border-gray-200 dark:border-slate-700 md:hidden sticky top-0 z-50">
+  <header class="flex items-center justify-between p-4 bg-white/80 dark:bg-slate-800/50 backdrop-blur-sm border-b border-gray-200 dark:border-slate-700 md:hidden sticky top-0 z-50" style="padding-top: calc(1rem + env(safe-area-inset-top));">
     <h1 class="text-xl font-bold text-gray-900 dark:text-white" id="appTitle">Novel-Apps</h1>
     <div class="flex items-center gap-2">
       <button class="theme-toggle-btn text-2xl text-slate-500 dark:text-slate-300 hover:text-primary-600 dark:hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700" aria-label="Toggle theme">
@@ -110,7 +109,7 @@
   </header>
   
   <!-- Desktop header -->
-  <header class="hidden md:flex items-center justify-between p-6 bg-white/80 dark:bg-slate-800/50 backdrop-blur-sm border-b border-gray-200 dark:border-slate-700 sticky top-0 z-50">
+  <header class="hidden md:flex items-center justify-between p-6 bg-white/80 dark:bg-slate-800/50 backdrop-blur-sm border-b border-gray-200 dark:border-slate-700 sticky top-0 z-50" style="padding-top: calc(1.5rem + env(safe-area-inset-top));">
     <h1 class="text-2xl font-bold text-gray-900 dark:text-white" id="appTitle">Novel-Apps</h1>
     <div class="absolute top-1/2 right-72 transform -translate-y-1/2">
       <button class="theme-toggle-btn text-2xl text-slate-500 dark:text-slate-300 hover:text-primary-600 dark:hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700" aria-label="Toggle theme">
@@ -171,7 +170,7 @@
         <!-- Tool Cards Grid - Enhanced Mobile First -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           <!-- EPUB Chapter Splitter -->
-          <div class="tool-card group bg-white/60 dark:bg-slate-800/40 backdrop-blur-sm border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 hover:bg-slate-50/80 dark:hover:bg-slate-700/60 hover:border-primary-500/50 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-xl hover:shadow-primary-500/10 animate-slide-in"
+          <div class="tool-card group bg-white/60 dark:bg-slate-800/40 backdrop-blur-sm border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 hover:bg-slate-50/80 dark:hover:bg-slate-700/60 hover:border-primary-500/50 transition-all duration-300 cursor-pointer hover:-translate-y-1 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary-500/10 animate-slide-in"
                onclick="launchAppFromCard('splitter')"
                role="button"
                tabindex="0"
@@ -186,7 +185,7 @@
           </div>
 
           <!-- ZIP ↔ EPUB Converter -->
-          <div class="tool-card group bg-white/60 dark:bg-slate-800/40 backdrop-blur-sm border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 hover:bg-slate-50/80 dark:hover:bg-slate-700/60 hover:border-primary-500/50 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-xl hover:shadow-primary-500/10 animate-slide-in"
+          <div class="tool-card group bg-white/60 dark:bg-slate-800/40 backdrop-blur-sm border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 hover:bg-slate-50/80 dark:hover:bg-slate-700/60 hover:border-primary-500/50 transition-all duration-300 cursor-pointer hover:-translate-y-1 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary-500/10 animate-slide-in"
                onclick="launchAppFromCard('zipEpub')"
                role="button"
                tabindex="0"
@@ -201,7 +200,7 @@
           </div>
 
           <!-- Create Backup from ZIP -->
-          <div class="tool-card group bg-white/60 dark:bg-slate-800/40 backdrop-blur-sm border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 hover:bg-slate-50/80 dark:hover:bg-slate-700/60 hover:border-primary-500/50 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-xl hover:shadow-primary-500/10 animate-slide-in"
+          <div class="tool-card group bg-white/60 dark:bg-slate-800/40 backdrop-blur-sm border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 hover:bg-slate-50/80 dark:hover:bg-slate-700/60 hover:border-primary-500/50 transition-all duration-300 cursor-pointer hover:-translate-y-1 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary-500/10 animate-slide-in"
                onclick="launchAppFromCard('createBackupFromZip')"
                role="button"
                tabindex="0"
@@ -216,7 +215,7 @@
           </div>
 
           <!-- Merge Backup Files -->
-          <div class="tool-card group bg-white/60 dark:bg-slate-800/40 backdrop-blur-sm border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 hover:bg-slate-50/80 dark:hover:bg-slate-700/60 hover:border-primary-500/50 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-xl hover:shadow-primary-500/10 animate-slide-in"
+          <div class="tool-card group bg-white/60 dark:bg-slate-800/40 backdrop-blur-sm border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 hover:bg-slate-50/80 dark:hover:bg-slate-700/60 hover:border-primary-500/50 transition-all duration-300 cursor-pointer hover:-translate-y-1 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary-500/10 animate-slide-in"
                onclick="launchAppFromCard('mergeBackup')"
                role="button"
                tabindex="0"
@@ -231,7 +230,7 @@
           </div>
 
           <!-- Augment Backup with ZIP -->
-          <div class="tool-card group bg-white/60 dark:bg-slate-800/40 backdrop-blur-sm border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 hover:bg-slate-50/80 dark:hover:bg-slate-700/60 hover:border-primary-500/50 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-xl hover:shadow-primary-500/10 animate-slide-in"
+          <div class="tool-card group bg-white/60 dark:bg-slate-800/40 backdrop-blur-sm border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 hover:bg-slate-50/80 dark:hover:bg-slate-700/60 hover:border-primary-500/50 transition-all duration-300 cursor-pointer hover:-translate-y-1 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary-500/10 animate-slide-in"
                onclick="launchAppFromCard('augmentBackupWithZip')"
                role="button"
                tabindex="0"
@@ -246,7 +245,7 @@
           </div>
 
           <!-- Find & Replace in Backup -->
-          <div class="tool-card group bg-white/60 dark:bg-slate-800/40 backdrop-blur-sm border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 hover:bg-slate-50/80 dark:hover:bg-slate-700/60 hover:border-primary-500/50 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-xl hover:shadow-primary-500/10 animate-slide-in md:col-span-2 lg:col-span-3"
+          <div class="tool-card group bg-white/60 dark:bg-slate-800/40 backdrop-blur-sm border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 hover:bg-slate-50/80 dark:hover:bg-slate-700/60 hover:border-primary-500/50 transition-all duration-300 cursor-pointer hover:-translate-y-1 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary-500/10 animate-slide-in md:col-span-2 lg:col-span-3"
                onclick="launchAppFromCard('findReplaceBackup')"
                role="button"
                tabindex="0"
@@ -271,95 +270,98 @@
     </section>
 
     <!-- Enhanced EPUB Splitter -->
-    <div id="splitterApp" class="card tool-section" style="display:none;">
-      <h1>EPUB Chapter Splitter</h1>
+    <div id="splitterApp" class="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 animate-fade-in tool-section hidden">
+      <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">EPUB Chapter Splitter</h1>
 
       <!-- Upload Section -->
-      <div class="upload-section option-group">
-        <label for="epubUpload" class="btn upload-btn" id="epubUploadLabel">Upload EPUB File</label>
-        <input type="file" id="epubUpload" accept=".epub" style="display:none;" aria-labelledby="epubUploadLabel">
-        <div class="filename-display-area">
-            <span id="epubFileName" class="text-slate-500 dark:text-slate-300"></span>
-            <button type="button" id="clearEpubUpload" class="clear-file-btn" aria-label="Clear EPUB file" style="display:none;">&times;</button>
+      <div class="max-w-md mx-auto">
+        <label for="epubUpload" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-violet-600 hover:bg-violet-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 w-full cursor-pointer" id="epubUploadLabel">Upload EPUB File</label>
+        <input type="file" id="epubUpload" accept=".epub" class="hidden" aria-labelledby="epubUploadLabel">
+        <div class="mt-2.5 flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 p-2 rounded-md min-h-[40px]">
+            <span id="epubFileName" class="text-slate-500 dark:text-slate-300 max-w-[calc(100%-30px)] overflow-hidden text-ellipsis whitespace-nowrap inline-block"></span>
+            <button type="button" id="clearEpubUpload" class="bg-transparent border-none text-slate-500 text-2xl font-bold cursor-pointer ml-2 p-1 leading-none transition-colors hover:text-slate-800 dark:hover:text-white hidden" aria-label="Clear EPUB file">&times;</button>
         </div>
       </div>
 
       <!-- Chapter Selection Area -->
-      <div id="splitterChapterSelectionArea" class="mt-6 p-4 bg-slate-100 dark:bg-slate-700/30 rounded-lg border border-slate-200 dark:border-slate-600/50" style="display:none;">
+      <div id="splitterChapterSelectionArea" class="mt-6 p-4 bg-slate-100 dark:bg-slate-700/30 rounded-lg border border-slate-200 dark:border-slate-600/50 hidden">
         <div class="flex items-center justify-between mb-4">
           <h4 class="text-lg font-semibold text-slate-800 dark:text-slate-200">Select Chapters to Split</h4>
           <div class="text-sm text-primary-600 dark:text-primary-400" id="chapterCount">0 chapters found</div>
         </div>
         <div class="mb-4 flex justify-center gap-3">
-          <button type="button" id="splitterSelectAllChapters" class="btn btn-accent btn-small">Select All</button>
-          <button type="button" id="splitterDeselectAllChapters" class="btn btn-accent btn-small">Deselect All</button>
+          <button type="button" id="splitterSelectAllChapters" class="inline-flex items-center justify-center rounded-lg font-medium bg-teal-600 hover:bg-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 px-3 py-1 text-sm">Select All</button>
+          <button type="button" id="splitterDeselectAllChapters" class="inline-flex items-center justify-center rounded-lg font-medium bg-teal-600 hover:bg-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 px-3 py-1 text-sm">Deselect All</button>
         </div>
-        <ul id="splitterChapterList" class="chapter-selection-list text-sm text-slate-800 dark:text-slate-200 max-h-48 overflow-y-auto" aria-label="List of EPUB chapters for selection">
+        <ul id="splitterChapterList" class="max-w-xl mx-auto max-h-48 overflow-y-auto bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 list-none text-left" aria-label="List of EPUB chapters for selection">
           <!-- Chapters will be populated here by JS -->
         </ul>
       </div>
 
       <!-- Configuration Section -->
-      <div class="options-section mt-6">
+      <div class="max-w-md mx-auto">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="option-group">
-            <label for="modeSelect" class="flex items-center gap-2">
+          <div>
+            <label for="modeSelect" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Output Mode:
             </label>
-            <select id="modeSelect" class="mt-2">
+            <select id="modeSelect" class="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
               <option value="single">Single Chapter per File</option>
               <option value="grouped">Grouped Chapters per File</option>
             </select>
           </div>
-          <div class="option-group">
-            <label for="chapterPattern" class="flex items-center gap-2">
+          <div>
+            <label for="chapterPattern" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Chapter Prefix:
-              <span class="tooltip-trigger" aria-label="More info about Chapter Prefix" role="button" tabindex="0">(?)
-                <span class="tooltip-text-popup">Pattern for naming output files, e.g., 'C' will result in C01.txt, C02.txt. Click to dismiss.</span>
+              <span class="tooltip-trigger relative group inline-block ml-1 cursor-help text-primary-600 font-bold border border-primary-600 rounded-full w-5 h-5 leading-4 text-center text-xs hover:bg-primary-600 hover:text-white" aria-label="More info about Chapter Prefix" role="button" tabindex="0">(?)
+                <span class="tooltip-text-popup absolute bottom-full left-1/2 -ml-[110px] w-[220px] invisible opacity-0 group-hover:visible group-hover:opacity-100 group-[.active]:visible group-[.active]:opacity-100 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-left rounded-md p-2 z-10 shadow-lg text-sm transition-opacity duration-300">
+                  Pattern for naming output files, e.g., 'C' will result in C01.txt, C02.txt. Click to dismiss.
+                  <div class="absolute top-full left-1/2 -ml-1 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-100 dark:border-t-slate-800"></div>
+                </span>
               </span>
             </label>
-            <input type="text" id="chapterPattern" placeholder="e.g., Chapter " value="Chapter ">
+            <input type="text" id="chapterPattern" placeholder="e.g., Chapter " value="Chapter " class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
           </div>
-          <div class="option-group">
-            <label for="startNumber" class="flex items-center gap-2">
+          <div>
+            <label for="startNumber" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Start Number:
             </label>
-            <input type="number" id="startNumber" min="1" value="1" aria-describedby="statusMessage">
+            <input type="number" id="startNumber" min="1" value="1" aria-describedby="statusMessage" class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
           </div>
-          <div class="option-group">
-            <label for="offsetNumber" class="flex items-center gap-2">
+          <div>
+            <label for="offsetNumber" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Skip First (Offset):
             </label>
-            <input type="number" id="offsetNumber" min="0" value="0" aria-describedby="statusMessage">
+            <input type="number" id="offsetNumber" min="0" value="0" aria-describedby="statusMessage" class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
           </div>
         </div>
 
         <!-- Group Size (shown when grouped mode selected) -->
-        <div class="option-group mt-4 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30" id="groupSizeGroup" style="display:none;">
-          <label for="groupSize" class="flex items-center gap-2">
+        <div class="mt-4 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30 hidden" id="groupSizeGroup">
+          <label for="groupSize" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
             Chapters per File:
           </label>
-          <input type="number" id="groupSize" min="1" value="4" aria-describedby="statusMessage">
+          <input type="number" id="groupSize" min="1" value="4" aria-describedby="statusMessage" class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
           <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">When using grouped mode, how many chapters to include in each output file</p>
         </div>
       </div>
 
       <!-- Action Buttons -->
       <div class="mt-8 flex justify-center gap-4">
-        <button id="splitBtn" class="btn split-btn" disabled>
+        <button id="splitBtn" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 disabled:opacity-60 disabled:cursor-not-allowed" disabled>
           Split EPUB
         </button>
       </div>
 
       <!-- Progress and Status -->
-      <div id="spinnerSplitter" class="spinner" role="status" aria-live="polite" aria-label="Loading"></div>
-      <div id="statusMessage" class="status" style="display:none;" aria-live="polite"></div>
+      <div id="spinnerSplitter" class="w-10 h-10 border-4 border-slate-200 dark:border-slate-700 rounded-full border-t-primary-600 animate-spin my-4 mx-auto hidden" role="status" aria-live="polite" aria-label="Loading"></div>
+      <div id="statusMessage" class="rounded-xl p-4 mt-5 text-center text-sm hidden" aria-live="polite"></div>
 
       <!-- Download Section -->
-      <div class="download-section mt-6 p-4 bg-green-50 dark:bg-green-600/10 border border-green-200 dark:border-green-500/30 rounded-lg" style="display:none;">
+      <div class="download-section mt-6 p-4 bg-green-50 dark:bg-green-600/10 border border-green-200 dark:border-green-500/30 rounded-lg hidden">
         <div class="text-center">
           <div class="text-green-700 dark:text-green-400 text-lg mb-2">EPUB Split Complete!</div>
-          <a id="downloadLink" class="btn download-btn inline-flex items-center gap-2">
+          <a id="downloadLink" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-orange-600 hover:bg-orange-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 gap-2">
             Download Chapters ZIP
           </a>
         </div>
@@ -369,41 +371,41 @@
 
 
     <!-- Enhanced Merge Backup Files -->
-    <div id="mergeBackupApp" class="card tool-section" style="display:none;">
-      <h1>Merge Backup Files</h1>
+    <div id="mergeBackupApp" class="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 animate-fade-in tool-section hidden">
+      <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">Merge Backup Files</h1>
 
       <!-- Upload Section -->
-      <div class="upload-section option-group mb-6">
-        <label for="mergeBackupFiles" class="btn upload-btn" id="mergeBackupFilesLabel">Upload Backup Files</label>
-        <input type="file" id="mergeBackupFiles" accept=".json,.txt,.nov" multiple aria-labelledby="mergeBackupFilesLabel">
-        <div class="filename-display-area" id="mergeBackupFileNamesArea" style="text-align: left; max-height: 120px; overflow-y: auto; padding: 12px; border-radius: 8px; margin-top: 8px;">
+      <div class="max-w-md mx-auto mb-6">
+        <label for="mergeBackupFiles" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-violet-600 hover:bg-violet-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 w-full cursor-pointer" id="mergeBackupFilesLabel">Upload Backup Files</label>
+        <input type="file" id="mergeBackupFiles" class="hidden" accept=".json,.txt,.nov" multiple aria-labelledby="mergeBackupFilesLabel">
+        <div class="text-left max-h-32 overflow-y-auto p-3 rounded-lg mt-2 bg-slate-100 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600/50" id="mergeBackupFileNamesArea">
               <div class="text-xs text-slate-500 dark:text-slate-400 mb-2">Selected files:</div>
               <div id="mergeBackupFileNames" class="text-sm text-slate-700 dark:text-slate-300">No files selected.</div>
-              <button type="button" id="clearMergeBackupFiles" class="clear-file-btn mt-2" aria-label="Clear backup files" style="display:none;">&times;</button>
+              <button type="button" id="clearMergeBackupFiles" class="bg-transparent border-none text-slate-500 text-2xl font-bold cursor-pointer ml-2 p-1 leading-none transition-colors hover:text-slate-800 dark:hover:text-white mt-2 hidden" aria-label="Clear backup files">&times;</button>
         </div>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">Upload multiple .json or .nov backup files to merge</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Upload multiple .json or .nov backup files to merge</p>
       </div>
 
       <!-- Configuration Sections -->
-      <div class="space-y-6">
+      <div class="space-y-6 max-w-md mx-auto">
         <!-- Project Information -->
         <div class="p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
           <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
             Project Information
           </h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="option-group">
-              <label for="mergeProjectTitle" class="flex items-center gap-2">
+            <div>
+              <label for="mergeProjectTitle" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Merged Project Title:
               </label>
-              <input type="text" id="mergeProjectTitle" placeholder="Enter merged project title" aria-describedby="statusMergeBackup">
+              <input type="text" id="mergeProjectTitle" placeholder="Enter merged project title" aria-describedby="statusMergeBackup" class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
             </div>
           </div>
-          <div class="option-group mt-4">
-            <label for="mergeDescription" class="flex items-center gap-2">
+          <div class="mt-4">
+            <label for="mergeDescription" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Merged Description:
             </label>
-            <textarea id="mergeDescription" placeholder="Enter merged project description" rows="3"></textarea>
+            <textarea id="mergeDescription" placeholder="Enter merged project description" rows="3" class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full min-h-[80px]"></textarea>
           </div>
         </div>
 
@@ -413,16 +415,16 @@
             Chapter Configuration
           </h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="option-group">
-              <label for="mergePrefix" class="flex items-center gap-2">
+            <div>
+              <label for="mergePrefix" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Prefix for Chapters (Optional):
               </label>
-              <input type="text" id="mergePrefix" placeholder="e.g., Part I - ">
+              <input type="text" id="mergePrefix" placeholder="e.g., Part I - " class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
             </div>
           </div>
-          <div class="option-group mt-4">
-            <label class="checkbox-label-wrapper" for="mergePreserveTitles">
-                <input type="checkbox" id="mergePreserveTitles" /> Preserve Original Chapter Titles
+          <div class="mt-4">
+            <label class="flex items-center gap-2 justify-start text-slate-800 dark:text-slate-200 select-none cursor-pointer" for="mergePreserveTitles">
+                <input type="checkbox" id="mergePreserveTitles" class="w-4 h-4 align-middle rounded border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-slate-100 dark:focus:ring-offset-slate-800 accent-primary-600" /> Preserve Original Chapter Titles
             </label>
             <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">
               If checked, uses original titles. If "Prefix" is also filled, it's added before the original title.
@@ -446,17 +448,17 @@
 
       <!-- Action Button -->
       <div class="mt-8 flex justify-center">
-        <button id="mergeBackupBtn" class="btn btn-primary">
+        <button id="mergeBackupBtn" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 disabled:opacity-60 disabled:cursor-not-allowed">
           Merge and Download
         </button>
       </div>
 
       <!-- Progress and Status -->
-      <div id="spinnerMergeBackup" class="spinner" role="status" aria-live="polite" aria-label="Loading"></div>
-      <div id="statusMergeBackup" class="status" style="display:none;" aria-live="polite"></div>
+      <div id="spinnerMergeBackup" class="w-10 h-10 border-4 border-slate-200 dark:border-slate-700 rounded-full border-t-primary-600 animate-spin my-4 mx-auto hidden" role="status" aria-live="polite" aria-label="Loading"></div>
+      <div id="statusMergeBackup" class="rounded-xl p-4 mt-5 text-center text-sm hidden" aria-live="polite"></div>
 
       <!-- Workflow Tips -->
-      <div class="mt-6 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
+      <div class="mt-6 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30 max-w-md mx-auto">
         <h4 class="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-2">
           Workflow Tips
         </h4>
@@ -470,60 +472,60 @@
     </div>
 
     <!-- Enhanced Augment Backup with ZIP -->
-    <div id="augmentBackupWithZipApp" class="card tool-section" style="display:none;">
-      <h1>Augment Backup with ZIP</h1>
+    <div id="augmentBackupWithZipApp" class="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 animate-fade-in tool-section hidden">
+      <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">Augment Backup with ZIP</h1>
 
       <!-- Upload Section -->
-      <div class="upload-section mb-6">
+      <div class="mb-6 max-w-md mx-auto">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <!-- Base Backup Upload -->
-          <div class="option-group">
-            <label for="augmentBaseBackupFile" class="btn upload-btn" id="augmentBaseBackupFileLabel">Base Backup File</label>
-            <input type="file" id="augmentBaseBackupFile" accept=".json,.txt,.nov" aria-labelledby="augmentBaseBackupFileLabel">
-            <div class="filename-display-area">
-                  <span id="augmentBaseBackupFileName" class="text-slate-500 dark:text-slate-300"></span>
-                  <button type="button" id="clearAugmentBaseBackupFile" class="clear-file-btn" aria-label="Clear base backup file" style="display:none;">&times;</button>
+          <div>
+            <label for="augmentBaseBackupFile" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-violet-600 hover:bg-violet-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 w-full cursor-pointer" id="augmentBaseBackupFileLabel">Base Backup File</label>
+            <input type="file" id="augmentBaseBackupFile" class="hidden" accept=".json,.txt,.nov" aria-labelledby="augmentBaseBackupFileLabel">
+            <div class="mt-2.5 flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 p-2 rounded-md min-h-[40px]">
+                  <span id="augmentBaseBackupFileName" class="text-slate-500 dark:text-slate-300 max-w-[calc(100%-30px)] overflow-hidden text-ellipsis whitespace-nowrap inline-block"></span>
+                  <button type="button" id="clearAugmentBaseBackupFile" class="bg-transparent border-none text-slate-500 text-2xl font-bold cursor-pointer ml-2 p-1 leading-none transition-colors hover:text-slate-800 dark:hover:text-white hidden" aria-label="Clear base backup file">&times;</button>
             </div>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">Upload your existing backup file</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Upload your existing backup file</p>
           </div>
 
           <!-- ZIP File Upload -->
-          <div class="option-group">
-            <label for="augmentZipFile" class="btn upload-btn" id="augmentZipFileLabel">ZIP with Chapters</label>
-            <input type="file" id="augmentZipFile" accept=".zip" aria-labelledby="augmentZipFileLabel">
-            <div class="filename-display-area">
-                  <span id="augmentZipFileName" class="text-slate-500 dark:text-slate-300"></span>
-                  <button type="button" id="clearAugmentZipFile" class="clear-file-btn" aria-label="Clear ZIP file" style="display:none;">&times;</button>
+          <div>
+            <label for="augmentZipFile" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-violet-600 hover:bg-violet-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 w-full cursor-pointer" id="augmentZipFileLabel">ZIP with Chapters</label>
+            <input type="file" id="augmentZipFile" class="hidden" accept=".zip" aria-labelledby="augmentZipFileLabel">
+            <div class="mt-2.5 flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 p-2 rounded-md min-h-[40px]">
+                  <span id="augmentZipFileName" class="text-slate-500 dark:text-slate-300 max-w-[calc(100%-30px)] overflow-hidden text-ellipsis whitespace-nowrap inline-block"></span>
+                  <button type="button" id="clearAugmentZipFile" class="bg-transparent border-none text-slate-500 text-2xl font-bold cursor-pointer ml-2 p-1 leading-none transition-colors hover:text-slate-800 dark:hover:text-white hidden" aria-label="Clear ZIP file">&times;</button>
             </div>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">Upload ZIP containing new chapter files</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Upload ZIP containing new chapter files</p>
           </div>
         </div>
       </div>
 
       <!-- Configuration Sections -->
-      <div class="space-y-6">
+      <div class="space-y-6 max-w-md mx-auto">
         <!-- Chapter Configuration -->
         <div class="p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
           <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
             Chapter Configuration
           </h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="option-group">
-              <label for="augmentPrefix" class="flex items-center gap-2">
+            <div>
+              <label for="augmentPrefix" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Prefix for New Chapters:
               </label>
-              <input type="text" id="augmentPrefix" placeholder="e.g., New Section - ">
+              <input type="text" id="augmentPrefix" placeholder="e.g., New Section - " class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
             </div>
-            <div class="option-group">
-              <label for="augmentStartNumber" class="flex items-center gap-2">
+            <div>
+              <label for="augmentStartNumber" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Start Number for New Chapters:
               </label>
-              <input type="number" id="augmentStartNumber" min="1" value="1">
+              <input type="number" id="augmentStartNumber" min="1" value="1" class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
             </div>
           </div>
-          <div class="option-group mt-4">
-            <label class="checkbox-label-wrapper" for="augmentPreserveTxtTitles">
-                <input type="checkbox" id="augmentPreserveTxtTitles" /> Use .txt filenames as titles for new chapters
+          <div class="mt-4">
+            <label class="flex items-center gap-2 justify-start text-slate-800 dark:text-slate-200 select-none cursor-pointer" for="augmentPreserveTxtTitles">
+                <input type="checkbox" id="augmentPreserveTxtTitles" class="w-4 h-4 align-middle rounded border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-slate-100 dark:focus:ring-offset-slate-800 accent-primary-600"/> Use .txt filenames as titles for new chapters
             </label>
             <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">
               If checked, .txt filenames (without extension) are used as titles.
@@ -549,17 +551,17 @@
 
       <!-- Action Button -->
       <div class="mt-8 flex justify-center">
-        <button id="augmentBackupBtn" class="btn btn-primary" disabled>
+        <button id="augmentBackupBtn" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 disabled:opacity-60 disabled:cursor-not-allowed" disabled>
           Augment and Download
         </button>
       </div>
 
       <!-- Progress and Status -->
-      <div id="spinnerAugmentBackup" class="spinner" role="status" aria-live="polite" aria-label="Loading"></div>
-      <div id="statusAugmentBackup" class="status" style="display:none;" aria-live="polite"></div>
+      <div id="spinnerAugmentBackup" class="w-10 h-10 border-4 border-slate-200 dark:border-slate-700 rounded-full border-t-primary-600 animate-spin my-4 mx-auto hidden" role="status" aria-live="polite" aria-label="Loading"></div>
+      <div id="statusAugmentBackup" class="rounded-xl p-4 mt-5 text-center text-sm hidden" aria-live="polite"></div>
 
       <!-- Workflow Tips -->
-      <div class="mt-6 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
+      <div class="mt-6 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30 max-w-md mx-auto">
         <h4 class="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-2">
           Workflow Tips
         </h4>
@@ -574,156 +576,157 @@
 
 
     <!-- Enhanced Find & Replace in Backup File -->
-    <div id="findReplaceBackupApp" class="tool-section fr-container" style="display:none;">
+    <div id="findReplaceBackupApp" class="tool-section p-0 sm:pb-[130px] box-border h-[calc(100vh-56px-env(safe-area-inset-top))] md:h-[calc(100vh-72px-env(safe-area-inset-top))] max-w-full relative overflow-hidden bg-slate-100 dark:bg-slate-800 hidden">
       <!-- Initial Upload View -->
-      <div id="frUploadArea" class="fr-upload-area">
+      <div id="frUploadArea" class="absolute inset-0 bg-white/80 dark:bg-slate-900/50 z-10 flex flex-col items-center justify-center p-4 transition-opacity duration-300 ease-in-out">
         <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">Find & Replace in Backup</h1>
-        <div class="upload-section option-group">
-          <label for="frBackupFile" class="btn upload-btn" id="frBackupFileLabel">Upload Backup File</label>
-          <input type="file" id="frBackupFile" accept=".json,.txt,.nov" style="display: none;" aria-labelledby="frBackupFileLabel">
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">Upload a .json, .txt, or .nov backup file to begin.</p>
+        <div class="max-w-md mx-auto">
+          <label for="frBackupFile" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-violet-600 hover:bg-violet-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 w-full cursor-pointer" id="frBackupFileLabel">Upload Backup File</label>
+          <input type="file" id="frBackupFile" accept=".json,.txt,.nov" class="hidden" aria-labelledby="frBackupFileLabel">
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Upload a .json, .txt, or .nov backup file to begin.</p>
         </div>
       </div>
     
       <!-- Context Snippet Preview Area -->
-      <div id="frSnippetPreview" class="fr-snippet-preview">
-        <p class="fr-preview-placeholder">Upload a backup file to begin.</p>
+      <div id="frSnippetPreview" class="flex-grow flex items-center justify-center p-4 overflow-y-auto font-serif text-lg leading-loose text-slate-800 dark:text-slate-200">
+        <p class="max-w-prose text-left text-slate-500 dark:text-slate-400 italic">Upload a backup file to begin.</p>
       </div>
     
       <!-- Download Button Container -->
-      <div id="frDownloadContainer" class="fr-download-container" style="display: none;">
-        <button id="downloadCurrentFrBackupBtn" class="btn btn-primary" disabled>Download Backup</button>
+      <div id="frDownloadContainer" class="absolute top-4 right-4 z-10 transition-transform duration-300 hidden">
+        <button id="downloadCurrentFrBackupBtn" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 disabled:opacity-60 disabled:cursor-not-allowed" disabled>Download Backup</button>
       </div>
     
       <!-- Floating HUD -->
-      <div id="frHud" class="fr-hud" style="display: none;">
-        <div class="fr-hud-content-wrapper">
+      <div id="frHud" class="fixed bottom-0 left-0 right-0 z-20 p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] transform translate-y-full transition-transform duration-300 ease-out hidden">
+        <div class="relative max-w-3xl mx-auto bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-300 dark:border-slate-700 rounded-xl shadow-2xl p-3 transition-height">
           <!-- Options Popover -->
-          <div id="frOptionsPopover" class="fr-options-popover" style="display: none;">
-            <div class="option-group">
-                <label for="frScopeSelect">Search In</label>
-                <select id="frScopeSelect" class="w-full"></select>
+          <div id="frOptionsPopover" class="absolute bottom-[calc(100%+8px)] right-0 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-4 w-72 shadow-lg z-20 hidden">
+            <div class="mb-3">
+                <label for="frScopeSelect" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Search In</label>
+                <select id="frScopeSelect" class="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm text-gray-900 dark:text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all"></select>
             </div>
-            <div class="fr-options-toggles">
-                <label class="checkbox-label-wrapper" for="useRegexBackup" title="Use Regular Expression">
-                    <input type="checkbox" id="useRegexBackup">
-                    <span>Regex</span>
+            <div class="flex justify-between bg-slate-100 dark:bg-slate-700 rounded-md">
+                <label class="flex-1 flex justify-center p-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="useRegexBackup" title="Use Regular Expression">
+                    <input type="checkbox" id="useRegexBackup" class="hidden">
+                    <span class="text-sm font-mono text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600">Regex</span>
                 </label>
-                <label class="checkbox-label-wrapper" for="frCaseSensitiveCheckbox" title="Case Sensitive">
-                    <input type="checkbox" id="frCaseSensitiveCheckbox">
-                    <span>Aa</span>
+                <label class="flex-1 flex justify-center p-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="frCaseSensitiveCheckbox" title="Case Sensitive">
+                    <input type="checkbox" id="frCaseSensitiveCheckbox" class="hidden">
+                    <span class="text-sm font-medium text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600">Aa</span>
                 </label>
-                <label class="checkbox-label-wrapper" for="frWholeWordCheckbox" title="Match Whole Word">
-                    <input type="checkbox" id="frWholeWordCheckbox">
-                    <span>" "</span>
+                <label class="flex-1 flex justify-center p-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="frWholeWordCheckbox" title="Match Whole Word">
+                    <input type="checkbox" id="frWholeWordCheckbox" class="hidden">
+                    <span class="text-sm font-medium text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600">" "</span>
                 </label>
             </div>
           </div>
     
           <!-- Main HUD controls -->
-          <div class="fr-hud-main">
-            <div class="fr-hud-col-1">
-                <button id="frReplaceToggleBtn" class="btn-icon fr-hud-chevron" aria-expanded="false" title="Toggle Replace">
-                    <svg class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+          <div class="flex items-start gap-2">
+            <div class="flex-shrink-0">
+                <button id="frReplaceToggleBtn" class="bg-transparent border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-9 h-9 rounded-md inline-flex items-center justify-center text-xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed" aria-expanded="false" title="Toggle Replace">
+                    <svg class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                 </button>
             </div>
-            <div class="fr-hud-col-2">
-                <div class="fr-hud-row">
-                    <input type="text" id="findPattern" placeholder="Find" class="fr-hud-input">
-                    <div id="frMatchCountDisplay" class="fr-match-counter">No results</div>
+            <div class="flex-grow">
+                <div class="relative flex items-center">
+                    <input type="text" id="findPattern" placeholder="Find" class="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md px-2 py-1.5 pr-20 text-sm text-slate-800 dark:text-slate-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500">
+                    <div id="frMatchCountDisplay" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1 pointer-events-none">No results</div>
                 </div>
-                <div id="frReplaceRow" class="fr-hud-row mt-1" style="display:none;">
-                    <input type="text" id="replaceText" placeholder="Replace" class="fr-hud-input">
-                    <div class="fr-hud-replace-actions">
-                        <button id="replaceNextBtn" class="btn-icon" title="Replace">
+                <div id="frReplaceRow" class="relative flex items-center mt-1 hidden">
+                    <input type="text" id="replaceText" placeholder="Replace" class="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500">
+                    <div class="absolute right-0 top-1/2 -translate-y-1/2 flex items-center">
+                        <button id="replaceNextBtn" class="bg-transparent border-none text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400 p-1.5" title="Replace">
                             <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z"></path><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd"></path></svg>
                         </button>
-                        <button id="replaceAllBtn" class="btn-icon" title="Replace All">
+                        <button id="replaceAllBtn" class="bg-transparent border-none text-slate-500 hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400 p-1.5" title="Replace All">
                            <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm3.47 3.97a.75.75 0 011.06 0l2.5 2.5a.75.75 0 010 1.06l-2.5 2.5a.75.75 0 11-1.06-1.06L11.94 9 9.47 6.53a.75.75 0 010-1.06z" clip-rule="evenodd"></path></svg>
                         </button>
                     </div>
                 </div>
             </div>
-            <div class="fr-hud-col-3">
-                <button id="findPreviousBtn" class="btn-icon" aria-label="Find Previous">‹</button>
-                <button id="findNextBtn" class="btn-icon" aria-label="Find Next">›</button>
-                <button id="frOptionsToggleBtn" class="btn-icon" aria-label="Search Options">
+            <div class="flex-shrink-0 flex gap-2">
+                <button id="findPreviousBtn" class="bg-transparent border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-9 h-9 rounded-md inline-flex items-center justify-center text-xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Find Previous">‹</button>
+                <button id="findNextBtn" class="bg-transparent border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-9 h-9 rounded-md inline-flex items-center justify-center text-xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Find Next">›</button>
+                <button id="frOptionsToggleBtn" class="bg-transparent border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-9 h-9 rounded-md inline-flex items-center justify-center text-xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Search Options">
                     <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path></svg>
                 </button>
-                <button id="frDoneBtn" class="btn-icon" aria-label="Close Find/Replace">&times;</button>
+                <button id="frDoneBtn" class="bg-transparent border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-9 h-9 rounded-md inline-flex items-center justify-center text-xl transition-all hover:bg-red-600 hover:text-white hover:border-red-600" aria-label="Close Find/Replace">&times;</button>
             </div>
           </div>
         </div>
       </div>
     
       <!-- Review All Modal -->
-      <div id="frReviewModal" class="fr-review-modal" style="display: none;">
-        <div class="fr-review-content">
-          <div class="fr-review-header">
-            <h2 id="frReviewHeaderTitle">Review Changes</h2>
-            <button id="frCloseReviewModalBtn" class="fr-review-close-btn" aria-label="Close review modal">&times;</button>
+      <div id="frReviewModal" class="absolute inset-0 bg-slate-100/70 dark:bg-black/70 backdrop-blur-sm z-40 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-300 dark:border-slate-700 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+          <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center flex-shrink-0">
+            <h2 id="frReviewHeaderTitle" class="text-xl font-semibold text-slate-900 dark:text-white">Review Changes</h2>
+            <button id="frCloseReviewModalBtn" class="text-2xl bg-none border-none text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white cursor-pointer" aria-label="Close review modal">&times;</button>
           </div>
-          <div class="fr-review-summary">
-            <label class="checkbox-label-wrapper">
-              <input type="checkbox" id="frReviewSelectAll" checked>
+          <div class="p-3 bg-slate-100 dark:bg-slate-900/50 flex-shrink-0">
+            <label class="flex items-center gap-2 justify-start text-slate-800 dark:text-slate-200 select-none cursor-pointer">
+              <input type="checkbox" id="frReviewSelectAll" class="w-4 h-4 align-middle rounded border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-primary-500 accent-primary-600" checked>
               <span id="frReviewSummaryText">X replacements proposed</span>
             </label>
           </div>
-          <ul id="frReviewList" class="fr-review-list">
+          <ul id="frReviewList" class="list-none p-0 m-0 overflow-y-auto flex-grow">
+            <!-- Review items injected by JS -->
           </ul>
-          <div class="fr-review-footer">
-            <button id="frCancelReviewBtn" class="btn">Cancel</button>
-            <button id="frConfirmReplaceAllBtn" class="btn btn-accent">Confirm Replacements</button>
+          <div class="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-4 flex-shrink-0">
+            <button id="frCancelReviewBtn" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 dark:text-white shadow-lg hover:shadow-xl transition-all">Cancel</button>
+            <button id="frConfirmReplaceAllBtn" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all">Confirm Replacements</button>
           </div>
         </div>
       </div>
     
       <!-- Global Spinner -->
-      <div id="spinnerFindReplaceBackup" class="spinner" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 50; display: none;"></div>
+      <div id="spinnerFindReplaceBackup" class="w-10 h-10 border-4 border-slate-200 dark:border-slate-700 rounded-full border-t-primary-600 animate-spin absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 hidden"></div>
     </div>
 
 
     <!-- Enhanced Create Backup from ZIP -->
-    <div id="createBackupFromZipApp" class="card tool-section" style="display:none;">
-      <h1>Create Backup from ZIP</h1>
+    <div id="createBackupFromZipApp" class="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 animate-fade-in tool-section hidden">
+      <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">Create Backup from ZIP</h1>
 
       <!-- Upload Section -->
-      <div class="upload-section option-group mb-6">
-        <label for="zipBackupFile" class="btn upload-btn" id="zipBackupFileLabel">📦 Upload ZIP File</label>
-        <input type="file" id="zipBackupFile" accept=".zip" aria-labelledby="zipBackupFileLabel" aria-describedby="statusMessageCreateBackupFromZip">
-        <div class="filename-display-area">
-              <span id="zipBackupFileName" class="text-slate-500 dark:text-slate-300"></span>
-              <button type="button" id="clearZipBackupFile" class="clear-file-btn" aria-label="Clear ZIP file" style="display:none;">&times;</button>
+      <div class="max-w-md mx-auto mb-6">
+        <label for="zipBackupFile" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-violet-600 hover:bg-violet-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 w-full cursor-pointer" id="zipBackupFileLabel">📦 Upload ZIP File</label>
+        <input type="file" id="zipBackupFile" class="hidden" accept=".zip" aria-labelledby="zipBackupFileLabel" aria-describedby="statusMessageCreateBackupFromZip">
+        <div class="mt-2.5 flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 p-2 rounded-md min-h-[40px]">
+              <span id="zipBackupFileName" class="text-slate-500 dark:text-slate-300 max-w-[calc(100%-30px)] overflow-hidden text-ellipsis whitespace-nowrap inline-block"></span>
+              <button type="button" id="clearZipBackupFile" class="bg-transparent border-none text-slate-500 text-2xl font-bold cursor-pointer ml-2 p-1 leading-none transition-colors hover:text-slate-800 dark:hover:text-white hidden" aria-label="Clear ZIP file">&times;</button>
         </div>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">Upload a ZIP file containing .txt chapter files</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Upload a ZIP file containing .txt chapter files</p>
       </div>
 
       <!-- Configuration Sections -->
-      <div class="space-y-6">
+      <div class="space-y-6 max-w-md mx-auto">
         <!-- Project Information -->
         <div class="p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
           <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">
             <span>📝</span>Project Information
           </h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="option-group">
-              <label for="zipProjectTitle" class="flex items-center gap-2">
+            <div>
+              <label for="zipProjectTitle" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 <span>📚</span>Project Title:
               </label>
-              <input type="text" id="zipProjectTitle" placeholder="Enter project title" aria-describedby="statusMessageCreateBackupFromZip">
+              <input type="text" id="zipProjectTitle" placeholder="Enter project title" aria-describedby="statusMessageCreateBackupFromZip" class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
             </div>
-            <div class="option-group">
-              <label for="zipUniqueCode" class="flex items-center gap-2">
+            <div>
+              <label for="zipUniqueCode" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 <span>🔢</span>Unique Code (Optional):
               </label>
-              <input type="text" id="zipUniqueCode" placeholder="Auto-generated if blank">
+              <input type="text" id="zipUniqueCode" placeholder="Auto-generated if blank" class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
             </div>
           </div>
-          <div class="option-group mt-4">
-            <label for="zipDescription" class="flex items-center gap-2">
+          <div class="mt-4">
+            <label for="zipDescription" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               <span>📄</span>Description:
             </label>
-            <textarea id="zipDescription" placeholder="Enter project description" rows="3"></textarea>
+            <textarea id="zipDescription" placeholder="Enter project description" rows="3" class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full min-h-[80px]"></textarea>
           </div>
         </div>
 
@@ -733,27 +736,30 @@
             <span>⚙️</span>Chapter Configuration
           </h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="option-group">
-              <label for="zipChapterPattern" class="flex items-center gap-2">
+            <div>
+              <label for="zipChapterPattern" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 <span>🏷️</span>Chapter Pattern:
-                <span class="tooltip-trigger" aria-label="More info about Chapter Pattern" role="button" tabindex="0">(?)
-                  <span class="tooltip-text-popup">If provided, chapters will be named 'Pattern + Number'. E.g., 'Chapter 1', 'Chapter 2'. If blank, original .txt filenames are used. Click to dismiss.</span>
+                <span class="tooltip-trigger relative group inline-block ml-1 cursor-help text-primary-600 font-bold border border-primary-600 rounded-full w-5 h-5 leading-4 text-center text-xs hover:bg-primary-600 hover:text-white" aria-label="More info about Chapter Pattern" role="button" tabindex="0">(?)
+                  <span class="tooltip-text-popup absolute bottom-full left-1/2 -ml-[110px] w-[220px] invisible opacity-0 group-hover:visible group-hover:opacity-100 group-[.active]:visible group-[.active]:opacity-100 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-left rounded-md p-2 z-10 shadow-lg text-sm transition-opacity duration-300">
+                    If provided, chapters will be named 'Pattern + Number'. E.g., 'Chapter 1', 'Chapter 2'. If blank, original .txt filenames are used. Click to dismiss.
+                    <div class="absolute top-full left-1/2 -ml-1 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-100 dark:border-t-slate-800"></div>
+                  </span>
                 </span>
               </label>
-              <input type="text" id="zipChapterPattern" placeholder="e.g., Chapter " value="Chapter ">
+              <input type="text" id="zipChapterPattern" placeholder="e.g., Chapter " value="Chapter " class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
             </div>
-            <div class="option-group">
-              <label for="zipStartNumber" class="flex items-center gap-2">
+            <div>
+              <label for="zipStartNumber" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 <span>🔢</span>Start Number:
               </label>
-              <input type="number" id="zipStartNumber" min="1" value="1" aria-describedby="statusMessageCreateBackupFromZip">
+              <input type="number" id="zipStartNumber" min="1" value="1" aria-describedby="statusMessageCreateBackupFromZip" class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
             </div>
           </div>
-          <div class="option-group mt-4">
-            <label for="zipExtraChapters" class="flex items-center gap-2">
+          <div class="mt-4">
+            <label for="zipExtraChapters" class="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               <span>➕</span>Extra Empty Chapters:
             </label>
-            <input type="number" id="zipExtraChapters" min="0" value="0" aria-describedby="statusMessageCreateBackupFromZip">
+            <input type="number" id="zipExtraChapters" min="0" value="0" aria-describedby="statusMessageCreateBackupFromZip" class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
             <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">Add this many empty chapters to the end of your backup</p>
           </div>
         </div>
@@ -761,17 +767,17 @@
 
       <!-- Action Button -->
       <div class="mt-8 flex justify-center">
-        <button id="createFromZipBtn" class="btn btn-primary" disabled>
+        <button id="createFromZipBtn" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 disabled:opacity-60 disabled:cursor-not-allowed" disabled>
           <span class="mr-2">⚡</span>Generate Backup and Download
         </button>
       </div>
 
       <!-- Progress and Status -->
-      <div id="spinnerCreateBackupFromZip" class="spinner" role="status" aria-live="polite" aria-label="Loading"></div>
-      <div id="statusMessageCreateBackupFromZip" class="status" style="display:none;" aria-live="polite"></div>
+      <div id="spinnerCreateBackupFromZip" class="w-10 h-10 border-4 border-slate-200 dark:border-slate-700 rounded-full border-t-primary-600 animate-spin my-4 mx-auto hidden" role="status" aria-live="polite" aria-label="Loading"></div>
+      <div id="statusMessageCreateBackupFromZip" class="rounded-xl p-4 mt-5 text-center text-sm hidden" aria-live="polite"></div>
 
       <!-- Workflow Tips -->
-      <div class="mt-6 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
+      <div class="mt-6 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30 max-w-md mx-auto">
         <h4 class="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-2">
           <span>💡</span>Workflow Tips
         </h4>
@@ -786,128 +792,132 @@
 
 
     <!-- ZIP to EPUB Converter -->
-    <div id="zipToEpubApp" class="card tool-section" style="display:none;">
-      <h1>ZIP to EPUB Converter</h1>
-      <div class="upload-section option-group">
-        <label for="zipUploadForEpub" class="btn upload-btn" id="zipUploadForEpubLabel">Upload ZIP File (.zip with .txt chapters)</label>
-        <input type="file" id="zipUploadForEpub" accept=".zip" style="display:none;" aria-labelledby="zipUploadForEpubLabel">
-        <div class="filename-display-area">
-            <span id="zipFileNameForEpub"></span>
-            <button type="button" id="clearZipUploadForEpub" class="clear-file-btn" aria-label="Clear ZIP file" style="display:none;">&times;</button>
+    <div id="zipToEpubApp" class="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 animate-fade-in tool-section hidden">
+      <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">ZIP to EPUB Converter</h1>
+      <div class="max-w-md mx-auto">
+        <label for="zipUploadForEpub" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-violet-600 hover:bg-violet-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 w-full cursor-pointer" id="zipUploadForEpubLabel">Upload ZIP File (.zip with .txt chapters)</label>
+        <input type="file" id="zipUploadForEpub" accept=".zip" class="hidden" aria-labelledby="zipUploadForEpubLabel">
+        <div class="mt-2.5 flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 p-2 rounded-md min-h-[40px]">
+            <span id="zipFileNameForEpub" class="text-slate-500 dark:text-slate-300 max-w-[calc(100%-30px)] overflow-hidden text-ellipsis whitespace-nowrap inline-block"></span>
+            <button type="button" id="clearZipUploadForEpub" class="bg-transparent border-none text-slate-500 text-2xl font-bold cursor-pointer ml-2 p-1 leading-none transition-colors hover:text-slate-800 dark:hover:text-white hidden" aria-label="Clear ZIP file">&times;</button>
         </div>
       </div>
 
-      <div id="zipToEpubChapterArea" class="option-group" style="display:none;">
-          <label>Chapter Order and Titles:</label>
-          <p style="font-size: 0.8em; color: var(--secondary-text-color); text-align: center; margin-top: -5px;">
+      <div id="zipToEpubChapterArea" class="max-w-md mx-auto hidden">
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Chapter Order and Titles:</label>
+          <p class="text-xs text-slate-500 dark:text-slate-400 text-center -mt-1 mb-2">
               Drag to reorder. Click a title to edit it.
           </p>
-          <ul id="zipToEpubChapterList" class="chapter-list-draggable" aria-label="List of chapters to include in the EPUB">
+          <ul id="zipToEpubChapterList" class="max-w-xl mx-auto list-none p-0 my-4 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-100 dark:bg-slate-800 max-h-64 overflow-y-auto" aria-label="List of chapters to include in the EPUB">
               <!-- Dynamically populated by JS -->
           </ul>
       </div>
 
-      <div class="options-section">
-        <div class="option-group">
-          <label for="epubTitle">EPUB Title:</label>
-          <input type="text" id="epubTitle" placeholder="Enter EPUB title" value="My Novel" aria-describedby="statusMessageZipToEpub">
+      <div class="max-w-md mx-auto space-y-4">
+        <div>
+          <label for="epubTitle" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">EPUB Title:</label>
+          <input type="text" id="epubTitle" placeholder="Enter EPUB title" value="My Novel" aria-describedby="statusMessageZipToEpub" class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
         </div>
-        <div class="option-group">
-          <label for="epubAuthor">Author:</label>
-          <input type="text" id="epubAuthor" placeholder="Enter author name" value="Unknown Author" aria-describedby="statusMessageZipToEpub">
+        <div>
+          <label for="epubAuthor" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Author:</label>
+          <input type="text" id="epubAuthor" placeholder="Enter author name" value="Unknown Author" aria-describedby="statusMessageZipToEpub" class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
         </div>
         
-        <div class="option-group">
-            <label for="epubCoverImage" id="epubCoverImageLabel">Cover Image (Optional, JPG/PNG):</label>
-            <input type="file" id="epubCoverImage" accept="image/jpeg,image/png" style="margin-top:5px;" aria-labelledby="epubCoverImageLabel">
-            <div class="filename-display-area" style="margin-top:5px;">
-                <span id="epubCoverFileName" style="font-size:12px;color:#aaa;"></span>
-                <button type="button" id="clearEpubCoverImage" class="clear-file-btn" aria-label="Clear cover image" style="display:none;">&times;</button>
+        <div>
+            <label for="epubCoverImage" id="epubCoverImageLabel" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Cover Image (Optional, JPG/PNG):</label>
+            <input type="file" id="epubCoverImage" accept="image/jpeg,image/png" aria-labelledby="epubCoverImageLabel" class="mt-1 w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 dark:file:bg-primary-700/20 file:text-primary-700 dark:file:text-primary-300 hover:file:bg-primary-100 dark:hover:file:bg-primary-700/40">
+            <div class="mt-1.5 flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 p-2 rounded-md min-h-[40px]">
+                <span id="epubCoverFileName" class="text-slate-500 dark:text-slate-300 text-xs max-w-[calc(100%-30px)] overflow-hidden text-ellipsis whitespace-nowrap inline-block"></span>
+                <button type="button" id="clearEpubCoverImage" class="bg-transparent border-none text-slate-500 text-2xl font-bold cursor-pointer ml-2 p-1 leading-none transition-colors hover:text-slate-800 dark:hover:text-white hidden" aria-label="Clear cover image">&times;</button>
             </div>
         </div>
         
-        <details class="advanced-options-accordion">
-            <summary>Advanced Options</summary>
-            <div class="accordion-content">
-                <div class="option-group">
-                  <label for="epubLanguage">Language Code:</label>
-                  <input type="text" id="epubLanguage" placeholder="e.g., en" value="en" aria-describedby="statusMessageZipToEpub">
+        <details class="max-w-xl mx-auto mt-4 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-100/50 dark:bg-slate-800/20 overflow-hidden">
+            <summary class="px-4 py-3 cursor-pointer outline-none font-medium text-slate-800 dark:text-slate-200 list-inside transition-colors hover:bg-slate-200/50 dark:hover:bg-slate-700/50">Advanced Options</summary>
+            <div class="p-4 border-t border-slate-300 dark:border-slate-600">
+                <div>
+                  <label for="epubLanguage" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Language Code:</label>
+                  <input type="text" id="epubLanguage" placeholder="e.g., en" value="en" aria-describedby="statusMessageZipToEpub" class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
                 </div>
-                <div class="option-group">
-                    <label class="checkbox-label-wrapper" for="processMarkdown">
-                        <input type="checkbox" id="processMarkdown" /> Process chapter text as Markdown
+                <div class="mt-4">
+                    <label class="flex items-center gap-2 justify-start text-slate-800 dark:text-slate-200 select-none cursor-pointer" for="processMarkdown">
+                        <input type="checkbox" id="processMarkdown" class="w-4 h-4 align-middle rounded border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-primary-500 accent-primary-600"/> Process chapter text as Markdown
                     </label>
-                     <p style="font-size: 0.8em; color: var(--secondary-text-color); text-align: center; margin-top: -5px;">
+                     <p class="text-xs text-slate-500 dark:text-slate-400 text-center mt-1">
                         Supports headings (#), bold (**text**), and italic (*text*).
                     </p>
                 </div>
             </div>
         </details>
       </div>
-      <button id="createEpubBtn" class="btn split-btn" disabled>Create EPUB</button>
-      <div id="spinnerZipToEpub" class="spinner" role="status" aria-live="polite" aria-label="Loading"></div>
-      <div id="statusMessageZipToEpub" class="status" style="display:none;" aria-live="polite"></div>
-      <div class="download-section" id="downloadSectionZipToEpub" style="display:none;">
-        <a id="downloadLinkEpub" class="btn download-btn">Download EPUB</a>
+      <div class="text-center">
+        <button id="createEpubBtn" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 disabled:opacity-60 disabled:cursor-not-allowed" disabled>Create EPUB</button>
+      </div>
+      <div id="spinnerZipToEpub" class="w-10 h-10 border-4 border-slate-200 dark:border-slate-700 rounded-full border-t-primary-600 animate-spin my-4 mx-auto hidden" role="status" aria-live="polite" aria-label="Loading"></div>
+      <div id="statusMessageZipToEpub" class="rounded-xl p-4 mt-5 text-center text-sm hidden" aria-live="polite"></div>
+      <div class="text-center hidden" id="downloadSectionZipToEpub">
+        <a id="downloadLinkEpub" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-orange-600 hover:bg-orange-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100">Download EPUB</a>
       </div>
     </div>
 
     <!-- EPUB to ZIP (TXT) Converter -->
-    <div id="epubToZipApp" class="card tool-section" style="display:none;">
-      <h1>EPUB to ZIP (TXT)</h1>
-      <div class="upload-section option-group">
-        <label for="epubUploadForTxt" class="btn upload-btn" id="epubUploadForTxtLabel">Upload EPUB File</label>
-        <input type="file" id="epubUploadForTxt" accept=".epub" style="display:none;" aria-labelledby="epubUploadForTxtLabel">
-        <div class="filename-display-area">
-            <span id="epubFileNameForTxt"></span>
-            <button type="button" id="clearEpubUploadForTxt" class="clear-file-btn" aria-label="Clear EPUB file" style="display:none;">&times;</button>
+    <div id="epubToZipApp" class="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 animate-fade-in tool-section hidden">
+      <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">EPUB to ZIP (TXT)</h1>
+      <div class="max-w-md mx-auto">
+        <label for="epubUploadForTxt" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-violet-600 hover:bg-violet-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 w-full cursor-pointer" id="epubUploadForTxtLabel">Upload EPUB File</label>
+        <input type="file" id="epubUploadForTxt" accept=".epub" class="hidden" aria-labelledby="epubUploadForTxtLabel">
+        <div class="mt-2.5 flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 p-2 rounded-md min-h-[40px]">
+            <span id="epubFileNameForTxt" class="text-slate-500 dark:text-slate-300 max-w-[calc(100%-30px)] overflow-hidden text-ellipsis whitespace-nowrap inline-block"></span>
+            <button type="button" id="clearEpubUploadForTxt" class="bg-transparent border-none text-slate-500 text-2xl font-bold cursor-pointer ml-2 p-1 leading-none transition-colors hover:text-slate-800 dark:hover:text-white hidden" aria-label="Clear EPUB file">&times;</button>
         </div>
       </div>
 
-      <div id="epubToZipChapterSelectionArea" style="display:none; margin-top:15px;">
-        <h4>Select Chapters to Extract:</h4>
-        <div style="margin-bottom:10px; display: flex; gap: 10px; justify-content: center;">
-          <button type="button" id="epubToZipSelectAllChapters" class="btn btn-accent btn-small">Select All</button>
-          <button type="button" id="epubToZipDeselectAllChapters" class="btn btn-accent btn-small">Deselect All</button>
+      <div id="epubToZipChapterSelectionArea" class="mt-4 hidden">
+        <h4 class="text-lg font-semibold text-slate-800 dark:text-slate-200 text-center">Select Chapters to Extract:</h4>
+        <div class="my-4 flex justify-center gap-3">
+          <button type="button" id="epubToZipSelectAllChapters" class="inline-flex items-center justify-center rounded-lg font-medium bg-teal-600 hover:bg-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 px-3 py-1 text-sm">Select All</button>
+          <button type="button" id="epubToZipDeselectAllChapters" class="inline-flex items-center justify-center rounded-lg font-medium bg-teal-600 hover:bg-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 px-3 py-1 text-sm">Deselect All</button>
         </div>
-        <ul id="epubToZipChapterList" class="chapter-selection-list" aria-label="List of EPUB chapters for text extraction">
+        <ul id="epubToZipChapterList" class="max-w-xl mx-auto max-h-48 overflow-y-auto bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 list-none text-left" aria-label="List of EPUB chapters for text extraction">
           <!-- Chapters will be populated here by JS -->
         </ul>
       </div>
 
-      <div class="options-section">
-        <div class="option-group">
-          <label class="checkbox-label-wrapper" for="epubToZipEnableRemoveLines">
-            <input type="checkbox" id="epubToZipEnableRemoveLines" />
+      <div class="max-w-md mx-auto space-y-4">
+        <div>
+          <label class="flex items-center gap-2 justify-center text-slate-800 dark:text-slate-200 select-none cursor-pointer" for="epubToZipEnableRemoveLines">
+            <input type="checkbox" id="epubToZipEnableRemoveLines" class="w-4 h-4 align-middle rounded border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-primary-500 accent-primary-600"/>
             Remove initial lines from chapters
           </label>
         </div>
-        <div class="option-group" id="epubToZipRemoveLinesOptionsGroup" style="display:none;">
-          <label for="epubToZipLinesToRemove">Number of lines to remove:</label>
-          <input type="number" id="epubToZipLinesToRemove" min="0" value="1" aria-describedby="statusMessageEpubToZip">
+        <div id="epubToZipRemoveLinesOptionsGroup" class="text-center hidden">
+          <label for="epubToZipLinesToRemove" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Number of lines to remove:</label>
+          <input type="number" id="epubToZipLinesToRemove" min="0" value="1" aria-describedby="statusMessageEpubToZip" class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 max-w-[100px] mx-auto">
         </div>
       </div>
-      <button id="extractChaptersBtn" class="btn split-btn" disabled>Extract Chapters to ZIP</button>
-      <div id="spinnerEpubToZip" class="spinner" role="status" aria-live="polite" aria-label="Loading"></div>
-      <div id="statusMessageEpubToZip" class="status" style="display:none;" aria-live="polite"></div>
-      <div class="download-section" id="downloadSectionEpubToZip" style="display:none;">
-        <a id="downloadLinkZipFromEpub" class="btn download-btn">Download Chapter TXTs</a>
+      <div class="text-center">
+        <button id="extractChaptersBtn" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 disabled:opacity-60 disabled:cursor-not-allowed" disabled>Extract Chapters to ZIP</button>
+      </div>
+      <div id="spinnerEpubToZip" class="w-10 h-10 border-4 border-slate-200 dark:border-slate-700 rounded-full border-t-primary-600 animate-spin my-4 mx-auto hidden" role="status" aria-live="polite" aria-label="Loading"></div>
+      <div id="statusMessageEpubToZip" class="rounded-xl p-4 mt-5 text-center text-sm hidden" aria-live="polite"></div>
+      <div class="text-center hidden" id="downloadSectionEpubToZip">
+        <a id="downloadLinkZipFromEpub" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-orange-600 hover:bg-orange-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100">Download Chapter TXTs</a>
       </div>
     </div>
 
     <!-- Enhanced Combined ZIP ↔ EPUB Tool -->
-    <div id="zipEpubApp" class="card tool-section" style="display:none;">
-      <h1>ZIP ↔ EPUB Converter</h1>
+    <div id="zipEpubApp" class="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 animate-fade-in tool-section hidden">
+      <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">ZIP ↔ EPUB Converter</h1>
 
       <!-- Enhanced Mode Switch with Icons -->
-      <div class="option-group" style="margin-bottom: 24px;">
+      <div class="max-w-md mx-auto mb-6">
         <label class="text-center block mb-4 text-slate-800 dark:text-slate-200">Conversion Direction:</label>
         <div class="flex justify-center gap-3 mt-2">
-          <button id="zipToEpubMode" class="mode-btn flex items-center gap-2 px-6 py-3 rounded-lg font-medium bg-primary-600 text-white shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary-500 hover:bg-primary-700 hover:scale-105">
+          <button id="zipToEpubMode" class="flex items-center gap-2 px-6 py-3 rounded-lg font-medium bg-primary-600 text-white shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary-500 hover:bg-primary-700 hover:scale-105">
             <span class="text-lg">📦</span>
             <span>ZIP → EPUB</span>
           </button>
-          <button id="epubToZipMode" class="mode-btn flex items-center gap-2 px-6 py-3 rounded-lg font-medium bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-slate-500 hover:bg-slate-300 dark:hover:bg-slate-600 hover:scale-105">
+          <button id="epubToZipMode" class="flex items-center gap-2 px-6 py-3 rounded-lg font-medium bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-slate-500 hover:bg-slate-300 dark:hover:bg-slate-600 hover:scale-105">
             <span class="text-lg">📖</span>
             <span>EPUB → ZIP</span>
           </button>
@@ -919,7 +929,7 @@
       <div id="zipEpubHost"></div>
 
       <!-- Workflow Tips -->
-      <div class="mt-8 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
+      <div class="mt-8 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30 max-w-md mx-auto">
         <h4 class="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-2">
           <span>💡</span>Workflow Tips
         </h4>
@@ -936,7 +946,7 @@
 
   </div>
 
-  <div id="toast" class="status-toast" role="alert" aria-live="assertive"></div>
+  <div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-white font-medium z-50 transition-opacity duration-300 opacity-0" role="alert" aria-live="assertive"></div>
 
   <!-- JSZip fallback for offline use -->
   <script src="jszip.min.js"></script>

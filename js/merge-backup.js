@@ -141,23 +141,23 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
             }
             fileListHtml += '</ul>';
             fileNamesEl.innerHTML = fileListHtml;
-            if(clearFilesBtn) clearFilesBtn.style.display = 'inline-block';
+            if(clearFilesBtn) clearFilesBtn.classList.remove('hidden');
         } else {
             fileNamesEl.textContent = 'No files selected.';
-            if(clearFilesBtn) clearFilesBtn.style.display = 'none';
+            if(clearFilesBtn) clearFilesBtn.classList.add('hidden');
         }
-        statusEl.style.display = 'none';
+        statusEl.classList.add('hidden');
     });
 
     clearFilesBtn.addEventListener('click', () => {
         filesInput.value = '';
         fileNamesEl.textContent = 'No files selected.';
-        clearFilesBtn.style.display = 'none';
-        statusEl.style.display = 'none';
+        clearFilesBtn.classList.add('hidden');
+        statusEl.classList.add('hidden');
     });
 
     mergeBtn.addEventListener('click', async () => {
-        statusEl.style.display = 'none';
+        statusEl.classList.add('hidden');
         const files = filesInput.files ? Array.from(filesInput.files) : [];
         const mergedTitle = mergedTitleInput.value.trim();
         const mergedDesc = mergedDescInput.value.trim();
@@ -167,16 +167,16 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
         if (!files.length) {
             showAppToast('Select at least one backup file to merge.', true);
             statusEl.textContent = 'Error: Select at least one backup file.';
-            statusEl.className = 'status error';
-            statusEl.style.display = 'block';
+            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+            statusEl.classList.remove('hidden');
             filesInput.focus();
             return;
         }
         if (!mergedTitle) {
             showAppToast('Merged Project Title is required.', true);
             statusEl.textContent = 'Error: Merged Project Title is required.';
-            statusEl.className = 'status error';
-            statusEl.style.display = 'block';
+            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+            statusEl.classList.remove('hidden');
             mergedTitleInput.focus();
             return;
         }
@@ -197,8 +197,8 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
                 showAppToast('No valid chapters found in the selected files to merge.', true);
                 if (statusEl) {
                     statusEl.textContent = 'Error: No valid chapters to merge from selected files.';
-                    statusEl.className = 'status error';
-                    statusEl.style.display = 'block';
+                    statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+                    statusEl.classList.remove('hidden');
                 }
             } else {
                 const blob = new Blob([JSON.stringify(mergedData, null, 2)], { type: 'application/json' });
@@ -207,8 +207,8 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
                 await triggerDownload(blob, filename, 'application/json', showAppToast);
 
                 statusEl.textContent = `Backup files merged into "${mergedTitle}". Download started.`;
-                statusEl.className = 'status success';
-                statusEl.style.display = 'block';
+                statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-green-50 dark:bg-green-600/10 border border-green-200 dark:border-green-500/30 text-green-700 dark:text-green-400';
+                statusEl.classList.remove('hidden');
                 showAppToast('Backup files merged successfully.');
             }
 
@@ -216,8 +216,8 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
             if (!(statusEl.textContent && statusEl.textContent.includes('No valid chapters'))) {
                 showAppToast(err.message || 'Error merging backup files.', true);
                 statusEl.textContent = `Error: ${err.message || 'Could not merge backups.'}`;
-                statusEl.className = 'status error';
-                statusEl.style.display = 'block';
+                statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+                statusEl.classList.remove('hidden');
             }
             console.error("Merge Backup Error:", err);
         } finally {

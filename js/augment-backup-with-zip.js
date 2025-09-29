@@ -37,7 +37,7 @@ export function initializeAugmentBackupWithZip(showAppToast, toggleAppSpinner) {
         selectedBaseFile = e.target.files?.[0] || null;
         if (selectedBaseFile) {
             baseBackupFileNameEl.textContent = `Selected: ${selectedBaseFile.name}`;
-            clearBaseBackupFileBtn.style.display = 'inline-block';
+            clearBaseBackupFileBtn.classList.remove('hidden');
 
             // Pre-fill start number
             try {
@@ -64,15 +64,15 @@ export function initializeAugmentBackupWithZip(showAppToast, toggleAppSpinner) {
                 baseBackupFileInput.value = '';
                 selectedBaseFile = null;
                 baseBackupFileNameEl.textContent = '';
-                clearBaseBackupFileBtn.style.display = 'none';
+                clearBaseBackupFileBtn.classList.add('hidden');
             }
         } else {
             baseBackupFileNameEl.textContent = '';
-            clearBaseBackupFileBtn.style.display = 'none';
+            clearBaseBackupFileBtn.classList.add('hidden');
             startNumberInput.value = 1;
             startNumberInput.min = 1;
         }
-        statusEl.style.display = 'none';
+        statusEl.classList.add('hidden');
         checkEnableButton();
     });
 
@@ -80,10 +80,10 @@ export function initializeAugmentBackupWithZip(showAppToast, toggleAppSpinner) {
         baseBackupFileInput.value = '';
         selectedBaseFile = null;
         baseBackupFileNameEl.textContent = '';
-        clearBaseBackupFileBtn.style.display = 'none';
+        clearBaseBackupFileBtn.classList.add('hidden');
         startNumberInput.value = 1;
         startNumberInput.min = 1;
-        statusEl.style.display = 'none';
+        statusEl.classList.add('hidden');
         checkEnableButton();
     });
 
@@ -91,12 +91,12 @@ export function initializeAugmentBackupWithZip(showAppToast, toggleAppSpinner) {
         selectedZipFile = e.target.files?.[0] || null;
         if (selectedZipFile) {
             zipFileNameEl.textContent = `Selected: ${selectedZipFile.name}`;
-            clearZipFileBtn.style.display = 'inline-block';
+            clearZipFileBtn.classList.remove('hidden');
         } else {
             zipFileNameEl.textContent = '';
-            clearZipFileBtn.style.display = 'none';
+            clearZipFileBtn.classList.add('hidden');
         }
-        statusEl.style.display = 'none';
+        statusEl.classList.add('hidden');
         checkEnableButton();
     });
 
@@ -104,27 +104,27 @@ export function initializeAugmentBackupWithZip(showAppToast, toggleAppSpinner) {
         zipFileInput.value = '';
         selectedZipFile = null;
         zipFileNameEl.textContent = '';
-        clearZipFileBtn.style.display = 'none';
-        statusEl.style.display = 'none';
+        clearZipFileBtn.classList.add('hidden');
+        statusEl.classList.add('hidden');
         checkEnableButton();
     });
 
     augmentBtn.addEventListener('click', async () => {
-        statusEl.style.display = 'none';
+        statusEl.classList.add('hidden');
 
         if (!selectedBaseFile) {
             showAppToast('Please select a base backup file.', true);
             statusEl.textContent = 'Error: Base backup file is required.';
-            statusEl.className = 'status error';
-            statusEl.style.display = 'block';
+            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+            statusEl.classList.remove('hidden');
             baseBackupFileInput.focus();
             return;
         }
         if (!selectedZipFile) {
             showAppToast('Please select a ZIP file.', true);
             statusEl.textContent = 'Error: ZIP file is required.';
-            statusEl.className = 'status error';
-            statusEl.style.display = 'block';
+            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+            statusEl.classList.remove('hidden');
             zipFileInput.focus();
             return;
         }
@@ -174,8 +174,8 @@ export function initializeAugmentBackupWithZip(showAppToast, toggleAppSpinner) {
             if (chapterFiles.length === 0) {
                 showAppToast('No .txt files found in the ZIP archive. No changes made.', false);
                 statusEl.textContent = 'Info: No .txt files found in ZIP. Backup not augmented.';
-                statusEl.className = 'status success';
-                statusEl.style.display = 'block';
+                statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-green-50 dark:bg-green-600/10 border border-green-200 dark:border-green-500/30 text-green-700 dark:text-green-400';
+                statusEl.classList.remove('hidden');
                 toggleAppSpinner(false);
                 return;
             }
@@ -285,15 +285,15 @@ export function initializeAugmentBackupWithZip(showAppToast, toggleAppSpinner) {
             await triggerDownload(blob, filename, 'application/json', showAppToast);
 
             statusEl.textContent = `Backup augmented with ${chapterFiles.length} chapter(s) from ZIP. Download started.`;
-            statusEl.className = 'status success';
-            statusEl.style.display = 'block';
+            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-green-50 dark:bg-green-600/10 border border-green-200 dark:border-green-500/30 text-green-700 dark:text-green-400';
+            statusEl.classList.remove('hidden');
             showAppToast(`Backup augmented successfully with ${chapterFiles.length} chapters.`);
 
         } catch (err) {
             console.error("Augment Backup with ZIP Error:", err);
             statusEl.textContent = `Error: ${err.message || 'Could not augment backup.'}`;
-            statusEl.className = 'status error';
-            statusEl.style.display = 'block';
+            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+            statusEl.classList.remove('hidden');
             showAppToast(`Error: ${err.message || 'Could not augment backup.'}`, true);
         } finally {
             toggleAppSpinner(false);

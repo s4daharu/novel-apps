@@ -143,9 +143,9 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
     }
 
     function resetUI(full = false) {
-        if (downloadSec) downloadSec.style.display = 'none';
-        if (statusEl) statusEl.style.display = 'none';
-        if (chapterArea) chapterArea.style.display = 'none';
+        if (downloadSec) downloadSec.classList.add('hidden');
+        if (statusEl) statusEl.classList.add('hidden');
+        if (chapterArea) chapterArea.classList.add('hidden');
         if (chapterListUl) chapterListUl.innerHTML = '';
         chapters = [];
 
@@ -153,7 +153,7 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
             selectedZipFile = null;
             zipUploadInput.value = '';
             zipFileNameEl.textContent = '';
-            clearZipBtn.style.display = 'none';
+            clearZipBtn.classList.add('hidden');
             createBtn.disabled = true;
         }
     }
@@ -166,14 +166,15 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
             const li = document.createElement('li');
             li.draggable = true;
             li.dataset.name = chapter.name;
+            li.className = 'flex items-center p-2.5 border-b border-slate-200 dark:border-slate-700 cursor-grab user-select-none transition-all duration-200 rounded-md mb-0.5 last:border-b-0 hover:bg-slate-200/50 dark:hover:bg-slate-700/50';
 
             const handle = document.createElement('span');
-            handle.className = 'drag-handle';
+            handle.className = 'mr-3 text-slate-500 text-lg leading-none p-1 rounded-sm transition-colors duration-200 hover:text-primary-600 hover:bg-slate-200 dark:hover:bg-slate-700';
             handle.textContent = '☰';
 
             const titleInput = document.createElement('input');
             titleInput.type = 'text';
-            titleInput.className = 'chapter-title-input';
+            titleInput.className = 'flex-grow bg-transparent border-none text-slate-800 dark:text-slate-200 p-1.5 rounded-md border border-transparent text-sm transition-all duration-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 focus:bg-white/50 dark:focus:bg-slate-600/50 focus:border-primary-500 focus:outline-none';
             titleInput.value = chapter.title;
             titleInput.ariaLabel = `Title for chapter ${chapter.name}`;
             titleInput.addEventListener('input', () => {
@@ -190,16 +191,17 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
     }
 
     // Drag and Drop Event Handlers for Chapter List
+    const draggingClasses = ['opacity-70', 'bg-primary-600', 'text-white', 'rotate-2', 'shadow-lg'];
     chapterListUl.addEventListener('dragstart', (e) => {
         draggedItem = e.target;
         setTimeout(() => {
-            if (draggedItem) draggedItem.classList.add('dragging');
+            if (draggedItem) draggedItem.classList.add(...draggingClasses);
         }, 0);
     });
 
     chapterListUl.addEventListener('dragend', () => {
         if (draggedItem) {
-            draggedItem.classList.remove('dragging');
+            draggedItem.classList.remove(...draggingClasses);
             draggedItem = null;
         }
     });
@@ -207,7 +209,7 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
     chapterListUl.addEventListener('dragover', (e) => {
         e.preventDefault();
         const afterElement = getDragAfterElement(chapterListUl, e.clientY);
-        const currentDragged = document.querySelector('.dragging');
+        const currentDragged = document.querySelector('.opacity-70'); // Using one of the dragging classes to find the element
         if (currentDragged) {
             if (afterElement == null) {
                 chapterListUl.appendChild(currentDragged);
@@ -228,7 +230,7 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
     });
 
     function getDragAfterElement(container, y) {
-        const draggableElements = [...container.querySelectorAll('li:not(.dragging)')];
+        const draggableElements = [...container.querySelectorAll('li:not(.opacity-70)')];
         return draggableElements.reduce((closest, child) => {
             const box = child.getBoundingClientRect();
             const offset = y - box.top - box.height / 2;
@@ -247,7 +249,7 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
 
         if (selectedZipFile) {
             zipFileNameEl.textContent = `Selected ZIP: ${selectedZipFile.name}`;
-            if (clearZipBtn) clearZipBtn.style.display = 'inline-block';
+            if (clearZipBtn) clearZipBtn.classList.remove('hidden');
             createBtn.disabled = true;
             toggleAppSpinner(true);
 
@@ -276,7 +278,7 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
                 chapters = loadedChapters;
 
                 renderChapterList();
-                chapterArea.style.display = 'block';
+                chapterArea.classList.remove('hidden');
                 createBtn.disabled = false;
 
             } catch (err) {
@@ -299,10 +301,10 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
         selectedCoverFile = target.files ? target.files[0] : null;
         if (selectedCoverFile) {
             epubCoverFileNameEl.textContent = `Cover: ${selectedCoverFile.name}`;
-            if (clearCoverBtn) clearCoverBtn.style.display = 'inline-block';
+            if (clearCoverBtn) clearCoverBtn.classList.remove('hidden');
         } else {
             epubCoverFileNameEl.textContent = '';
-            if (clearCoverBtn) clearCoverBtn.style.display = 'none';
+            if (clearCoverBtn) clearCoverBtn.classList.add('hidden');
         }
     });
 
@@ -310,17 +312,17 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
         selectedCoverFile = null;
         epubCoverImageInput.value = '';
         epubCoverFileNameEl.textContent = '';
-        clearCoverBtn.style.display = 'none';
+        clearCoverBtn.classList.add('hidden');
     });
 
     createBtn.addEventListener('click', async () => {
-        if (statusEl) statusEl.style.display = 'none';
+        if (statusEl) statusEl.classList.add('hidden');
 
         if (chapters.length === 0) {
             showAppToast("Please upload a ZIP file with .txt chapters.", true);
             statusEl.textContent = 'Error: No chapters loaded to create an EPUB.';
-            statusEl.className = 'status error';
-            statusEl.style.display = 'block';
+            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+            statusEl.classList.remove('hidden');
             zipUploadInput.focus();
             return;
         }
@@ -329,8 +331,8 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
         if (!title) {
             showAppToast("EPUB Title is required.", true);
             statusEl.textContent = 'Error: EPUB Title is required.';
-            statusEl.className = 'status error';
-            statusEl.style.display = 'block';
+            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+            statusEl.classList.remove('hidden');
             epubTitleInput.focus();
             return;
         }
@@ -339,8 +341,8 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
         if (!author) {
             showAppToast("Author is required.", true);
             statusEl.textContent = 'Error: Author is required.';
-            statusEl.className = 'status error';
-            statusEl.style.display = 'block';
+            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+            statusEl.classList.remove('hidden');
             epubAuthorInput.focus();
             return;
         }
@@ -350,7 +352,7 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
 
         const bookUUID = `urn:uuid:${generateUUID()}`;
         toggleAppSpinner(true);
-        if (downloadSec) downloadSec.style.display = 'none';
+        if (downloadSec) downloadSec.classList.add('hidden');
 
         try {
             const JSZip = await getJSZip();
@@ -512,17 +514,17 @@ p { text-indent: 1.5em; margin-top: 0; margin-bottom: 0.5em; text-align: justify
                 await triggerDownload(epubBlob, downloadFilename, 'application/epub+zip', showAppToast);
             }
 
-            if (downloadSec) downloadSec.style.display = 'block';
+            if (downloadSec) downloadSec.classList.remove('hidden');
             statusEl.textContent = `EPUB "${title}" created successfully with ${chapters.length} chapter(s). Download started.`;
-            statusEl.className = 'status success';
-            statusEl.style.display = 'block';
+            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-green-50 dark:bg-green-600/10 border border-green-200 dark:border-green-500/30 text-green-700 dark:text-green-400';
+            statusEl.classList.remove('hidden');
             showAppToast("EPUB created successfully!");
 
         } catch (err) {
             console.error("ZIP to EPUB Error:", err);
             statusEl.textContent = `Error: ${err.message}`;
-            statusEl.className = 'status error';
-            statusEl.style.display = 'block';
+            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+            statusEl.classList.remove('hidden');
             showAppToast(`Error creating EPUB: ${err.message}`, true);
         } finally {
             toggleAppSpinner(false);
