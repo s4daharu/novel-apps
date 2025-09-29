@@ -30,10 +30,10 @@ let toggleSpinner;
 const escapeHtml = (unsafe) => unsafe.replace(/[&<>"']/g, match => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[match]);
 
 // --- INITIALIZATION ---
-export function initializeFindReplaceBackup(showAppToast, toggleAppSpinner) {
+export function initializeFindReplaceBackup(showAppToast, toggleAppSpinnerFunc) {
     // --- Assign module-level helpers ---
     showToast = showAppToast;
-    toggleSpinner = toggleAppSpinner;
+    toggleSpinner = toggleAppSpinnerFunc;
 
     // --- DOM ELEMENT ASSIGNMENT ---
     frContainer = document.getElementById('findReplaceBackupApp');

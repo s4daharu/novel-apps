@@ -74,6 +74,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
     function displayChapterSelectionUI(chapters) {
         if (!chapterListUl || !chapterSelectionArea) return;
         chapterListUl.innerHTML = '';
+        chapterCountEl.textContent = `${chapters.length} chapters found`;
 
         if (chapters.length === 0) {
             chapterSelectionArea.classList.add('hidden');
@@ -188,13 +189,13 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
                     text: text
                 }));
 
+                displayChapterSelectionUI(parsedChaptersForSelection);
+
                 if (parsedChaptersForSelection.length > 0) {
-                    if (chapterCountEl) chapterCountEl.textContent = `${parsedChaptersForSelection.length} chapters found`;
-                    displayChapterSelectionUI(parsedChaptersForSelection);
                     splitBtn.disabled = false;
                     showAppToast(`Found ${parsedChaptersForSelection.length} potential chapters. Review selection.`, false);
                 } else {
-                    if (chapterCountEl) chapterCountEl.textContent = '0 chapters found';
+                    chapterCountEl.textContent = '0 chapters found';
                     showAppToast('No chapters found for selection. Check EPUB structure.', true);
                     statusEl.textContent = 'Error: No chapters found for selection. Check EPUB structure.';
                     statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';

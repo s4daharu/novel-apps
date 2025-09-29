@@ -15,9 +15,11 @@ const __dirname = path.dirname(__filename);
 const distDir = 'dist';
 
 // Create dist directory if it doesn't exist
-if (!fs.existsSync(distDir)) {
-    fs.mkdirSync(distDir, { recursive: true });
+if (fs.existsSync(distDir)) {
+    fs.rmSync(distDir, { recursive: true, force: true });
 }
+fs.mkdirSync(distDir, { recursive: true });
+
 
 // Files to copy directly
 const filesToCopy = [
