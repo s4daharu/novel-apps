@@ -1,0 +1,988 @@
+/* index.css - Clean design system complementing Tailwind */
+
+/* === Design Tokens === */
+:root {
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+
+  /* Colors - complementing Tailwind's primary-600 (#0891b2) */
+  --primary-text-color: #e0e0e0;
+  --secondary-text-color: #b0b0b0;
+  --accent-color: #0891b2; /* Match Tailwind primary-600 */
+  --accent-color-darker: #0e7490; /* Match Tailwind primary-700 */
+  --success-color: #10b981; /* Match Tailwind emerald-500 */
+  --error-color: #ef4444; /* Match Tailwind red-500 */
+  --warning-color: #f59e0b; /* Match Tailwind amber-500 */
+
+  /* Layout */
+  --header-background: #111;
+  --sidebar-background: #222;
+  --bottom-nav-background: #1a1a1a;
+  --input-background: #374151; /* Match Tailwind gray-700 */
+  --border-color: #4b5563; /* Match Tailwind gray-600 */
+  --focus-ring-color: rgba(8, 145, 178, 0.5); /* Match primary-600 with opacity */
+}
+
+/* === Base Styles === */
+body {
+  font-family: 'Segoe UI', Roboto, sans-serif;
+  margin: 0;
+  padding: 0;
+  padding-top: var(--safe-area-inset-top);
+  padding-right: var(--safe-area-inset-right);
+  padding-left: var(--safe-area-inset-left);
+  -webkit-font-smoothing: antialiased;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Layout container - complements Tailwind containers */
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding-left: calc(20px + var(--safe-area-inset-left));
+  padding-right: calc(20px + var(--safe-area-inset-right));
+}
+
+/* Legacy elements - kept for backward compatibility */
+.menu-toggle {
+  font-size: 24px;
+  cursor: pointer;
+  margin-right: 20px;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: bold;
+  color: var(--primary-text-color);
+}
+
+
+/* === Focus Styles === */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+.menu-toggle:focus-visible,
+.tool-card:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--focus-ring-color);
+}
+
+
+
+.mode-section {
+  text-align: center;
+  margin-bottom: 25px;
+}
+/* .options-section has been mostly replaced by repeated option-groups */
+
+
+.option-group { 
+  margin-bottom: 20px; 
+  position: relative; 
+}
+
+/* Common styling for labels within an option-group */
+.option-group > label:not(.checkbox-label-wrapper) {
+  color: var(--primary-text-color);
+  margin-bottom: 8px; /* Space between label and input */
+  display: block; /* Ensure label is on its own line */
+  font-size: 14px; /* Slightly smaller for differentiation */
+  font-weight: 500;
+  user-select: none;
+}
+
+/* Common styling for inputs, selects, textareas within an option-group */
+.option-group input[type="text"],
+.option-group input[type="number"],
+.option-group select,
+.option-group textarea { 
+  background: var(--input-background);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  color: var(--primary-text-color);
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color .3s, box-shadow .3s;
+}
+.option-group input[type="text"]:focus,
+.option-group input[type="number"]:focus,
+.option-group select:focus,
+.option-group textarea:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--focus-ring-color);
+}
+
+/* Style for file inputs when their label acts as a button, or direct file input styling if not hidden */
+.option-group input[type="file"] {
+    /* If input type=file is directly visible, style it.
+       Usually it's hidden and a <label class="btn"> is used. */
+    width: 100%;
+    padding: 8px 12px;
+    margin-top: 5px; /* If label is separate and above */
+    background: var(--input-background);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--primary-text-color);
+    font-size: 13px; /* Smaller font for file input controls */
+}
+.option-group input[type="file"]::file-selector-button {
+    padding: 8px 12px;
+    margin-right: 10px;
+    border: none;
+    border-radius: 6px;
+    background: var(--accent-color);
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.option-group input[type="file"]::file-selector-button:hover {
+    background: var(--accent-color-darker);
+}
+
+
+/* Tooltip Styles */
+.tooltip-trigger {
+  display: inline-block;
+  margin-left: 5px;
+  cursor: help;
+  color: var(--accent-color);
+  font-weight: bold;
+  border: 1px solid var(--accent-color);
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  line-height: 16px; 
+  text-align: center;
+  font-size: 12px;
+  position: relative; 
+}
+.tooltip-trigger:hover {
+  background-color: var(--accent-color);
+  color: var(--header-background);
+}
+
+.tooltip-text-popup {
+  visibility: hidden;
+  width: 220px;
+  background-color: var(--sidebar-background);
+  color: var(--primary-text-color);
+  text-align: left;
+  border-radius: 6px;
+  padding: 8px 12px;
+  position: absolute;
+  z-index: 100;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -110px;
+  opacity: 0;
+  transition: opacity 0.3s, visibility 0.3s;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: normal;
+}
+.tooltip-text-popup::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: var(--sidebar-background) transparent transparent transparent;
+}
+.tooltip-trigger:hover .tooltip-text-popup,
+.tooltip-trigger.active .tooltip-text-popup { 
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Checkbox styling - simplified for modern Tailwind integration */
+.checkbox-label-wrapper {
+  /* Styling now handled by Tailwind classes applied via JS */
+}
+
+.checkbox-label-wrapper input[type="checkbox"] {
+  /* Native checkbox with accent color for modern look */
+  accent-color: var(--accent-color);
+}
+
+
+/* Specific styling for EPUB to ZIP 'lines to remove' input */
+#epubToZipRemoveLinesOptionsGroup {
+  padding-left: 0;
+  margin-top: 5px;
+  margin-bottom: 15px;
+}
+#epubToZipRemoveLinesOptionsGroup input[type="number"]#epubToZipLinesToRemove {
+  max-width: 100px;
+  margin: 5px auto 0;
+}
+
+
+.spinner, .spinner-backup {
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-top: 4px solid var(--accent-color);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 20px auto;
+  display: none;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+#statusMessage, .status { /* This is for the per-tool status messages */
+  border-radius: 10px;
+  padding: 16px;
+  margin-top: 20px;
+  animation: slideIn .3s ease-out;
+  text-align: center; 
+  font-size: 14px;
+}
+#statusMessage.success, .status.success { background-color: var(--success-color); color: white; }
+#statusMessage.error, .status.error { background-color: var(--error-color); color: white; }
+
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+/* Filename display and clear button common styles */
+.filename-display-area {
+  margin-top: 10px;
+  font-size: 14px;
+  color: var(--secondary-text-color);
+  text-align: center;
+  min-height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05); /* Subtle background */
+  padding: 5px 8px;
+  border-radius: 6px;
+}
+
+.filename-display-area span { 
+  max-width: calc(100% - 30px); 
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block; 
+}
+
+.clear-file-btn {
+  background: none;
+  border: none;
+  color: var(--secondary-text-color);
+  font-size: 1.5em; 
+  font-weight: bold;
+  cursor: pointer;
+  margin-left: 8px;
+  padding: 0 5px;
+  line-height: 1; 
+  vertical-align: middle;
+  transition: color 0.2s;
+}
+.clear-file-btn:hover {
+  color: var(--primary-text-color);
+}
+.clear-file-btn:focus-visible {
+  outline: 1px dashed var(--accent-color);
+  outline-offset: 1px;
+}
+
+
+textarea { /* General textarea, if not in option-group */
+  resize: vertical;
+  min-height: 60px; 
+  width: 100%; /* Default width for standalone textareas */
+  padding: 12px;
+  margin-bottom: 15px;
+  background: var(--input-background);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  color: var(--primary-text-color);
+  font-size: 14px;
+  box-sizing: border-box;
+  transition: border-color .3s, box-shadow .3s;
+}
+textarea:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--focus-ring-color);
+}
+
+/* Specific textarea heights */
+#findReplaceBackupApp textarea { /* From F&R modernization */
+    min-height: 40px; 
+}
+textarea#createDescription, 
+textarea#mergeDescription, 
+textarea#zipDescription {
+    min-height: 80px; /* More space for descriptions */
+}
+/* Ensure textareas within option-groups inherit option-group specific styles if needed, but the general one is broad. */
+.option-group textarea { /* This will apply option-group styles and override the general if more specific */
+    min-height: 60px; /* Default for option-group textareas */
+}
+.option-group textarea#createDescription, 
+.option-group textarea#mergeDescription, 
+.option-group textarea#zipDescription {
+    min-height: 80px; /* Override for specific description textareas within option-groups */
+}
+
+
+
+
+.status-toast { /* Global toast notification */
+  position: fixed;
+  bottom: calc(20px + var(--safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 14px 24px;
+  border-radius: 8px;
+  color: var(--primary-text-color);
+  font-size: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s;
+  z-index: 1000;
+  user-select: none;
+}
+
+.toast-success { background: var(--success-color); }
+.toast-error { background: var(--error-color); }
+
+
+/* Dashboard Styles - Mobile First */
+.dashboard-container {
+  text-align: center;
+  padding: 20px 0;
+  user-select: none;
+  min-height: calc(100vh - 140px); /* Account for header and bottom nav */
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-container h1 {
+  font-size: 28px;
+  margin-bottom: 20px;
+  color: var(--primary-text-color);
+  padding: 0 20px;
+}
+
+.dashboard-intro {
+  font-size: 16px;
+  color: var(--secondary-text-color);
+  margin-bottom: 30px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 20px;
+  line-height: 1.6;
+}
+
+.tool-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr; /* Single column on mobile */
+  gap: 20px;
+  max-width: 400px; /* Constrain width on mobile for better readability */
+  margin: 0 auto;
+  padding: 0 20px;
+  flex-grow: 1;
+}
+
+/* Tool card styles removed - now handled by Tailwind classes in index.html */
+
+/* Desktop styles for dashboard */
+@media (min-width: 769px) {
+  .dashboard-container {
+    padding: 30px 0;
+    min-height: calc(100vh - 80px); /* No bottom nav on desktop */
+  }
+
+  .dashboard-container h1 {
+    font-size: 32px;
+    margin-bottom: 25px;
+    padding: 0;
+  }
+
+  .dashboard-intro {
+    font-size: 18px;
+    padding: 0 20px;
+  }
+
+  .tool-cards-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+    max-width: 900px;
+    padding: 0 20px;
+  }
+
+  .tool-card {
+    padding: 25px;
+    min-height: 160px;
+  }
+
+  .tool-card-icon {
+    font-size: 40px;
+    margin-bottom: 15px;
+  }
+
+  .tool-card h2 {
+    font-size: 20px;
+    margin-bottom: 10px;
+  }
+
+  .tool-card p {
+    font-size: 14px;
+  }
+}
+
+
+/* --- Find & Replace Modernized Styles --- */
+.fr-options-group { 
+  display: flex;
+  justify-content: space-around; 
+  align-items: center;
+  flex-wrap: wrap; 
+  gap: 10px; 
+  margin-top: 10px;
+  margin-bottom: 15px;
+}
+.fr-options-group .checkbox-label-wrapper {
+  margin-bottom: 0; 
+  padding: 5px; 
+}
+
+.fr-action-buttons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+  gap: 10px;
+  margin-bottom: 15px;
+}
+.fr-action-buttons-grid .btn.fr-btn { 
+  width: 100%;
+  max-width: none; 
+  margin: 0; 
+}
+
+
+.fr-match-info {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+  color: var(--secondary-text-color);
+}
+.fr-match-info .match-context {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+  flex-wrap: wrap; 
+}
+.fr-match-info .match-info-label {
+  font-weight: 500;
+  color: var(--primary-text-color);
+  margin-right: 5px;
+}
+.fr-match-info .match-count-display {
+  font-style: italic;
+  text-align: right;
+  flex-grow: 1; 
+}
+
+
+.fr-match-preview {
+  background: var(--input-background);
+  padding: 12px;
+  border-radius: 8px;
+  min-height: 60px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: var(--primary-text-color);
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 0.95em;
+  line-height: 1.5;
+  border: 1px solid var(--border-color);
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.fr-match-highlight {
+    background-color: var(--accent-color-darker);
+    color: white;
+    padding: 1px 0;
+    border-radius: 2px;
+}
+/* End Find & Replace Modernized Styles */
+
+
+/* Chapter Selection List Styles - Updated for new design system */
+.chapter-selection-list {
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--input-background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px;
+  list-style-type: none;
+  margin: 10px 0 20px 0;
+  text-align: left;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-color) var(--input-background);
+}
+
+.chapter-selection-list li {
+  padding: 10px 8px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--primary-text-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+  margin-bottom: 2px;
+}
+.chapter-selection-list li:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+.chapter-selection-list li:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.chapter-selection-list li:last-child {
+  margin-bottom: 0;
+}
+
+.chapter-selection-list input[type="checkbox"] {
+  margin-right: 12px;
+  flex-shrink: 0;
+  accent-color: var(--accent-color);
+}
+.chapter-selection-list label {
+  color: inherit;
+  font-size: 14px;
+  flex-grow: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+
+/* Draggable Chapter List Styles - Updated for new design system */
+.chapter-list-draggable {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0 20px 0;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--input-background);
+    max-height: 250px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent-color) var(--input-background);
+}
+
+.chapter-list-draggable li {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: grab;
+    user-select: none;
+    transition: all 0.2s ease;
+    border-radius: 4px;
+    margin-bottom: 2px;
+}
+
+.chapter-list-draggable li:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.chapter-list-draggable li:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.chapter-list-draggable li.dragging {
+    opacity: 0.7;
+    background: var(--accent-color);
+    color: white;
+    transform: rotate(2deg);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.chapter-list-draggable li:active {
+    cursor: grabbing;
+}
+
+.drag-handle {
+    margin-right: 12px;
+    color: var(--secondary-text-color);
+    font-size: 1.2em;
+    line-height: 1;
+    padding: 2px;
+    border-radius: 3px;
+    transition: color 0.2s ease;
+}
+
+.drag-handle:hover {
+    color: var(--accent-color);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.chapter-title-input {
+    flex-grow: 1;
+    background: transparent;
+    border: none;
+    color: var(--primary-text-color);
+    padding: 6px 8px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+.chapter-title-input:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+.chapter-title-input:focus {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--accent-color);
+    outline: none;
+}
+
+/* Accordion Styles - Updated for new design system */
+.advanced-options-accordion {
+    margin-top: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+}
+
+.advanced-options-accordion summary {
+    padding: 14px 16px;
+    cursor: pointer;
+    outline: none;
+    font-weight: 500;
+    color: var(--primary-text-color);
+    list-style-position: inside;
+    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid transparent;
+}
+.advanced-options-accordion summary:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: var(--accent-color);
+}
+
+.advanced-options-accordion summary:focus-visible {
+    box-shadow: 0 0 0 2px var(--focus-ring-color);
+    border-radius: 7px;
+}
+
+.advanced-options-accordion[open] > summary {
+    border-bottom: 1px solid var(--border-color);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.advanced-options-accordion .accordion-content {
+    padding: 16px;
+    border-top: none;
+    background: rgba(255, 255, 255, 0.02);
+}
+.advanced-options-accordion .accordion-content .option-group {
+    margin-bottom: 12px;
+}
+.advanced-options-accordion .accordion-content .option-group:last-child {
+    margin-bottom: 0;
+}
+
+/* Bottom Navigation Styles - handled by Tailwind classes in HTML */
+
+/* Enhanced Animations and Transitions */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Tool section transitions */
+.tool-section {
+  animation: fadeInUp 0.3s ease-out;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.tool-section:not(.dashboard-container) {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+/* Enhanced button interactions */
+.btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.btn:active::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* Enhanced tool card interactions */
+.tool-card {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  cursor: pointer;
+}
+
+.tool-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 28px var(--focus-ring-color), 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.tool-card:active {
+  transform: translateY(-2px) scale(1.01);
+  transition-duration: 0.1s;
+}
+
+/* Bottom navigation enhanced interactions */
+.bottom-nav .nav-item {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.bottom-nav .nav-item:hover {
+  transform: translateY(-2px) scale(1.05);
+}
+
+.bottom-nav .nav-item:active {
+  transform: translateY(0) scale(0.95);
+  transition-duration: 0.1s;
+}
+
+/* Swipe feedback animations */
+.swipe-feedback {
+  animation: slideInFromRight 0.3s ease-out;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Loading state animations */
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--focus-ring-color);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(8, 145, 178, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 var(--focus-ring-color);
+  }
+}
+
+.btn:disabled {
+  animation: pulse 2s infinite;
+}
+
+/* Smooth scrolling for better UX */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Enhanced focus states for accessibility */
+.tool-card:focus-visible,
+.bottom-nav .nav-item:focus-visible,
+.btn:focus-visible {
+  outline: 3px solid var(--accent-color);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px var(--focus-ring-color);
+}
+
+/* Micro-interactions for form elements */
+.option-group input:focus,
+.option-group select:focus,
+.option-group textarea:focus {
+  transform: scale(1.02);
+  transition: transform 0.2s ease;
+}
+
+.option-group input:not(:focus),
+.option-group select:not(:focus),
+.option-group textarea:not(:focus) {
+  transform: scale(1);
+  transition: transform 0.2s ease;
+}
+
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 calc(10px + var(--safe-area-inset-left)) 0 calc(10px + var(--safe-area-inset-right));
+    padding: 0 10px;
+    padding-left: calc(10px + env(safe-area-inset-left));
+    padding-right: calc(10px + env(safe-area-inset-right));
+  }
+  .card {
+    padding: 20px;
+  }
+  /* .tool-section padding is now handled by .card if tool-section is inside card, or directly if needed */
+  /* If .tool-section is a direct child of .container, it might need its own padding.
+     Currently, they are all within .card. */
+
+  .btn {
+    padding: 12px 20px;
+    font-size: 15px;
+  }
+  h1 {
+    font-size: 24px;
+  }
+  .tool-card {
+    padding: 20px;
+  }
+  .tool-card h2 {
+    font-size: 18px;
+  }
+  .tool-card p {
+    font-size: 13px;
+  }
+  .tooltip-text-popup {
+    width: 180px; 
+    margin-left: -90px;
+    font-size: 12px;
+  }
+
+  .fr-action-buttons-grid {
+    grid-template-columns: 1fr; 
+  }
+  .fr-options-group {
+    flex-direction: column; 
+    align-items: flex-start;
+  }
+  .fr-options-group .checkbox-label-wrapper {
+     justify-content: flex-start; 
+     width: 100%;
+  }
+
+}
+
+@media (max-width: 480px) {
+  #splitterChapterSelectionArea > div[style*="display: flex"],
+  #epubToZipChapterSelectionArea > div[style*="display: flex"] {
+    flex-direction: column;
+    align-items: stretch; 
+    gap: 8px; 
+  }
+
+  #splitterChapterSelectionArea > div[style*="display: flex"] .btn-small,
+  #epubToZipChapterSelectionArea > div[style*="display: flex"] .btn-small {
+    max-width: 100%; 
+    margin-right: 0; 
+    margin-left: auto; 
+    margin-right: auto;
+  }
+
+  .fr-match-info .match-context {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .fr-match-info .match-count-display {
+    text-align: left;
+    margin-top: 5px;
+  }
+  .option-group > label:not(.checkbox-label-wrapper) {
+      font-size: 13px; /* Slightly smaller labels on very small screens */
+  }
+  .option-group input[type="text"],
+  .option-group input[type="number"],
+  .option-group select,
+  .option-group textarea {
+      font-size: 13px; /* Slightly smaller input text on very small screens */
+      padding: 10px;
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "novel-apps",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1"
+  }
+}

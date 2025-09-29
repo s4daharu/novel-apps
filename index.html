@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Novel-Apps</title>
+
+  <!-- PWA Manifest & Theme Color -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#111111">
+
+  <!-- iOS specific meta tags for a more app-like feel when added to homescreen -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152x152.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180x180.png">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <!-- Tailwind CSS CDN - Mobile First -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      important: true,
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#f0fdfa',
+              100: '#ccfbf1',
+              200: '#99f6e4',
+              300: '#5eead4',
+              400: '#2dd4bf',
+              500: '#14b8a6',
+              600: '#0d9488',
+              700: '#0f766e',
+              800: '#115e59',
+              900: '#134e4a',
+              950: '#042f2e',
+            },
+            dark: {
+              50: '#f8fafc',
+              100: '#f1f5f9',
+              200: '#e2e8f0',
+              300: '#cbd5e1',
+              400: '#94a3b8',
+              500: '#64748b',
+              600: '#475569',
+              700: '#334155',
+              800: '#1e293b',
+              900: '#0f172a',
+              950: '#020617',
+            }
+          },
+          animation: {
+            'fade-in': 'fadeIn 0.5s ease-in-out',
+            'slide-in': 'slideIn 0.3s ease-out',
+            'bounce-in': 'bounceIn 0.3s ease-out',
+          },
+          keyframes: {
+            fadeIn: {
+              '0%': { opacity: '0' },
+              '100%': { opacity: '1' },
+            },
+            slideIn: {
+              '0%': { transform: 'translateY(10px)', opacity: '0' },
+              '100%': { transform: 'translateY(0)', opacity: '1' },
+            },
+            bounceIn: {
+              '0%': { transform: 'scale(0.3)', opacity: '0' },
+              '50%': { transform: 'scale(1.05)', opacity: '0.8' },
+              '100%': { transform: 'scale(1)', opacity: '1' },
+            },
+          }
+        }
+      }
+    }
+  </script>
+
+
+<script type="importmap">
+{
+  "imports": {
+    "jszip": "https://esm.sh/jszip@3.10.1?bundle",
+    "url": "https://aistudiocdn.com/url@^0.11.4",
+    "path": "https://aistudiocdn.com/path@^0.12.7",
+    "fs": "https://aistudiocdn.com/fs@^0.0.1-security"
+  }
+}
+</script>
+<link rel="stylesheet" href="index.css">
+<link rel="stylesheet" href="/index.css">
+</head>
+
+<body class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100 min-h-screen">
+  <!-- Mobile-first header with hamburger menu -->
+  <header class="flex items-center justify-between p-4 bg-slate-800/50 backdrop-blur-sm border-b border-slate-700 md:hidden sticky top-0 z-50">
+    <h1 class="text-xl font-bold text-white" id="appTitle">Novel-Apps</h1>
+    <button onclick="toggleMenu()" class="text-2xl text-slate-300 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-700">
+      ☰
+    </button>
+  </header>
+
+  <!-- Desktop header (hidden on mobile) -->
+  <header class="hidden md:flex items-center justify-between p-6 pr-72 bg-slate-800/50 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-50">
+    <h1 class="text-2xl font-bold text-white" id="appTitle">Novel-Apps</h1>
+  </header>
+
+
+
+  <!-- Desktop Sidebar (hidden on mobile) -->
+  <div class="fixed top-0 right-0 w-64 h-full bg-slate-800 border-l border-slate-700 transform translate-x-full transition-transform duration-300 ease-in-out md:translate-x-0 z-40" id="sidebar">
+    <div class="p-6 pt-20">
+      <h2 class="text-xl font-bold text-white mb-6">Tools</h2>
+      <nav class="space-y-2">
+        <button onclick="showDashboard()" class="w-full text-left px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition-all duration-200">
+          Home Dashboard
+        </button>
+        <button onclick="launchAppFromCard('splitter')" class="w-full text-left px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition-all duration-200">
+          EPUB Chapter Splitter
+        </button>
+
+        <button onclick="launchAppFromCard('zipEpub')" class="w-full text-left px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition-all duration-200">
+          ZIP ↔ EPUB
+        </button>
+        <button onclick="launchAppFromCard('createBackupFromZip')" class="w-full text-left px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition-all duration-200">
+          Create Backup from ZIP
+        </button>
+        <button onclick="launchAppFromCard('mergeBackup')" class="w-full text-left px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition-all duration-200">
+          Merge Backups
+        </button>
+        <button onclick="launchAppFromCard('augmentBackupWithZip')" class="w-full text-left px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition-all duration-200">
+          Augment Backup with ZIP
+        </button>
+        <button onclick="launchAppFromCard('findReplaceBackup')" class="w-full text-left px-4 py-3 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition-all duration-200">
+          Find & Replace Backup
+        </button>
+      </nav>
+    </div>
+  </div>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 pb-20 md:pb-0 md:mr-64">
+    <!-- Dashboard Section -->
+    <section id="dashboardApp" class="min-h-screen p-4 md:p-8 animate-fade-in">
+      <div class="max-w-6xl mx-auto">
+        <!-- Header with improved typography -->
+        <div class="text-center mb-12 animate-bounce-in">
+          <h1 class="text-4xl md:text-5xl font-bold text-white mb-4 bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent">
+            Novel-Apps
+          </h1>
+          <p class="text-slate-300 text-lg max-w-2xl mx-auto leading-relaxed">
+            Professional EPUB and novel backup management tools for writers and publishers
+          </p>
+        </div>
+
+        <!-- Tool Cards Grid - Enhanced Mobile First -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          <!-- EPUB Chapter Splitter -->
+          <div class="tool-card group bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 hover:bg-slate-700/60 hover:border-primary-500/50 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-xl hover:shadow-primary-500/10 animate-slide-in"
+               onclick="launchAppFromCard('splitter')"
+               role="button"
+               tabindex="0"
+               aria-label="Launch EPUB Chapter Splitter">
+            <h2 class="text-xl font-semibold text-white mb-3 text-center group-hover:text-primary-300 transition-colors">EPUB Chapter Splitter</h2>
+            <p class="text-slate-300 text-sm leading-relaxed text-center mb-4">
+              Divide EPUB files into individual or grouped chapter text files with precision control.
+            </p>
+            <div class="flex items-center justify-center text-xs text-primary-400 group-hover:text-primary-300 transition-colors">
+              <span>Chapter Selection</span>
+            </div>
+          </div>
+
+          <!-- ZIP ↔ EPUB Converter -->
+          <div class="tool-card group bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 hover:bg-slate-700/60 hover:border-primary-500/50 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-xl hover:shadow-primary-500/10 animate-slide-in"
+               onclick="launchAppFromCard('zipEpub')"
+               role="button"
+               tabindex="0"
+               aria-label="Launch ZIP ↔ EPUB Converter">
+            <h2 class="text-xl font-semibold text-white mb-3 text-center group-hover:text-primary-300 transition-colors">ZIP ↔ EPUB</h2>
+            <p class="text-slate-300 text-sm leading-relaxed text-center mb-4">
+              Convert between ZIP files and EPUB format with bidirectional support and customization.
+            </p>
+            <div class="flex items-center justify-center text-xs text-primary-400 group-hover:text-primary-300 transition-colors">
+              <span>Bidirectional</span>
+            </div>
+          </div>
+
+          <!-- Create Backup from ZIP -->
+          <div class="tool-card group bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 hover:bg-slate-700/60 hover:border-primary-500/50 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-xl hover:shadow-primary-500/10 animate-slide-in"
+               onclick="launchAppFromCard('createBackupFromZip')"
+               role="button"
+               tabindex="0"
+               aria-label="Launch Create Backup from ZIP tool">
+            <h2 class="text-xl font-semibold text-white mb-3 text-center group-hover:text-primary-300 transition-colors">Create Backup from ZIP</h2>
+            <p class="text-slate-300 text-sm leading-relaxed text-center mb-4">
+              Generate structured novel backup files directly from ZIP archives containing text chapters.
+            </p>
+            <div class="flex items-center justify-center text-xs text-primary-400 group-hover:text-primary-300 transition-colors">
+              <span>Auto-Generate</span>
+            </div>
+          </div>
+
+          <!-- Merge Backup Files -->
+          <div class="tool-card group bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 hover:bg-slate-700/60 hover:border-primary-500/50 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-xl hover:shadow-primary-500/10 animate-slide-in"
+               onclick="launchAppFromCard('mergeBackup')"
+               role="button"
+               tabindex="0"
+               aria-label="Launch Merge Backup Files tool">
+            <h2 class="text-xl font-semibold text-white mb-3 text-center group-hover:text-primary-300 transition-colors">Merge Backup Files</h2>
+            <p class="text-slate-300 text-sm leading-relaxed text-center mb-4">
+              Combine multiple novel backup files into a single, organized backup with smart conflict resolution.
+            </p>
+            <div class="flex items-center justify-center text-xs text-primary-400 group-hover:text-primary-300 transition-colors">
+              <span>Smart Merge</span>
+            </div>
+          </div>
+
+          <!-- Augment Backup with ZIP -->
+          <div class="tool-card group bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 hover:bg-slate-700/60 hover:border-primary-500/50 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-xl hover:shadow-primary-500/10 animate-slide-in"
+               onclick="launchAppFromCard('augmentBackupWithZip')"
+               role="button"
+               tabindex="0"
+               aria-label="Launch Augment Backup with ZIP tool">
+            <h2 class="text-xl font-semibold text-white mb-3 text-center group-hover:text-primary-300 transition-colors">Augment Backup with ZIP</h2>
+            <p class="text-slate-300 text-sm leading-relaxed text-center mb-4">
+              Expand existing novel backups by adding new chapters from ZIP files seamlessly.
+            </p>
+            <div class="flex items-center justify-center text-xs text-primary-400 group-hover:text-primary-300 transition-colors">
+              <span>Expand</span>
+            </div>
+          </div>
+
+          <!-- Find & Replace in Backup -->
+          <div class="tool-card group bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 hover:bg-slate-700/60 hover:border-primary-500/50 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-xl hover:shadow-primary-500/10 animate-slide-in md:col-span-2 lg:col-span-3"
+               onclick="launchAppFromCard('findReplaceBackup')"
+               role="button"
+               tabindex="0"
+               aria-label="Launch Find & Replace in Backup tool">
+            <h2 class="text-xl font-semibold text-white mb-3 text-center group-hover:text-primary-300 transition-colors">Find & Replace in Backup</h2>
+            <p class="text-slate-300 text-sm leading-relaxed text-center mb-4">
+              Perform powerful find and replace operations within novel backup files with regex support and preview.
+            </p>
+            <div class="flex items-center justify-center text-xs text-primary-400 group-hover:text-primary-300 transition-colors">
+              <span>Advanced Search</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer with additional info -->
+        <div class="mt-16 text-center">
+          <p class="text-slate-400 text-sm">
+            💡 <strong>Tip:</strong> All tools support drag-and-drop file uploads and provide real-time feedback
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Enhanced EPUB Splitter -->
+    <div id="splitterApp" class="card tool-section" style="display:none;">
+      <h1>EPUB Chapter Splitter</h1>
+
+      <!-- Upload Section -->
+      <div class="upload-section option-group">
+        <label for="epubUpload" class="btn upload-btn" id="epubUploadLabel">Upload EPUB File</label>
+        <input type="file" id="epubUpload" accept=".epub" style="display:none;" aria-labelledby="epubUploadLabel">
+        <div class="filename-display-area">
+            <span id="epubFileName" class="text-slate-300"></span>
+            <button type="button" id="clearEpubUpload" class="clear-file-btn" aria-label="Clear EPUB file" style="display:none;">&times;</button>
+        </div>
+      </div>
+
+      <!-- Chapter Selection Area -->
+      <div id="splitterChapterSelectionArea" class="mt-6 p-4 bg-slate-700/30 rounded-lg border border-slate-600/50" style="display:none;">
+        <div class="flex items-center justify-between mb-4">
+          <h4 class="text-lg font-semibold text-slate-200">Select Chapters to Split</h4>
+          <div class="text-sm text-primary-400" id="chapterCount">0 chapters found</div>
+        </div>
+        <div class="mb-4 flex justify-center gap-3">
+          <button type="button" id="splitterSelectAllChapters" class="btn btn-accent btn-small">Select All</button>
+          <button type="button" id="splitterDeselectAllChapters" class="btn btn-accent btn-small">Deselect All</button>
+        </div>
+        <ul id="splitterChapterList" class="chapter-selection-list text-sm text-slate-200 max-h-48 overflow-y-auto" aria-label="List of EPUB chapters for selection">
+          <!-- Chapters will be populated here by JS -->
+        </ul>
+      </div>
+
+      <!-- Configuration Section -->
+      <div class="options-section mt-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="option-group">
+            <label for="modeSelect" class="flex items-center gap-2">
+              Output Mode:
+            </label>
+            <select id="modeSelect" class="mt-2">
+              <option value="single">Single Chapter per File</option>
+              <option value="grouped">Grouped Chapters per File</option>
+            </select>
+          </div>
+          <div class="option-group">
+            <label for="chapterPattern" class="flex items-center gap-2">
+              Chapter Prefix:
+              <span class="tooltip-trigger" aria-label="More info about Chapter Prefix" role="button" tabindex="0">(?)
+                <span class="tooltip-text-popup">Pattern for naming output files, e.g., 'C' will result in C01.txt, C02.txt. Click to dismiss.</span>
+              </span>
+            </label>
+            <input type="text" id="chapterPattern" placeholder="e.g., Chapter " value="Chapter ">
+          </div>
+          <div class="option-group">
+            <label for="startNumber" class="flex items-center gap-2">
+              Start Number:
+            </label>
+            <input type="number" id="startNumber" min="1" value="1" aria-describedby="statusMessage">
+          </div>
+          <div class="option-group">
+            <label for="offsetNumber" class="flex items-center gap-2">
+              Skip First (Offset):
+            </label>
+            <input type="number" id="offsetNumber" min="0" value="0" aria-describedby="statusMessage">
+          </div>
+        </div>
+
+        <!-- Group Size (shown when grouped mode selected) -->
+        <div class="option-group mt-4 p-4 bg-slate-700/20 rounded-lg border border-slate-600/30" id="groupSizeGroup" style="display:none;">
+          <label for="groupSize" class="flex items-center gap-2">
+            Chapters per File:
+          </label>
+          <input type="number" id="groupSize" min="1" value="4" aria-describedby="statusMessage">
+          <p class="text-xs text-slate-400 mt-2">When using grouped mode, how many chapters to include in each output file</p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="mt-8 flex justify-center gap-4">
+        <button id="splitBtn" class="btn split-btn" disabled>
+          Split EPUB
+        </button>
+      </div>
+
+      <!-- Progress and Status -->
+      <div id="spinnerSplitter" class="spinner" role="status" aria-live="polite" aria-label="Loading"></div>
+      <div id="statusMessage" class="status" style="display:none;" aria-live="polite"></div>
+
+      <!-- Download Section -->
+      <div class="download-section mt-6 p-4 bg-green-600/10 border border-green-500/30 rounded-lg" style="display:none;">
+        <div class="text-center">
+          <div class="text-green-400 text-lg mb-2">EPUB Split Complete!</div>
+          <a id="downloadLink" class="btn download-btn inline-flex items-center gap-2">
+            Download Chapters ZIP
+          </a>
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- Enhanced Merge Backup Files -->
+    <div id="mergeBackupApp" class="card tool-section" style="display:none;">
+      <h1>Merge Backup Files</h1>
+
+      <!-- Upload Section -->
+      <div class="upload-section option-group mb-6">
+        <label for="mergeBackupFiles" class="btn upload-btn" id="mergeBackupFilesLabel">Upload Backup Files</label>
+        <input type="file" id="mergeBackupFiles" accept=".json,.txt,.nov" multiple aria-labelledby="mergeBackupFilesLabel">
+        <div class="filename-display-area" id="mergeBackupFileNamesArea" style="text-align: left; max-height: 120px; overflow-y: auto; background: var(--input-background); padding: 12px; border-radius: 8px; margin-top: 8px; border: 1px solid var(--border-color);">
+              <div class="text-xs text-slate-400 mb-2">Selected files:</div>
+              <div id="mergeBackupFileNames" class="text-sm text-slate-300">No files selected.</div>
+              <button type="button" id="clearMergeBackupFiles" class="clear-file-btn mt-2" aria-label="Clear backup files" style="display:none;">&times;</button>
+        </div>
+        <p class="text-xs text-slate-400 mt-2">Upload multiple .json or .nov backup files to merge</p>
+      </div>
+
+      <!-- Configuration Sections -->
+      <div class="space-y-6">
+        <!-- Project Information -->
+        <div class="p-4 bg-slate-700/20 rounded-lg border border-slate-600/30">
+          <h3 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+            Project Information
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="option-group">
+              <label for="mergeProjectTitle" class="flex items-center gap-2">
+                Merged Project Title:
+              </label>
+              <input type="text" id="mergeProjectTitle" placeholder="Enter merged project title" aria-describedby="statusMergeBackup">
+            </div>
+          </div>
+          <div class="option-group mt-4">
+            <label for="mergeDescription" class="flex items-center gap-2">
+              Merged Description:
+            </label>
+            <textarea id="mergeDescription" placeholder="Enter merged project description" rows="3"></textarea>
+          </div>
+        </div>
+
+        <!-- Chapter Configuration -->
+        <div class="p-4 bg-slate-700/20 rounded-lg border border-slate-600/30">
+          <h3 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+            Chapter Configuration
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="option-group">
+              <label for="mergePrefix" class="flex items-center gap-2">
+                Prefix for Chapters (Optional):
+              </label>
+              <input type="text" id="mergePrefix" placeholder="e.g., Part I - ">
+            </div>
+          </div>
+          <div class="option-group mt-4">
+            <label class="checkbox-label-wrapper" for="mergePreserveTitles">
+                <input type="checkbox" id="mergePreserveTitles" /> Preserve Original Chapter Titles
+            </label>
+            <p class="text-xs text-slate-400 mt-2">
+              If checked, uses original titles. If "Prefix" is also filled, it's added before the original title.
+            </p>
+          </div>
+        </div>
+
+        <!-- Merge Information -->
+        <div class="p-4 bg-blue-600/10 rounded-lg border border-blue-500/30">
+          <h3 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+            Merge Information
+          </h3>
+          <ul class="text-xs text-slate-300 space-y-2">
+            <li>• <strong>Status definitions:</strong> Merged from all files (duplicates removed, re-ranked)</li>
+            <li>• <strong>Chapter titles:</strong> Either preserved or renamed with prefix + sequential numbers</li>
+            <li>• <strong>Chapter order:</strong> All chapters re-ranked sequentially in the merged file</li>
+            <li>• <strong>Word count:</strong> Automatically calculated from all merged content</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div class="mt-8 flex justify-center">
+        <button id="mergeBackupBtn" class="btn btn-primary">
+          Merge and Download
+        </button>
+      </div>
+
+      <!-- Progress and Status -->
+      <div id="spinnerMergeBackup" class="spinner" role="status" aria-live="polite" aria-label="Loading"></div>
+      <div id="statusMergeBackup" class="status" style="display:none;" aria-live="polite"></div>
+
+      <!-- Workflow Tips -->
+      <div class="mt-6 p-4 bg-slate-700/20 rounded-lg border border-slate-600/30">
+        <h4 class="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+          Workflow Tips
+        </h4>
+        <ul class="text-xs text-slate-300 space-y-1">
+          <li>• Upload multiple backup files to combine into one</li>
+          <li>• Choose whether to preserve original chapter titles or use a prefix</li>
+          <li>• The tool will automatically handle duplicate status definitions</li>
+          <li>• All chapters will be re-numbered sequentially in the final backup</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Enhanced Augment Backup with ZIP -->
+    <div id="augmentBackupWithZipApp" class="card tool-section" style="display:none;">
+      <h1>Augment Backup with ZIP</h1>
+
+      <!-- Upload Section -->
+      <div class="upload-section mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Base Backup Upload -->
+          <div class="option-group">
+            <label for="augmentBaseBackupFile" class="btn upload-btn" id="augmentBaseBackupFileLabel">Base Backup File</label>
+            <input type="file" id="augmentBaseBackupFile" accept=".json,.txt,.nov" aria-labelledby="augmentBaseBackupFileLabel">
+            <div class="filename-display-area">
+                  <span id="augmentBaseBackupFileName" class="text-slate-300"></span>
+                  <button type="button" id="clearAugmentBaseBackupFile" class="clear-file-btn" aria-label="Clear base backup file" style="display:none;">&times;</button>
+            </div>
+            <p class="text-xs text-slate-400 mt-2">Upload your existing backup file</p>
+          </div>
+
+          <!-- ZIP File Upload -->
+          <div class="option-group">
+            <label for="augmentZipFile" class="btn upload-btn" id="augmentZipFileLabel">ZIP with Chapters</label>
+            <input type="file" id="augmentZipFile" accept=".zip" aria-labelledby="augmentZipFileLabel">
+            <div class="filename-display-area">
+                  <span id="augmentZipFileName" class="text-slate-300"></span>
+                  <button type="button" id="clearAugmentZipFile" class="clear-file-btn" aria-label="Clear ZIP file" style="display:none;">&times;</button>
+            </div>
+            <p class="text-xs text-slate-400 mt-2">Upload ZIP containing new chapter files</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Configuration Sections -->
+      <div class="space-y-6">
+        <!-- Chapter Configuration -->
+        <div class="p-4 bg-slate-700/20 rounded-lg border border-slate-600/30">
+          <h3 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+            Chapter Configuration
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="option-group">
+              <label for="augmentPrefix" class="flex items-center gap-2">
+                Prefix for New Chapters:
+              </label>
+              <input type="text" id="augmentPrefix" placeholder="e.g., New Section - ">
+            </div>
+          </div>
+          <div class="option-group mt-4">
+            <label class="checkbox-label-wrapper" for="augmentPreserveTxtTitles">
+                <input type="checkbox" id="augmentPreserveTxtTitles" /> Use .txt filenames as titles for new chapters
+            </label>
+            <p class="text-xs text-slate-400 mt-2">
+              If checked, .txt filenames (without extension) are used as titles.
+              If 'Prefix' is also provided: it's prepended UNLESS the .txt filename ALREADY starts with that prefix.
+              If unchecked, 'Prefix + Sequential Number' or 'Chapter + Sequential Number' is used for new chapters.
+            </p>
+          </div>
+        </div>
+
+        <!-- Augmentation Information -->
+        <div class="p-4 bg-green-600/10 rounded-lg border border-green-500/30">
+          <h3 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+            Augmentation Information
+          </h3>
+          <ul class="text-xs text-slate-300 space-y-2">
+            <li>• <strong>Preserves existing content:</strong> Your original backup remains unchanged</li>
+            <li>• <strong>Adds new chapters:</strong> ZIP chapters are appended to the end</li>
+            <li>• <strong>Updates metadata:</strong> Word count and timestamps are recalculated</li>
+            <li>• <strong>Smart numbering:</strong> New chapters continue from the last chapter number</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div class="mt-8 flex justify-center">
+        <button id="augmentBackupBtn" class="btn btn-primary" disabled>
+          Augment and Download
+        </button>
+      </div>
+
+      <!-- Progress and Status -->
+      <div id="spinnerAugmentBackup" class="spinner" role="status" aria-live="polite" aria-label="Loading"></div>
+      <div id="statusAugmentBackup" class="status" style="display:none;" aria-live="polite"></div>
+
+      <!-- Workflow Tips -->
+      <div class="mt-6 p-4 bg-slate-700/20 rounded-lg border border-slate-600/30">
+        <h4 class="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+          Workflow Tips
+        </h4>
+        <ul class="text-xs text-slate-300 space-y-1">
+          <li>• Upload your existing backup file first, then the ZIP with new chapters</li>
+          <li>• Choose whether to use .txt filenames or auto-generated titles</li>
+          <li>• The tool will preserve all your existing content and metadata</li>
+          <li>• New chapters will be added at the end with sequential numbering</li>
+        </ul>
+      </div>
+    </div>
+
+
+    <!-- Enhanced Find & Replace in Backup File -->
+    <div id="findReplaceBackupApp" class="card tool-section" style="display:none;">
+      <h1>Find & Replace in Backup</h1>
+
+      <!-- Upload Section -->
+      <div class="upload-section option-group mb-6">
+        <label for="frBackupFile" class="btn upload-btn" id="frBackupFileLabel">Upload Backup File</label>
+        <input type="file" id="frBackupFile" accept=".json,.txt,.nov" aria-labelledby="frBackupFileLabel">
+        <div class="filename-display-area">
+              <span id="frBackupFileName" class="text-slate-300"></span>
+              <button type="button" id="clearFrBackupFile" class="clear-file-btn" aria-label="Clear backup file" style="display:none;">&times;</button>
+        </div>
+        <p class="text-xs text-slate-400 mt-2">Upload a .json or .nov backup file to search and replace</p>
+      </div>
+
+      <!-- Configuration Sections -->
+      <div class="space-y-6">
+        <!-- Search Configuration -->
+        <div class="p-4 bg-slate-700/20 rounded-lg border border-slate-600/30">
+          <h3 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+            Search Configuration
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="option-group">
+              <label for="findPattern" class="flex items-center gap-2">
+                Find Pattern:
+              </label>
+              <textarea id="findPattern" placeholder="Enter search term or regex pattern" rows="3" class="mt-2"></textarea>
+            </div>
+            <div class="option-group">
+              <label for="replaceText" class="flex items-center gap-2">
+                Replacement Text:
+              </label>
+              <textarea id="replaceText" placeholder="Enter replacement text" rows="3" class="mt-2"></textarea>
+            </div>
+          </div>
+
+          <!-- Search Options -->
+          <div class="mt-4 p-3 bg-slate-700/30 rounded-lg">
+            <h4 class="text-sm font-semibold text-slate-200 mb-3">Search Options:</h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <label class="checkbox-label-wrapper" for="useRegexBackup">
+                  <input type="checkbox" id="useRegexBackup" /> Use Regex
+              </label>
+              <label class="checkbox-label-wrapper" for="frCaseSensitiveCheckbox">
+                  <input type="checkbox" id="frCaseSensitiveCheckbox" /> Case Sensitive
+              </label>
+              <label class="checkbox-label-wrapper" for="frWholeWordCheckbox">
+                  <input type="checkbox" id="frWholeWordCheckbox" /> Match Whole Word
+              </label>
+            </div>
+            <p class="text-xs text-slate-400 mt-2">
+              <strong>Tip:</strong> Use regex for advanced patterns like finding specific formatting or multiple variations
+            </p>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="p-4 bg-slate-700/20 rounded-lg border border-slate-600/30">
+          <h3 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+            Actions
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="flex gap-2">
+              <button id="findPreviousBtn" class="btn btn-primary fr-btn flex-1">
+                Find Previous
+              </button>
+              <button id="findNextBtn" class="btn btn-primary fr-btn flex-1">
+                Find Next
+              </button>
+            </div>
+            <div class="flex gap-2">
+              <button id="replaceNextBtn" class="btn btn-accent fr-btn flex-1">
+                Replace This
+              </button>
+              <button id="downloadCurrentFrBackupBtn" class="btn btn-accent fr-btn flex-1" disabled>
+                Download Backup
+              </button>
+            </div>
+          </div>
+          <div class="mt-3">
+            <button id="replaceAllBtn" class="btn btn-accent fr-btn w-full">
+              Replace All & Download
+            </button>
+          </div>
+        </div>
+
+        <!-- Match Information -->
+        <div class="p-4 bg-blue-600/10 rounded-lg border border-blue-500/30">
+          <h3 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+            Match Information
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-slate-700/30 p-3 rounded-lg">
+              <div class="text-sm text-slate-300 mb-2">Current Match:</div>
+              <div class="text-xs text-slate-400">
+                <div><strong>Scene:</strong> <span id="frMatchSceneTitle">N/A</span></div>
+                <div><strong>Block:</strong> <span id="frMatchBlockIndex">N/A</span></div>
+              </div>
+            </div>
+            <div class="bg-slate-700/30 p-3 rounded-lg">
+              <div class="text-sm text-slate-300 mb-2">Match Count:</div>
+              <div class="text-lg font-bold text-primary-400" id="frMatchCountDisplay" aria-live="polite">0 matches</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Match Preview -->
+        <div class="p-4 bg-slate-700/20 rounded-lg border border-slate-600/30">
+          <h3 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+            Match Preview
+          </h3>
+          <div id="currentMatchDisplay" class="fr-match-preview bg-slate-700/50 p-4 rounded-lg text-slate-300" aria-live="polite">
+            No match found yet. Use "Find Next" to start searching.
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress and Status -->
+      <div id="spinnerFindReplaceBackup" class="spinner" role="status" aria-live="polite" aria-label="Loading"></div>
+      <div id="statusFindReplaceBackup" class="status" style="display:none;" aria-live="polite"></div>
+
+      <!-- Workflow Tips -->
+      <div class="mt-6 p-4 bg-slate-700/20 rounded-lg border border-slate-600/30">
+        <h4 class="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+          Workflow Tips
+        </h4>
+        <ul class="text-xs text-slate-300 space-y-1">
+          <li>• Upload your backup file and configure your search pattern</li>
+          <li>• Use "Find Next" to navigate through matches and preview changes</li>
+          <li>• Use "Replace This" to replace individual matches or "Replace All" for bulk changes</li>
+          <li>• Regex mode enables advanced pattern matching with capture groups</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Enhanced Create Backup from ZIP -->
+    <div id="createBackupFromZipApp" class="card tool-section" style="display:none;">
+      <h1>Create Backup from ZIP</h1>
+
+      <!-- Upload Section -->
+      <div class="upload-section option-group mb-6">
+        <label for="zipBackupFile" class="btn upload-btn" id="zipBackupFileLabel">📦 Upload ZIP File</label>
+        <input type="file" id="zipBackupFile" accept=".zip" aria-labelledby="zipBackupFileLabel" aria-describedby="statusMessageCreateBackupFromZip">
+        <div class="filename-display-area">
+              <span id="zipBackupFileName" class="text-slate-300"></span>
+              <button type="button" id="clearZipBackupFile" class="clear-file-btn" aria-label="Clear ZIP file" style="display:none;">&times;</button>
+        </div>
+        <p class="text-xs text-slate-400 mt-2">Upload a ZIP file containing .txt chapter files</p>
+      </div>
+
+      <!-- Configuration Sections -->
+      <div class="space-y-6">
+        <!-- Project Information -->
+        <div class="p-4 bg-slate-700/20 rounded-lg border border-slate-600/30">
+          <h3 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+            <span>📝</span>Project Information
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="option-group">
+              <label for="zipProjectTitle" class="flex items-center gap-2">
+                <span>📚</span>Project Title:
+              </label>
+              <input type="text" id="zipProjectTitle" placeholder="Enter project title" aria-describedby="statusMessageCreateBackupFromZip">
+            </div>
+            <div class="option-group">
+              <label for="zipUniqueCode" class="flex items-center gap-2">
+                <span>🔢</span>Unique Code (Optional):
+              </label>
+              <input type="text" id="zipUniqueCode" placeholder="Auto-generated if blank">
+            </div>
+          </div>
+          <div class="option-group mt-4">
+            <label for="zipDescription" class="flex items-center gap-2">
+              <span>📄</span>Description:
+            </label>
+            <textarea id="zipDescription" placeholder="Enter project description" rows="3"></textarea>
+          </div>
+        </div>
+
+        <!-- Chapter Configuration -->
+        <div class="p-4 bg-slate-700/20 rounded-lg border border-slate-600/30">
+          <h3 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+            <span>⚙️</span>Chapter Configuration
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="option-group">
+              <label for="zipChapterPattern" class="flex items-center gap-2">
+                <span>🏷️</span>Chapter Pattern:
+                <span class="tooltip-trigger" aria-label="More info about Chapter Pattern" role="button" tabindex="0">(?)
+                  <span class="tooltip-text-popup">If provided, chapters will be named 'Pattern + Number'. E.g., 'Chapter 1', 'Chapter 2'. If blank, original .txt filenames are used. Click to dismiss.</span>
+                </span>
+              </label>
+              <input type="text" id="zipChapterPattern" placeholder="e.g., Chapter " value="Chapter ">
+            </div>
+            <div class="option-group">
+              <label for="zipStartNumber" class="flex items-center gap-2">
+                <span>🔢</span>Start Number:
+              </label>
+              <input type="number" id="zipStartNumber" min="1" value="1" aria-describedby="statusMessageCreateBackupFromZip">
+            </div>
+          </div>
+          <div class="option-group mt-4">
+            <label for="zipExtraChapters" class="flex items-center gap-2">
+              <span>➕</span>Extra Empty Chapters:
+            </label>
+            <input type="number" id="zipExtraChapters" min="0" value="0" aria-describedby="statusMessageCreateBackupFromZip">
+            <p class="text-xs text-slate-400 mt-2">Add this many empty chapters to the end of your backup</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div class="mt-8 flex justify-center">
+        <button id="createFromZipBtn" class="btn btn-primary" disabled>
+          <span class="mr-2">⚡</span>Generate Backup and Download
+        </button>
+      </div>
+
+      <!-- Progress and Status -->
+      <div id="spinnerCreateBackupFromZip" class="spinner" role="status" aria-live="polite" aria-label="Loading"></div>
+      <div id="statusMessageCreateBackupFromZip" class="status" style="display:none;" aria-live="polite"></div>
+
+      <!-- Workflow Tips -->
+      <div class="mt-6 p-4 bg-slate-700/20 rounded-lg border border-slate-600/30">
+        <h4 class="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+          <span>💡</span>Workflow Tips
+        </h4>
+        <ul class="text-xs text-slate-300 space-y-1">
+          <li>• Upload a ZIP file containing your chapter .txt files</li>
+          <li>• Configure your project title and chapter naming pattern</li>
+          <li>• Add extra empty chapters if you need placeholders for future content</li>
+          <li>• The tool will automatically generate a structured backup file</li>
+        </ul>
+      </div>
+    </div>
+
+
+    <!-- ZIP to EPUB Converter -->
+    <div id="zipToEpubApp" class="card tool-section" style="display:none;">
+      <h1>ZIP to EPUB Converter</h1>
+      <div class="upload-section option-group">
+        <label for="zipUploadForEpub" class="btn upload-btn" id="zipUploadForEpubLabel">Upload ZIP File (.zip with .txt chapters)</label>
+        <input type="file" id="zipUploadForEpub" accept=".zip" style="display:none;" aria-labelledby="zipUploadForEpubLabel">
+        <div class="filename-display-area">
+            <span id="zipFileNameForEpub"></span>
+            <button type="button" id="clearZipUploadForEpub" class="clear-file-btn" aria-label="Clear ZIP file" style="display:none;">&times;</button>
+        </div>
+      </div>
+
+      <div id="zipToEpubChapterArea" class="option-group" style="display:none;">
+          <label>Chapter Order and Titles:</label>
+          <p style="font-size: 0.8em; color: var(--secondary-text-color); text-align: center; margin-top: -5px;">
+              Drag to reorder. Click a title to edit it.
+          </p>
+          <ul id="zipToEpubChapterList" class="chapter-list-draggable" aria-label="List of chapters to include in the EPUB">
+              <!-- Dynamically populated by JS -->
+          </ul>
+      </div>
+
+      <div class="options-section">
+        <div class="option-group">
+          <label for="epubTitle">EPUB Title:</label>
+          <input type="text" id="epubTitle" placeholder="Enter EPUB title" value="My Novel" aria-describedby="statusMessageZipToEpub">
+        </div>
+        <div class="option-group">
+          <label for="epubAuthor">Author:</label>
+          <input type="text" id="epubAuthor" placeholder="Enter author name" value="Unknown Author" aria-describedby="statusMessageZipToEpub">
+        </div>
+        
+        <div class="option-group">
+            <label for="epubCoverImage" id="epubCoverImageLabel">Cover Image (Optional, JPG/PNG):</label>
+            <input type="file" id="epubCoverImage" accept="image/jpeg,image/png" style="margin-top:5px;" aria-labelledby="epubCoverImageLabel">
+            <div class="filename-display-area" style="margin-top:5px;">
+                <span id="epubCoverFileName" style="font-size:12px;color:#aaa;"></span>
+                <button type="button" id="clearEpubCoverImage" class="clear-file-btn" aria-label="Clear cover image" style="display:none;">&times;</button>
+            </div>
+        </div>
+        
+        <details class="advanced-options-accordion">
+            <summary>Advanced Options</summary>
+            <div class="accordion-content">
+                <div class="option-group">
+                  <label for="epubLanguage">Language Code:</label>
+                  <input type="text" id="epubLanguage" placeholder="e.g., en" value="en" aria-describedby="statusMessageZipToEpub">
+                </div>
+                <div class="option-group">
+                    <label class="checkbox-label-wrapper" for="processMarkdown">
+                        <input type="checkbox" id="processMarkdown" /> Process chapter text as Markdown
+                    </label>
+                     <p style="font-size: 0.8em; color: var(--secondary-text-color); text-align: center; margin-top: -5px;">
+                        Supports headings (#), bold (**text**), and italic (*text*).
+                    </p>
+                </div>
+            </div>
+        </details>
+      </div>
+      <button id="createEpubBtn" class="btn split-btn" disabled>Create EPUB</button>
+      <div id="spinnerZipToEpub" class="spinner" role="status" aria-live="polite" aria-label="Loading"></div>
+      <div id="statusMessageZipToEpub" class="status" style="display:none;" aria-live="polite"></div>
+      <div class="download-section" id="downloadSectionZipToEpub" style="display:none;">
+        <a id="downloadLinkEpub" class="btn download-btn">Download EPUB</a>
+      </div>
+    </div>
+
+    <!-- EPUB to ZIP (TXT) Converter -->
+    <div id="epubToZipApp" class="card tool-section" style="display:none;">
+      <h1>EPUB to ZIP (TXT)</h1>
+      <div class="upload-section option-group">
+        <label for="epubUploadForTxt" class="btn upload-btn" id="epubUploadForTxtLabel">Upload EPUB File</label>
+        <input type="file" id="epubUploadForTxt" accept=".epub" style="display:none;" aria-labelledby="epubUploadForTxtLabel">
+        <div class="filename-display-area">
+            <span id="epubFileNameForTxt"></span>
+            <button type="button" id="clearEpubUploadForTxt" class="clear-file-btn" aria-label="Clear EPUB file" style="display:none;">&times;</button>
+        </div>
+      </div>
+
+      <div id="epubToZipChapterSelectionArea" style="display:none; margin-top:15px;">
+        <h4>Select Chapters to Extract:</h4>
+        <div style="margin-bottom:10px; display: flex; gap: 10px; justify-content: center;">
+          <button type="button" id="epubToZipSelectAllChapters" class="btn btn-accent btn-small">Select All</button>
+          <button type="button" id="epubToZipDeselectAllChapters" class="btn btn-accent btn-small">Deselect All</button>
+        </div>
+        <ul id="epubToZipChapterList" class="chapter-selection-list" aria-label="List of EPUB chapters for text extraction">
+          <!-- Chapters will be populated here by JS -->
+        </ul>
+      </div>
+
+      <div class="options-section">
+        <div class="option-group">
+          <label class="checkbox-label-wrapper" for="epubToZipEnableRemoveLines">
+            <input type="checkbox" id="epubToZipEnableRemoveLines" />
+            Remove initial lines from chapters
+          </label>
+        </div>
+        <div class="option-group" id="epubToZipRemoveLinesOptionsGroup" style="display:none;">
+          <label for="epubToZipLinesToRemove">Number of lines to remove:</label>
+          <input type="number" id="epubToZipLinesToRemove" min="0" value="1" aria-describedby="statusMessageEpubToZip">
+        </div>
+      </div>
+      <button id="extractChaptersBtn" class="btn split-btn" disabled>Extract Chapters to ZIP</button>
+      <div id="spinnerEpubToZip" class="spinner" role="status" aria-live="polite" aria-label="Loading"></div>
+      <div id="statusMessageEpubToZip" class="status" style="display:none;" aria-live="polite"></div>
+      <div class="download-section" id="downloadSectionEpubToZip" style="display:none;">
+        <a id="downloadLinkZipFromEpub" class="btn download-btn">Download Chapter TXTs</a>
+      </div>
+    </div>
+
+    <!-- Enhanced Combined ZIP ↔ EPUB Tool -->
+    <div id="zipEpubApp" class="card tool-section" style="display:none;">
+      <h1>ZIP ↔ EPUB Converter</h1>
+
+      <!-- Enhanced Mode Switch with Icons -->
+      <div class="option-group" style="margin-bottom: 24px;">
+        <label class="text-center block mb-4 text-slate-200">Conversion Direction:</label>
+        <div class="flex justify-center gap-3 mt-2">
+          <button id="zipToEpubMode" class="mode-btn flex items-center gap-2 px-6 py-3 rounded-lg font-medium bg-primary-600 text-white shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary-500 hover:bg-primary-700 hover:scale-105">
+            <span class="text-lg">📦</span>
+            <span>ZIP → EPUB</span>
+          </button>
+          <button id="epubToZipMode" class="mode-btn flex items-center gap-2 px-6 py-3 rounded-lg font-medium bg-slate-700 text-slate-300 shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-slate-500 hover:bg-slate-600 hover:scale-105">
+            <span class="text-lg">📖</span>
+            <span>EPUB → ZIP</span>
+          </button>
+        </div>
+        <p class="text-xs text-slate-400 text-center mt-3">Choose your conversion direction</p>
+      </div>
+
+      <!-- Host container for the original tool sections -->
+      <div id="zipEpubHost"></div>
+
+      <!-- Workflow Tips -->
+      <div class="mt-8 p-4 bg-slate-700/20 rounded-lg border border-slate-600/30">
+        <h4 class="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+          <span>💡</span>Workflow Tips
+        </h4>
+        <ul class="text-xs text-slate-300 space-y-1">
+          <li>• <strong>ZIP → EPUB:</strong> Convert text chapters to professional EPUB format</li>
+          <li>• <strong>EPUB → ZIP:</strong> Extract chapters from EPUB files as text</li>
+          <li>• Both directions support drag-and-drop file uploads</li>
+          <li>• Advanced options available in the expandable sections</li>
+        </ul>
+      </div>
+    </div>
+
+
+
+  </div>
+
+  <div id="toast" class="status-toast" role="alert" aria-live="assertive"></div>
+
+  <!-- JSZip fallback for offline use -->
+  <script src="jszip.min.js"></script>
+
+  <script type="module" src="js/index.js"></script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>

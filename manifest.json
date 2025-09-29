@@ -1,0 +1,123 @@
+{
+  "name": "Novel-Apps",
+  "short_name": "Novel-Apps",
+  "description": "A mobile-first suite of tools for novelists, including EPUB utilities and backup management with offline support.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0097a7",
+  "orientation": "portrait-primary",
+  "scope": "./",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["productivity", "utilities", "books"],
+
+  "shortcuts": [
+    {
+      "name": "EPUB Splitter",
+      "short_name": "Split EPUB",
+      "description": "Split EPUB chapters quickly",
+      "url": "./index.html#tool-splitter"
+    },
+    {
+      "name": "Create Backup",
+      "short_name": "Create Backup",
+      "description": "Create novel backup from ZIP",
+      "url": "./index.html#tool-createBackupFromZip"
+    },
+    {
+      "name": "Augment Backup",
+      "short_name": "Augment Backup",
+      "description": "Add chapters to existing backup",
+      "url": "./index.html#tool-augmentBackupWithZip"
+    }
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-180x180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "file_handlers": [
+    {
+      "action": "./index.html",
+      "accept": {
+        "application/epub+zip": [".epub"],
+        "application/zip": [".zip"],
+        "application/json": [".json", ".nov"]
+      }
+    }
+  ],
+  "protocol_handlers": [],
+  "share_target": {
+    "action": "./index.html",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        {
+          "name": "files",
+          "accept": ["application/epub+zip", "application/zip", "application/json"]
+        }
+      ]
+    }
+  }
+}
