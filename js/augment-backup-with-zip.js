@@ -14,6 +14,7 @@ export function initializeAugmentBackupWithZip(showAppToast, toggleAppSpinner) {
     const clearZipFileBtn = document.getElementById('clearAugmentZipFile');
 
     const prefixInput = document.getElementById('augmentPrefix');
+    const startNumberInput = document.getElementById('augmentStartNumber');
     const preserveTxtTitlesCheckbox = document.getElementById('augmentPreserveTxtTitles');
     const augmentBtn = document.getElementById('augmentBackupBtn');
     const statusEl = document.getElementById('statusAugmentBackup');
@@ -23,7 +24,7 @@ export function initializeAugmentBackupWithZip(showAppToast, toggleAppSpinner) {
 
     if (!baseBackupFileInput || !baseBackupFileNameEl || !clearBaseBackupFileBtn ||
         !zipFileInput || !zipFileNameEl || !clearZipFileBtn ||
-        !prefixInput || !preserveTxtTitlesCheckbox || !augmentBtn || !statusEl) {
+        !prefixInput || !startNumberInput || !preserveTxtTitlesCheckbox || !augmentBtn || !statusEl) {
         console.error("Augment Backup with ZIP: One or more UI elements not found. Initialization failed.");
         return;
     }
@@ -32,14 +33,44 @@ export function initializeAugmentBackupWithZip(showAppToast, toggleAppSpinner) {
         augmentBtn.disabled = !(selectedBaseFile && selectedZipFile);
     }
 
-    baseBackupFileInput.addEventListener('change', (e) => {
+    baseBackupFileInput.addEventListener('change', async (e) => {
         selectedBaseFile = e.target.files?.[0] || null;
         if (selectedBaseFile) {
             baseBackupFileNameEl.textContent = `Selected: ${selectedBaseFile.name}`;
             clearBaseBackupFileBtn.style.display = 'inline-block';
+
+            // Pre-fill start number
+            try {
+                const baseFileText = await selectedBaseFile.text();
+                const backupData = JSON.parse(baseFileText);
+
+                if (!backupData.revisions?.[0]?.scenes) {
+                    throw new Error('Invalid backup file structure.');
+                }
+                const currentRevision = backupData.revisions[0];
+                let maxExistingRank = 0;
+                currentRevision.scenes.forEach(s => { if (s.ranking > maxExistingRank) maxExistingRank = s.ranking; });
+                currentRevision.sections.forEach(s => { if (s.ranking > maxExistingRank) maxExistingRank = s.ranking; });
+
+                const nextAvailableRank = maxExistingRank + 1;
+                startNumberInput.value = nextAvailableRank;
+                startNumberInput.min = nextAvailableRank;
+
+            } catch (err) {
+                showAppToast(`Error reading base backup: ${err.message}`, true);
+                startNumberInput.value = 1;
+                startNumberInput.min = 1;
+                // Clear the file input if it was invalid
+                baseBackupFileInput.value = '';
+                selectedBaseFile = null;
+                baseBackupFileNameEl.textContent = '';
+                clearBaseBackupFileBtn.style.display = 'none';
+            }
         } else {
             baseBackupFileNameEl.textContent = '';
             clearBaseBackupFileBtn.style.display = 'none';
+            startNumberInput.value = 1;
+            startNumberInput.min = 1;
         }
         statusEl.style.display = 'none';
         checkEnableButton();
@@ -50,6 +81,8 @@ export function initializeAugmentBackupWithZip(showAppToast, toggleAppSpinner) {
         selectedBaseFile = null;
         baseBackupFileNameEl.textContent = '';
         clearBaseBackupFileBtn.style.display = 'none';
+        startNumberInput.value = 1;
+        startNumberInput.min = 1;
         statusEl.style.display = 'none';
         checkEnableButton();
     });
@@ -100,6 +133,7 @@ export function initializeAugmentBackupWithZip(showAppToast, toggleAppSpinner) {
 
         const prefix = prefixInput.value.trim();
         const preserveTitles = preserveTxtTitlesCheckbox.checked;
+        const startNumber = parseInt(startNumberInput.value, 10);
 
         try {
             const baseFileText = await selectedBaseFile.text();
@@ -115,6 +149,14 @@ export function initializeAugmentBackupWithZip(showAppToast, toggleAppSpinner) {
                 throw new Error('Base backup file has an invalid or incomplete structure.');
             }
             const currentRevision = backupData.revisions[0];
+            
+            let maxExistingRank = 0;
+            currentRevision.scenes.forEach(s => { if (s.ranking > maxExistingRank) maxExistingRank = s.ranking; });
+            currentRevision.sections.forEach(s => { if (s.ranking > maxExistingRank) maxExistingRank = s.ranking; });
+
+            if (isNaN(startNumber) || startNumber < maxExistingRank + 1) {
+                throw new Error(`Start Number must be ${maxExistingRank + 1} or greater to avoid chapter conflicts.`);
+            }
 
             const JSZip = (await import('jszip')).default;
             const zip = await JSZip.loadAsync(selectedZipFile);
@@ -138,14 +180,10 @@ export function initializeAugmentBackupWithZip(showAppToast, toggleAppSpinner) {
                 return;
             }
 
-            let maxExistingRank = 0;
-            currentRevision.scenes.forEach(s => { if (s.ranking > maxExistingRank) maxExistingRank = s.ranking; });
-            currentRevision.sections.forEach(s => { if (s.ranking > maxExistingRank) maxExistingRank = s.ranking; });
-
             let newChapterIndex = 0;
 
             for (const chapterFile of chapterFiles) {
-                const newRank = maxExistingRank + 1 + newChapterIndex;
+                const newRank = startNumber + newChapterIndex;
                 const sceneCode = `scene${newRank}`;
                 const sectionCode = `section${newRank}`;
                 let chapterTitle;

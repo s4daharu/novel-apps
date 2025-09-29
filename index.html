@@ -502,6 +502,12 @@
               </label>
               <input type="text" id="augmentPrefix" placeholder="e.g., New Section - ">
             </div>
+            <div class="option-group">
+              <label for="augmentStartNumber" class="flex items-center gap-2">
+                Start Number for New Chapters:
+              </label>
+              <input type="number" id="augmentStartNumber" min="1" value="1">
+            </div>
           </div>
           <div class="option-group mt-4">
             <label class="checkbox-label-wrapper" for="augmentPreserveTxtTitles">
@@ -556,140 +562,113 @@
 
 
     <!-- Enhanced Find & Replace in Backup File -->
-    <div id="findReplaceBackupApp" class="card tool-section" style="display:none;">
-      <h1>Find & Replace in Backup</h1>
-
-      <!-- Upload Section -->
-      <div class="upload-section option-group mb-6">
-        <label for="frBackupFile" class="btn upload-btn" id="frBackupFileLabel">Upload Backup File</label>
-        <input type="file" id="frBackupFile" accept=".json,.txt,.nov" aria-labelledby="frBackupFileLabel">
-        <div class="filename-display-area">
-              <span id="frBackupFileName" class="text-slate-300"></span>
-              <button type="button" id="clearFrBackupFile" class="clear-file-btn" aria-label="Clear backup file" style="display:none;">&times;</button>
+    <div id="findReplaceBackupApp" class="tool-section fr-container" style="display:none;">
+      <!-- Initial Upload View -->
+      <div id="frUploadArea" class="fr-upload-area">
+        <h1 class="text-2xl md:text-3xl font-bold text-white mb-5 text-center">Find & Replace in Backup</h1>
+        <div class="upload-section option-group">
+          <label for="frBackupFile" class="btn upload-btn" id="frBackupFileLabel">Upload Backup File</label>
+          <input type="file" id="frBackupFile" accept=".json,.txt,.nov" style="display: none;" aria-labelledby="frBackupFileLabel">
+          <p class="text-xs text-slate-400 mt-2">Upload a .json or .nov backup file to search and replace.</p>
         </div>
-        <p class="text-xs text-slate-400 mt-2">Upload a .json or .nov backup file to search and replace</p>
       </div>
 
-      <!-- Configuration Sections -->
-      <div class="space-y-6">
-        <!-- Search Configuration -->
-        <div class="p-4 bg-slate-700/20 rounded-lg border border-slate-600/30">
-          <h3 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
-            Search Configuration
-          </h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="option-group">
-              <label for="findPattern" class="flex items-center gap-2">
-                Find Pattern:
-              </label>
-              <textarea id="findPattern" placeholder="Enter search term or regex pattern" rows="3" class="mt-2"></textarea>
-            </div>
-            <div class="option-group">
-              <label for="replaceText" class="flex items-center gap-2">
-                Replacement Text:
-              </label>
-              <textarea id="replaceText" placeholder="Enter replacement text" rows="3" class="mt-2"></textarea>
-            </div>
+      <!-- Live Preview Area -->
+      <div id="frLivePreview" class="fr-live-preview">
+        <p class="fr-preview-placeholder">Upload a backup file to begin.</p>
+      </div>
+
+      <!-- Download Button Container -->
+      <div id="frDownloadContainer" class="fr-download-container">
+        <button id="downloadCurrentFrBackupBtn" class="btn btn-primary" disabled>Download Backup</button>
+      </div>
+
+      <!-- Bottom Action Container -->
+      <div id="frActionContainer" class="fr-action-container" style="display: none;">
+        <button id="frStartBtn" class="btn btn-primary w-full">Find in Document...</button>
+
+        <div id="frBottomSheet" class="fr-bottom-sheet">
+          <!-- Sheet Header with Drag Handle -->
+          <div class="fr-sheet-header">
+            <div class="fr-sheet-handle"></div>
+            <button id="frCloseSheetBtn" class="fr-sheet-close-btn" aria-label="Close find and replace controls">&times;</button>
           </div>
 
-          <!-- Search Options -->
-          <div class="mt-4 p-3 bg-slate-700/30 rounded-lg">
-            <h4 class="text-sm font-semibold text-slate-200 mb-3">Search Options:</h4>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <label class="checkbox-label-wrapper" for="useRegexBackup">
-                  <input type="checkbox" id="useRegexBackup" /> Use Regex
-              </label>
-              <label class="checkbox-label-wrapper" for="frCaseSensitiveCheckbox">
-                  <input type="checkbox" id="frCaseSensitiveCheckbox" /> Case Sensitive
-              </label>
-              <label class="checkbox-label-wrapper" for="frWholeWordCheckbox">
-                  <input type="checkbox" id="frWholeWordCheckbox" /> Match Whole Word
-              </label>
-            </div>
-            <p class="text-xs text-slate-400 mt-2">
-              <strong>Tip:</strong> Use regex for advanced patterns like finding specific formatting or multiple variations
-            </p>
-          </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="p-4 bg-slate-700/20 rounded-lg border border-slate-600/30">
-          <h3 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
-            Actions
-          </h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div class="flex gap-2">
-              <button id="findPreviousBtn" class="btn btn-primary fr-btn flex-1">
-                Find Previous
-              </button>
-              <button id="findNextBtn" class="btn btn-primary fr-btn flex-1">
-                Find Next
-              </button>
-            </div>
-            <div class="flex gap-2">
-              <button id="replaceNextBtn" class="btn btn-accent fr-btn flex-1">
-                Replace This
-              </button>
-              <button id="downloadCurrentFrBackupBtn" class="btn btn-accent fr-btn flex-1" disabled>
-                Download Backup
-              </button>
-            </div>
-          </div>
-          <div class="mt-3">
-            <button id="replaceAllBtn" class="btn btn-accent fr-btn w-full">
-              Replace All & Download
-            </button>
-          </div>
-        </div>
-
-        <!-- Match Information -->
-        <div class="p-4 bg-blue-600/10 rounded-lg border border-blue-500/30">
-          <h3 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
-            Match Information
-          </h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="bg-slate-700/30 p-3 rounded-lg">
-              <div class="text-sm text-slate-300 mb-2">Current Match:</div>
-              <div class="text-xs text-slate-400">
-                <div><strong>Scene:</strong> <span id="frMatchSceneTitle">N/A</span></div>
-                <div><strong>Block:</strong> <span id="frMatchBlockIndex">N/A</span></div>
+          <!-- Main Controls -->
+          <div class="fr-sheet-content">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div class="option-group">
+                <label for="findPattern">Find</label>
+                <textarea id="findPattern" rows="2" class="w-full"></textarea>
+              </div>
+              <div class="option-group">
+                <label for="replaceText">Replace with</label>
+                <textarea id="replaceText" rows="2" class="w-full"></textarea>
               </div>
             </div>
-            <div class="bg-slate-700/30 p-3 rounded-lg">
-              <div class="text-sm text-slate-300 mb-2">Match Count:</div>
-              <div class="text-lg font-bold text-primary-400" id="frMatchCountDisplay" aria-live="polite">0 matches</div>
+
+            <div class="grid grid-cols-2 gap-3 mt-3">
+              <div class="option-group">
+                <label for="frScopeSelect">Search In</label>
+                <select id="frScopeSelect" class="w-full"></select>
+              </div>
+              <div class="fr-options-toggles">
+                <label class="checkbox-label-wrapper" for="useRegexBackup" title="Use Regular Expression">
+                  <input type="checkbox" id="useRegexBackup">
+                  <span>Regex</span>
+                </label>
+                <label class="checkbox-label-wrapper" for="frCaseSensitiveCheckbox" title="Case Sensitive">
+                  <input type="checkbox" id="frCaseSensitiveCheckbox">
+                  <span>Aa</span>
+                </label>
+                <label class="checkbox-label-wrapper" for="frWholeWordCheckbox" title="Match Whole Word">
+                  <input type="checkbox" id="frWholeWordCheckbox">
+                  <span>" "</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="fr-navigation-actions mt-4">
+              <div id="frMatchCountDisplay" class="fr-match-counter">No matches</div>
+              <div class="fr-nav-buttons">
+                <button id="findPreviousBtn" class="btn-icon" aria-label="Find Previous">◀</button>
+                <button id="findNextBtn" class="btn-icon" aria-label="Find Next">▶</button>
+              </div>
+              <div class="fr-action-buttons">
+                <button id="replaceNextBtn" class="btn btn-primary flex-1">Replace</button>
+                <button id="replaceAllBtn" class="btn btn-accent flex-1">Replace All</button>
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Match Preview -->
-        <div class="p-4 bg-slate-700/20 rounded-lg border border-slate-600/30">
-          <h3 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
-            Match Preview
-          </h3>
-          <div id="currentMatchDisplay" class="fr-match-preview bg-slate-700/50 p-4 rounded-lg text-slate-300" aria-live="polite">
-            No match found yet. Use "Find Next" to start searching.
+      <!-- Review All Modal -->
+      <div id="frReviewModal" class="fr-review-modal" style="display: none;">
+        <div class="fr-review-content">
+          <div class="fr-review-header">
+            <h2 id="frReviewHeaderTitle">Review Changes</h2>
+            <button id="frCloseReviewModalBtn" class="fr-review-close-btn" aria-label="Close review modal">&times;</button>
+          </div>
+          <div class="fr-review-summary">
+            <label class="checkbox-label-wrapper">
+              <input type="checkbox" id="frReviewSelectAll" checked>
+              <span id="frReviewSummaryText">X replacements proposed</span>
+            </label>
+          </div>
+          <ul id="frReviewList" class="fr-review-list">
+          </ul>
+          <div class="fr-review-footer">
+            <button id="frCancelReviewBtn" class="btn">Cancel</button>
+            <button id="frConfirmReplaceAllBtn" class="btn btn-accent">Confirm Replacements</button>
           </div>
         </div>
       </div>
 
-      <!-- Progress and Status -->
-      <div id="spinnerFindReplaceBackup" class="spinner" role="status" aria-live="polite" aria-label="Loading"></div>
-      <div id="statusFindReplaceBackup" class="status" style="display:none;" aria-live="polite"></div>
-
-      <!-- Workflow Tips -->
-      <div class="mt-6 p-4 bg-slate-700/20 rounded-lg border border-slate-600/30">
-        <h4 class="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
-          Workflow Tips
-        </h4>
-        <ul class="text-xs text-slate-300 space-y-1">
-          <li>• Upload your backup file and configure your search pattern</li>
-          <li>• Use "Find Next" to navigate through matches and preview changes</li>
-          <li>• Use "Replace This" to replace individual matches or "Replace All" for bulk changes</li>
-          <li>• Regex mode enables advanced pattern matching with capture groups</li>
-        </ul>
-      </div>
+      <!-- Global Spinner -->
+      <div id="spinnerFindReplaceBackup" class="spinner" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 50; display: none;"></div>
     </div>
+
 
     <!-- Enhanced Create Backup from ZIP -->
     <div id="createBackupFromZipApp" class="card tool-section" style="display:none;">
