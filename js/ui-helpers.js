@@ -22,6 +22,17 @@ const SWIPE_EDGE_THRESHOLD = 60;
 const SIDEBAR_SWIPE_CLOSE_THRESHOLD = 80;
 const MAX_VERTICAL_SWIPE = 100; // Allow more vertical movement
 
+/**
+ * Escapes a string for safe insertion into HTML content.
+ * @param {string} str The string to escape.
+ * @returns {string} The escaped string.
+ */
+export function escapeHTML(str) {
+    if (typeof str !== 'string') return '';
+    const lookup = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    return str.replace(/[&<>"']/g, (c) => lookup[c]);
+}
+
 export function initializeTheme() {
     const themeToggles = document.querySelectorAll('.theme-toggle-btn');
     const sunIcons = document.querySelectorAll('.sun-icon');
@@ -59,6 +70,43 @@ export function initializeTheme() {
     } else {
         applyTheme('light');
     }
+}
+
+export function initializeTooltips() {
+    // Use event delegation on the body for dynamically added tooltips
+    document.body.addEventListener('click', (e) => {
+        const trigger = e.target.closest('.tooltip-trigger');
+
+        // Close all other tooltips
+        document.querySelectorAll('.tooltip-trigger.active').forEach(activeTrigger => {
+            if (activeTrigger !== trigger) {
+                activeTrigger.classList.remove('active');
+            }
+        });
+
+        // Toggle the clicked tooltip
+        if (trigger) {
+            e.stopPropagation();
+            trigger.classList.toggle('active');
+        }
+    });
+
+    // Add keyboard support using delegation
+    document.body.addEventListener('keydown', (e) => {
+        if (e.target.matches('.tooltip-trigger') && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            e.target.click();
+        }
+    });
+
+    // Close on escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.tooltip-trigger.active').forEach(trigger => {
+                trigger.classList.remove('active');
+            });
+        }
+    });
 }
 
 

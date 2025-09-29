@@ -90,7 +90,7 @@
   }
 }
 </script>
-
+<link rel="stylesheet" href="/index.css">
 </head>
 
 <body class="bg-slate-50 text-slate-800 dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 dark:text-slate-100 min-h-screen font-sans antialiased text-base leading-relaxed transition-colors duration-300">
@@ -157,18 +157,8 @@
     <!-- Dashboard Section -->
     <section id="dashboardApp" class="min-h-screen p-4 md:p-8 animate-fade-in">
       <div class="max-w-6xl mx-auto">
-        <!-- Header with improved typography -->
-        <div class="text-center mb-12 animate-bounce-in">
-          <h1 class="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4 bg-gradient-to-r from-primary-400 to-primary-600 bg-clip-text text-transparent">
-            Novel-Apps
-          </h1>
-          <p class="text-slate-600 dark:text-slate-300 text-lg max-w-2xl mx-auto leading-relaxed">
-            Professional EPUB and novel backup management tools for writers and publishers
-          </p>
-        </div>
-
         <!-- Tool Cards Grid - Enhanced Mobile First -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 pt-8">
           <!-- EPUB Chapter Splitter -->
           <div class="tool-card group bg-white/60 dark:bg-slate-800/40 backdrop-blur-sm border border-slate-200 dark:border-slate-700/50 rounded-xl p-6 hover:bg-slate-50/80 dark:hover:bg-slate-700/60 hover:border-primary-500/50 transition-all duration-300 cursor-pointer hover:-translate-y-1 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary-500/10 animate-slide-in"
                data-action="launchApp" data-tool-id="splitter"
@@ -179,9 +169,6 @@
             <p class="text-slate-600 dark:text-slate-300 text-sm leading-relaxed text-center mb-4">
               Divide EPUB files into individual or grouped chapter text files with precision control.
             </p>
-            <div class="flex items-center justify-center text-xs text-primary-500 dark:text-primary-400 group-hover:text-primary-500 dark:group-hover:text-primary-300 transition-colors">
-              <span>Chapter Selection</span>
-            </div>
           </div>
 
           <!-- ZIP ↔ EPUB Converter -->
@@ -194,9 +181,6 @@
             <p class="text-slate-600 dark:text-slate-300 text-sm leading-relaxed text-center mb-4">
               Convert between ZIP files and EPUB format with bidirectional support and customization.
             </p>
-            <div class="flex items-center justify-center text-xs text-primary-500 dark:text-primary-400 group-hover:text-primary-500 dark:group-hover:text-primary-300 transition-colors">
-              <span>Bidirectional</span>
-            </div>
           </div>
 
           <!-- Create Backup from ZIP -->
@@ -209,9 +193,6 @@
             <p class="text-slate-600 dark:text-slate-300 text-sm leading-relaxed text-center mb-4">
               Generate structured novel backup files directly from ZIP archives containing text chapters.
             </p>
-            <div class="flex items-center justify-center text-xs text-primary-500 dark:text-primary-400 group-hover:text-primary-500 dark:group-hover:text-primary-300 transition-colors">
-              <span>Auto-Generate</span>
-            </div>
           </div>
 
           <!-- Merge Backup Files -->
@@ -224,9 +205,6 @@
             <p class="text-slate-600 dark:text-slate-300 text-sm leading-relaxed text-center mb-4">
               Combine multiple novel backup files into a single, organized backup with smart conflict resolution.
             </p>
-            <div class="flex items-center justify-center text-xs text-primary-500 dark:text-primary-400 group-hover:text-primary-500 dark:group-hover:text-primary-300 transition-colors">
-              <span>Smart Merge</span>
-            </div>
           </div>
 
           <!-- Augment Backup with ZIP -->
@@ -239,9 +217,6 @@
             <p class="text-slate-600 dark:text-slate-300 text-sm leading-relaxed text-center mb-4">
               Expand existing novel backups by adding new chapters from ZIP files seamlessly.
             </p>
-            <div class="flex items-center justify-center text-xs text-primary-500 dark:text-primary-400 group-hover:text-primary-500 dark:group-hover:text-primary-300 transition-colors">
-              <span>Expand</span>
-            </div>
           </div>
 
           <!-- Find & Replace in Backup -->
@@ -254,17 +229,7 @@
             <p class="text-slate-600 dark:text-slate-300 text-sm leading-relaxed text-center mb-4">
               Perform powerful find and replace operations within novel backup files with regex support and preview.
             </p>
-            <div class="flex items-center justify-center text-xs text-primary-500 dark:text-primary-400 group-hover:text-primary-500 dark:group-hover:text-primary-300 transition-colors">
-              <span>Advanced Search</span>
-            </div>
           </div>
-        </div>
-
-        <!-- Footer with additional info -->
-        <div class="mt-16 text-center">
-          <p class="text-slate-500 dark:text-slate-400 text-sm">
-            💡 <strong>Tip:</strong> All tools support drag-and-drop file uploads and provide real-time feedback
-          </p>
         </div>
       </div>
     </section>
@@ -379,7 +344,6 @@
         <label for="mergeBackupFiles" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-violet-600 hover:bg-violet-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 w-full cursor-pointer" id="mergeBackupFilesLabel">Upload Backup Files</label>
         <input type="file" id="mergeBackupFiles" class="hidden" accept=".json,.txt,.nov" multiple aria-labelledby="mergeBackupFilesLabel">
         <div class="text-left max-h-32 overflow-y-auto p-3 rounded-lg mt-2 bg-slate-100 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600/50" id="mergeBackupFileNamesArea">
-              <div class="text-xs text-slate-500 dark:text-slate-400 mb-2">Selected files:</div>
               <div id="mergeBackupFileNames" class="text-sm text-slate-700 dark:text-slate-300">No files selected.</div>
               <button type="button" id="clearMergeBackupFiles" class="bg-transparent border-none text-slate-500 text-2xl font-bold cursor-pointer ml-2 p-1 leading-none transition-colors hover:text-slate-800 dark:hover:text-white mt-2 hidden" aria-label="Clear backup files">&times;</button>
         </div>
@@ -456,19 +420,6 @@
       <!-- Progress and Status -->
       <div id="spinnerMergeBackup" class="w-10 h-10 border-4 border-slate-200 dark:border-slate-700 rounded-full border-t-primary-600 animate-spin my-4 mx-auto hidden" role="status" aria-live="polite" aria-label="Loading"></div>
       <div id="statusMergeBackup" class="rounded-xl p-4 mt-5 text-center text-sm hidden" aria-live="polite"></div>
-
-      <!-- Workflow Tips -->
-      <div class="mt-6 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30 max-w-md mx-auto">
-        <h4 class="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-2">
-          Workflow Tips
-        </h4>
-        <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1">
-          <li>• Upload multiple backup files to combine into one</li>
-          <li>• Choose whether to preserve original chapter titles or use a prefix</li>
-          <li>• The tool will automatically handle duplicate status definitions</li>
-          <li>• All chapters will be re-numbered sequentially in the final backup</li>
-        </ul>
-      </div>
     </div>
 
     <!-- Enhanced Augment Backup with ZIP -->
@@ -559,19 +510,6 @@
       <!-- Progress and Status -->
       <div id="spinnerAugmentBackup" class="w-10 h-10 border-4 border-slate-200 dark:border-slate-700 rounded-full border-t-primary-600 animate-spin my-4 mx-auto hidden" role="status" aria-live="polite" aria-label="Loading"></div>
       <div id="statusAugmentBackup" class="rounded-xl p-4 mt-5 text-center text-sm hidden" aria-live="polite"></div>
-
-      <!-- Workflow Tips -->
-      <div class="mt-6 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30 max-w-md mx-auto">
-        <h4 class="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-2">
-          Workflow Tips
-        </h4>
-        <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1">
-          <li>• Upload your existing backup file first, then the ZIP with new chapters</li>
-          <li>• Choose whether to use .txt filenames or auto-generated titles</li>
-          <li>• The tool will preserve all your existing content and metadata</li>
-          <li>• New chapters will be added at the end with sequential numbering</li>
-        </ul>
-      </div>
     </div>
 
 
@@ -766,19 +704,6 @@
       <!-- Progress and Status -->
       <div id="spinnerCreateBackupFromZip" class="w-10 h-10 border-4 border-slate-200 dark:border-slate-700 rounded-full border-t-primary-600 animate-spin my-4 mx-auto hidden" role="status" aria-live="polite" aria-label="Loading"></div>
       <div id="statusMessageCreateBackupFromZip" class="rounded-xl p-4 mt-5 text-center text-sm hidden" aria-live="polite"></div>
-
-      <!-- Workflow Tips -->
-      <div class="mt-6 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30 max-w-md mx-auto">
-        <h4 class="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-2">
-          <span>💡</span>Workflow Tips
-        </h4>
-        <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1">
-          <li>• Upload a ZIP file containing your chapter .txt files</li>
-          <li>• Configure your project title and chapter naming pattern</li>
-          <li>• Add extra empty chapters if you need placeholders for future content</li>
-          <li>• The tool will automatically generate a structured backup file</li>
-        </ul>
-      </div>
     </div>
 
 
@@ -918,19 +843,6 @@
 
       <!-- Host container for the original tool sections -->
       <div id="zipEpubHost"></div>
-
-      <!-- Workflow Tips -->
-      <div class="mt-8 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30 max-w-md mx-auto">
-        <h4 class="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-2">
-          <span>💡</span>Workflow Tips
-        </h4>
-        <ul class="text-xs text-slate-600 dark:text-slate-300 space-y-1">
-          <li>• <strong>ZIP → EPUB:</strong> Convert text chapters to professional EPUB format</li>
-          <li>• <strong>EPUB → ZIP:</strong> Extract chapters from EPUB files as text</li>
-          <li>• Both directions support drag-and-drop file uploads</li>
-          <li>• Advanced options available in the expandable sections</li>
-        </ul>
-      </div>
     </div>
 
 
@@ -943,6 +855,6 @@
   <script src="jszip.min.js"></script>
 
   <script type="module" src="./js/index.js"></script>
-
+<script type="module" src="/index.tsx"></script>
 </body>
 </html>

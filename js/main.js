@@ -11,7 +11,8 @@ import {
     handleTouchStart,
     handleTouchMove,
     handleTouchEnd,
-    initializeTheme
+    initializeTheme,
+    initializeTooltips
 } from './ui-helpers.js';
 
 import { triggerDownload } from './browser-helpers.js';
@@ -19,7 +20,6 @@ import { initializeEpubSplitter } from './epub-splitter.js';
 import { initializeZipToEpub } from './zip-to-epub.js';
 import { initializeEpubToZip } from './epub-to-zip.js';
 import { initializeCreateBackupFromZip } from './create-backup-from-zip.js';
-
 import { initializeMergeBackup } from './merge-backup.js';
 import { initializeAugmentBackupWithZip } from './augment-backup-with-zip.js';
 import { initializeFindReplaceBackup } from './find-replace-backup.js';
@@ -373,6 +373,7 @@ async function initializeZipEpubCombined() {
 export function initializeApp() {
     registerServiceWorker();
     initializeTheme();
+    initializeTooltips();
     
     // Event delegation for all major UI actions
     document.body.addEventListener('click', (event) => {

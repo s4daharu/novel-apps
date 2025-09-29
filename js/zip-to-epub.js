@@ -3,6 +3,8 @@
  */
 
 import { triggerDownload, getJSZip } from './browser-helpers.js';
+import { updateStatus, setupFileInput } from './tool-helpers.js';
+import { escapeHTML } from './ui-helpers.js';
 
 // Helper: Generate a UUID (simple version)
 function generateUUID() {
@@ -18,25 +20,8 @@ function sanitizeForXML(str) {
     return str.replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
-function escapeHTML(str) {
-    if (typeof str !== 'string') {
-        return '';
-    }
-    return str.replace(/[&<>"']/g, function (match) {
-        switch (match) {
-            case '&': return '&amp;';
-            case '<': return '&lt;';
-            case '>': return '&gt;';
-            case '"': return '&quot;';
-            case "'": return '&#39;';
-            default: return match;
-        }
-    });
-}
-
 /**
  * A safe, simple inline markdown processor that runs after HTML escaping.
- * It uses placeholders to avoid issues with user-inputted characters.
  * @param line The string line to process.
  * @returns An HTML string with bold and italic tags.
  */
@@ -46,20 +31,15 @@ function escapeAndProcessInlines(line) {
         .replace(/\*\*(.*?)\*\*|__(.*?)__/g, '%%STRONG_START%%$1$2%%STRONG_END%%')
         .replace(/\*(.*?)\*|_(.*?)_/g, '%%EM_START%%$1$2%%EM_END%%');
 
-    // Escape all HTML-sensitive characters.
     processedLine = escapeHTML(processedLine);
 
-    // Restore the markdown placeholders with their HTML tags.
-    processedLine = processedLine
+    return processedLine
         .replace(/%%STRONG_START%%/g, '<strong>').replace(/%%STRONG_END%%/g, '</strong>')
         .replace(/%%EM_START%%/g, '<em>').replace(/%%EM_END%%/g, '</em>');
-
-    return processedLine;
 }
 
 /**
  * Converts plain text to basic XHTML for a chapter.
- * Handles paragraphs (separated by blank lines), single line breaks, and optional Markdown.
  * @param text The raw chapter text.
  * @param chapterTitle The title for the chapter heading.
  * @param useMarkdown Whether to process basic Markdown syntax.
@@ -67,33 +47,28 @@ function escapeAndProcessInlines(line) {
  * @returns A full XHTML document string.
  */
 function textToXHTML(text, chapterTitle, useMarkdown, language) {
-    const bodyContent = `<h2>${escapeHTML(chapterTitle)}</h2>\n`;
+    const heading = `<h2>${escapeHTML(chapterTitle)}</h2>\n`;
     let chapterBody = '';
 
-    // Normalize line endings and split into individual lines.
     const lines = text.replace(/\r\n/g, '\n').split('\n');
-
     lines.forEach(line => {
         const trimmedLine = line.trim();
         if (trimmedLine) {
-            let paragraphHtml = '';
             if (useMarkdown) {
                 const headingMatch = trimmedLine.match(/^(#{1,6})\s+(.*)/);
                 if (headingMatch) {
                     const level = headingMatch[1].length;
                     const content = headingMatch[2];
-                    paragraphHtml = `<h${level}>${escapeAndProcessInlines(content)}</h${level}>\n`;
+                    chapterBody += `<h${level + 1}>${escapeAndProcessInlines(content)}</h${level + 1}>\n`;
                 } else {
-                    paragraphHtml = `    <p>${escapeAndProcessInlines(trimmedLine)}</p>\n`;
+                    chapterBody += `    <p>${escapeAndProcessInlines(trimmedLine)}</p>\n`;
                 }
             } else {
-                paragraphHtml = `    <p>${escapeHTML(trimmedLine)}</p>\n`;
+                chapterBody += `    <p>${escapeHTML(trimmedLine)}</p>\n`;
             }
-            chapterBody += paragraphHtml;
         }
     });
     
-    // If chapterBody is empty (e.g., input was only whitespace), add an empty paragraph to ensure a valid body.
     if (!chapterBody.trim()) {
         chapterBody = '    <p>&nbsp;</p>\n';
     }
@@ -106,7 +81,7 @@ function textToXHTML(text, chapterTitle, useMarkdown, language) {
   <link rel="stylesheet" type="text/css" href="../css/style.css" />
 </head>
 <body>
-  <section epub:type="chapter">\n${bodyContent}${chapterBody}  </section>
+  <section epub:type="chapter">\n${heading}${chapterBody}  </section>
 </body>
 </html>`;
 }
@@ -127,405 +102,204 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
     const createBtn = document.getElementById('createEpubBtn');
     const statusEl = document.getElementById('statusMessageZipToEpub');
     const downloadSec = document.getElementById('downloadSectionZipToEpub');
-    const downloadLink = document.getElementById('downloadLinkEpub');
-
-    let selectedZipFile = null;
-    let selectedCoverFile = null;
+    
     let chapters = [];
     let draggedItem = null;
 
     if (!zipUploadInput || !createBtn || !zipFileNameEl || !clearZipBtn || !epubTitleInput || !epubAuthorInput ||
         !epubLangInput || !epubCoverImageInput || !epubCoverFileNameEl || !clearCoverBtn ||
-        !processMarkdownCheckbox || !chapterArea || !chapterListUl ||
-        !statusEl || !downloadSec || !downloadLink) {
+        !processMarkdownCheckbox || !chapterArea || !chapterListUl || !statusEl || !downloadSec) {
         console.error("ZIP to EPUB UI elements not found. Initialization failed.");
         return;
     }
 
-    function resetUI(full = false) {
-        if (downloadSec) downloadSec.classList.add('hidden');
-        if (statusEl) statusEl.classList.add('hidden');
-        if (chapterArea) chapterArea.classList.add('hidden');
-        if (chapterListUl) chapterListUl.innerHTML = '';
-        chapters = [];
-
-        if (full) {
-            selectedZipFile = null;
-            zipUploadInput.value = '';
-            zipFileNameEl.textContent = '';
-            clearZipBtn.classList.add('hidden');
-            createBtn.disabled = true;
-        }
-    }
-
     function renderChapterList() {
-        if (!chapterListUl) return;
         chapterListUl.innerHTML = '';
-
         chapters.forEach(chapter => {
             const li = document.createElement('li');
             li.draggable = true;
             li.dataset.name = chapter.name;
             li.className = 'flex items-center p-2.5 border-b border-slate-200 dark:border-slate-700 cursor-grab user-select-none transition-all duration-200 rounded-md mb-0.5 last:border-b-0 hover:bg-slate-200/50 dark:hover:bg-slate-700/50';
-
-            const handle = document.createElement('span');
-            handle.className = 'mr-3 text-slate-500 text-lg leading-none p-1 rounded-sm transition-colors duration-200 hover:text-primary-600 hover:bg-slate-200 dark:hover:bg-slate-700';
-            handle.textContent = '☰';
-
-            const titleInput = document.createElement('input');
-            titleInput.type = 'text';
-            titleInput.className = 'flex-grow bg-transparent border-none text-slate-800 dark:text-slate-200 p-1.5 rounded-md border border-transparent text-sm transition-all duration-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 focus:bg-white/50 dark:focus:bg-slate-600/50 focus:border-primary-500 focus:outline-none';
-            titleInput.value = chapter.title;
-            titleInput.ariaLabel = `Title for chapter ${chapter.name}`;
-            titleInput.addEventListener('input', () => {
-                const chapterToUpdate = chapters.find(c => c.name === chapter.name);
-                if (chapterToUpdate) {
-                    chapterToUpdate.title = titleInput.value;
-                }
-            });
-
-            li.appendChild(handle);
-            li.appendChild(titleInput);
+            const handle = `<span class="mr-3 text-slate-500 text-lg leading-none p-1 rounded-sm transition-colors duration-200 hover:text-primary-600 hover:bg-slate-200 dark:hover:bg-slate-700">☰</span>`;
+            li.innerHTML = `${handle}<input type="text" value="${escapeHTML(chapter.title)}" class="flex-grow bg-transparent border-none text-slate-800 dark:text-slate-200 p-1.5 rounded-md border border-transparent text-sm transition-all duration-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 focus:bg-white/50 dark:focus:bg-slate-600/50 focus:border-primary-500 focus:outline-none" aria-label="Title for chapter ${escapeHTML(chapter.name)}">`;
             chapterListUl.appendChild(li);
         });
     }
 
-    // Drag and Drop Event Handlers for Chapter List
-    const draggingClasses = ['opacity-70', 'bg-primary-600', 'text-white', 'rotate-2', 'shadow-lg'];
-    chapterListUl.addEventListener('dragstart', (e) => {
-        draggedItem = e.target;
-        setTimeout(() => {
-            if (draggedItem) draggedItem.classList.add(...draggingClasses);
-        }, 0);
+    chapterListUl.addEventListener('input', (e) => {
+        if (e.target.matches('input[type="text"]')) {
+            const name = e.target.closest('li').dataset.name;
+            const chapter = chapters.find(c => c.name === name);
+            if (chapter) {
+                chapter.title = e.target.value;
+            }
+        }
     });
 
+    // Drag and Drop Event Handlers
+    const draggingClasses = ['opacity-50', 'bg-primary-100', 'dark:bg-primary-800', 'scale-105', 'shadow-lg'];
+    chapterListUl.addEventListener('dragstart', (e) => {
+        if (e.target.matches('li')) {
+            draggedItem = e.target;
+            setTimeout(() => draggedItem.classList.add(...draggingClasses), 0);
+        }
+    });
     chapterListUl.addEventListener('dragend', () => {
         if (draggedItem) {
             draggedItem.classList.remove(...draggingClasses);
             draggedItem = null;
         }
     });
-
     chapterListUl.addEventListener('dragover', (e) => {
         e.preventDefault();
-        const afterElement = getDragAfterElement(chapterListUl, e.clientY);
-        const currentDragged = document.querySelector('.opacity-70'); // Using one of the dragging classes to find the element
-        if (currentDragged) {
-            if (afterElement == null) {
-                chapterListUl.appendChild(currentDragged);
-            } else {
-                chapterListUl.insertBefore(currentDragged, afterElement);
-            }
+        const afterElement = [...chapterListUl.querySelectorAll('li:not(.opacity-50)')].reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = e.clientY - box.top - box.height / 2;
+            return (offset < 0 && offset > closest.offset) ? { offset, element: child } : closest;
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+        if (draggedItem) {
+            if (afterElement == null) chapterListUl.appendChild(draggedItem);
+            else chapterListUl.insertBefore(draggedItem, afterElement);
         }
     });
-
     chapterListUl.addEventListener('drop', (e) => {
         e.preventDefault();
-        const newOrderedNames = Array.from(chapterListUl.querySelectorAll('li')).map(li => li.dataset.name);
-        chapters.sort((a, b) => {
-            const indexA = newOrderedNames.indexOf(a.name);
-            const indexB = newOrderedNames.indexOf(b.name);
-            return indexA - indexB;
-        });
+        const newOrderedNames = [...chapterListUl.querySelectorAll('li')].map(li => li.dataset.name);
+        chapters.sort((a, b) => newOrderedNames.indexOf(a.name) - newOrderedNames.indexOf(b.name));
     });
 
-    function getDragAfterElement(container, y) {
-        const draggableElements = [...container.querySelectorAll('li:not(.opacity-70)')];
-        return draggableElements.reduce((closest, child) => {
-            const box = child.getBoundingClientRect();
-            const offset = y - box.top - box.height / 2;
-            if (offset < 0 && offset > closest.offset) {
-                return { offset: offset, element: child };
-            } else {
-                return closest;
-            }
-        }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
-    }
-
-    zipUploadInput.addEventListener('change', async (e) => {
-        const target = e.target;
-        resetUI();
-        selectedZipFile = target.files ? target.files[0] : null;
-
-        if (selectedZipFile) {
-            zipFileNameEl.textContent = `Selected ZIP: ${selectedZipFile.name}`;
-            if (clearZipBtn) clearZipBtn.classList.remove('hidden');
+    setupFileInput({
+        inputEl: zipUploadInput,
+        fileNameEl: zipFileNameEl,
+        clearBtnEl: clearZipBtn,
+        async onFileSelected(files) {
+            statusEl.classList.add('hidden');
+            downloadSec.classList.add('hidden');
+            const selectedZipFile = files[0];
             createBtn.disabled = true;
             toggleAppSpinner(true);
-
             try {
                 const JSZip = await getJSZip();
-                const contentZip = await JSZip.loadAsync(selectedZipFile);
+                const zip = await JSZip.loadAsync(selectedZipFile);
                 const chapterPromises = [];
-                contentZip.forEach((relativePath, zipEntry) => {
-                    if (!zipEntry.dir && zipEntry.name.toLowerCase().endsWith('.txt')) {
-                        chapterPromises.push(
-                            zipEntry.async('string').then((text) => ({
-                                name: zipEntry.name,
-                                content: text,
-                                title: zipEntry.name.replace(/\.txt$/i, '').replace(/_/g, ' ')
-                            }))
-                        );
+                zip.forEach((path, file) => {
+                    if (!file.dir && path.toLowerCase().endsWith('.txt')) {
+                        chapterPromises.push(file.async('string').then(text => ({
+                            name: file.name,
+                            content: text,
+                            title: file.name.replace(/\.txt$/i, '').replace(/_/g, ' ')
+                        })));
                     }
                 });
-
-                const loadedChapters = (await Promise.all(chapterPromises)).filter(Boolean);
-                if (loadedChapters.length === 0) {
-                    throw new Error("No .txt files found in the uploaded ZIP.");
-                }
-
+                const loadedChapters = await Promise.all(chapterPromises);
+                if (loadedChapters.length === 0) throw new Error("No .txt files found in ZIP.");
                 loadedChapters.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
                 chapters = loadedChapters;
-
                 renderChapterList();
                 chapterArea.classList.remove('hidden');
-                createBtn.disabled = false;
-
             } catch (err) {
                 showAppToast(`Error reading ZIP: ${err.message}`, true);
-                resetUI(true);
+                chapters = [];
+                chapterArea.classList.add('hidden');
             } finally {
                 toggleAppSpinner(false);
+                createBtn.disabled = chapters.length === 0;
             }
-        } else {
-            resetUI(true);
+        },
+        onFileCleared() {
+            chapters = [];
+            chapterArea.classList.add('hidden');
+            statusEl.classList.add('hidden');
+            downloadSec.classList.add('hidden');
+        },
+        onButtonUpdate(hasFile) {
+            createBtn.disabled = !hasFile;
         }
     });
 
-    clearZipBtn.addEventListener('click', () => {
-        resetUI(true);
-    });
-
-    epubCoverImageInput.addEventListener('change', (e) => {
-        const target = e.target;
-        selectedCoverFile = target.files ? target.files[0] : null;
-        if (selectedCoverFile) {
-            epubCoverFileNameEl.textContent = `Cover: ${selectedCoverFile.name}`;
-            if (clearCoverBtn) clearCoverBtn.classList.remove('hidden');
-        } else {
-            epubCoverFileNameEl.textContent = '';
-            if (clearCoverBtn) clearCoverBtn.classList.add('hidden');
-        }
-    });
-
-    clearCoverBtn.addEventListener('click', () => {
-        selectedCoverFile = null;
-        epubCoverImageInput.value = '';
-        epubCoverFileNameEl.textContent = '';
-        clearCoverBtn.classList.add('hidden');
+    setupFileInput({
+        inputEl: epubCoverImageInput,
+        fileNameEl: epubCoverFileNameEl,
+        clearBtnEl: clearCoverBtn
     });
 
     createBtn.addEventListener('click', async () => {
-        if (statusEl) statusEl.classList.add('hidden');
-
+        statusEl.classList.add('hidden');
         if (chapters.length === 0) {
-            showAppToast("Please upload a ZIP file with .txt chapters.", true);
-            statusEl.textContent = 'Error: No chapters loaded to create an EPUB.';
-            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
-            statusEl.classList.remove('hidden');
-            zipUploadInput.focus();
-            return;
+            return updateStatus(statusEl, "Error: No chapters loaded to create an EPUB.", 'error');
         }
-
         const title = epubTitleInput.value.trim();
         if (!title) {
-            showAppToast("EPUB Title is required.", true);
-            statusEl.textContent = 'Error: EPUB Title is required.';
-            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
-            statusEl.classList.remove('hidden');
             epubTitleInput.focus();
-            return;
+            return updateStatus(statusEl, "Error: EPUB Title is required.", 'error');
         }
-
         const author = epubAuthorInput.value.trim();
         if (!author) {
-            showAppToast("Author is required.", true);
-            statusEl.textContent = 'Error: Author is required.';
-            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
-            statusEl.classList.remove('hidden');
             epubAuthorInput.focus();
-            return;
+            return updateStatus(statusEl, "Error: Author is required.", 'error');
         }
 
-        const language = epubLangInput.value.trim() || 'en';
-        const useMarkdown = processMarkdownCheckbox.checked;
-
-        const bookUUID = `urn:uuid:${generateUUID()}`;
         toggleAppSpinner(true);
-        if (downloadSec) downloadSec.classList.add('hidden');
+        downloadSec.classList.add('hidden');
 
         try {
             const JSZip = await getJSZip();
             const epubZip = new JSZip();
-
             epubZip.file("mimetype", "application/epub+zip", { compression: "STORE" });
 
-            const containerXML = `<?xml version="1.0" encoding="UTF-8"?>
-<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
-  <rootfiles>
-    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
-  </rootfiles>
-</container>`;
-            epubZip.folder("META-INF")?.file("container.xml", containerXML);
+            const containerXML = `<?xml version="1.0" encoding="UTF-8"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>`;
+            epubZip.folder("META-INF").file("container.xml", containerXML);
 
             const oebps = epubZip.folder("OEBPS");
-            if (!oebps) throw new Error("Could not create OEBPS folder.");
-            const cssFolder = oebps.folder("css");
-            const textFolder = oebps.folder("text");
-            const imagesFolder = oebps.folder("images");
+            const css = `body{font-family:sans-serif;line-height:1.6;margin:1em;}h1,h2{text-align:center;line-height:1.3;}p{text-indent:1.5em;margin:0 0 .5em;text-align:justify;}.cover{text-align:center;margin:0;padding:0;height:100vh;page-break-after:always;}.cover img{max-width:100%;max-height:100vh;object-fit:contain;}`;
+            oebps.folder("css").file("style.css", css);
 
-            const basicCSS = `body { font-family: sans-serif; line-height: 1.6; margin: 1em; }
-h1, h2, h3, h4, h5, h6 { text-align: center; line-height: 1.3; }
-p { text-indent: 1.5em; margin-top: 0; margin-bottom: 0.5em; text-align: justify; }
-.cover { text-align: center; margin: 0; padding: 0; height: 100vh; page-break-after: always; }
-.cover img { max-width: 100%; max-height: 100vh; object-fit: contain; }`;
-            cssFolder.file("style.css", basicCSS);
-
-            const manifestItems = [
-                { id: "css", href: "css/style.css", "media-type": "text/css" },
-                { id: "nav", href: "nav.xhtml", "media-type": "application/xhtml+xml", properties: "nav" }
-            ];
+            const manifestItems = [{ id: "css", href: "css/style.css", "media-type": "text/css" }, { id: "nav", href: "nav.xhtml", "media-type": "application/xhtml+xml", properties: "nav" }];
             const spineItems = [];
-            const navLiItems = [];
-            const ncxNavPoints = [];
-            let playOrder = 1;
-
-            if (selectedCoverFile) {
-                const coverExt = selectedCoverFile.name.split('.').pop()?.toLowerCase() || 'png';
-                const coverImageFilename = `cover.${coverExt}`;
-                const coverMediaType = (coverExt === 'jpg' || coverExt === 'jpeg') ? 'image/jpeg' : 'image/png';
-
-                const coverImageData = await selectedCoverFile.arrayBuffer();
-                imagesFolder.file(coverImageFilename, coverImageData);
-
-                manifestItems.push({ id: "cover-image", href: `images/${coverImageFilename}`, "media-type": coverMediaType, properties: "cover-image" });
-
-                const coverXHTMLContent = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="${language}">
-<head>
-  <title>Cover</title>
-  <link rel="stylesheet" type="text/css" href="../css/style.css" />
-</head>
-<body>
-  <div class="cover">
-    <img src="../images/${coverImageFilename}" alt="Cover Image"/>
-  </div>
-</body>
-</html>`;
-                textFolder.file("cover.xhtml", coverXHTMLContent);
+            
+            const coverFile = epubCoverImageInput.files?.[0];
+            if (coverFile) {
+                const ext = coverFile.name.split('.').pop().toLowerCase();
+                const mediaType = (ext === 'jpg' || ext === 'jpeg') ? 'image/jpeg' : 'image/png';
+                const coverData = await coverFile.arrayBuffer();
+                oebps.folder("images").file(`cover.${ext}`, coverData);
+                manifestItems.push({ id: "cover-image", href: `images/cover.${ext}`, "media-type": mediaType, properties: "cover-image" });
+                const coverXHTML = `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Cover</title><link rel="stylesheet" type="text/css" href="../css/style.css"/></head><body><div class="cover"><img src="../images/cover.${ext}" alt="Cover Image"/></div></body></html>`;
+                oebps.folder("text").file("cover.xhtml", coverXHTML);
                 manifestItems.push({ id: "cover-page", href: "text/cover.xhtml", "media-type": "application/xhtml+xml" });
                 spineItems.push({ idref: "cover-page", linear: "no" });
             }
 
             chapters.forEach((chapter, i) => {
-                const chapterBaseName = sanitizeForXML(chapter.title) || `chapter_${i + 1}`;
-                const chapterFilename = `${chapterBaseName}.xhtml`;
-
-                const xhtmlContent = textToXHTML(chapter.content, chapter.title, useMarkdown, language);
-                textFolder.file(chapterFilename, xhtmlContent);
-
+                const filename = `chapter_${i + 1}.xhtml`;
+                const xhtml = textToXHTML(chapter.content, chapter.title, processMarkdownCheckbox.checked, epubLangInput.value.trim() || 'en');
+                oebps.folder("text").file(filename, xhtml);
                 const itemId = `chapter-${i + 1}`;
-                manifestItems.push({ id: itemId, href: `text/${chapterFilename}`, "media-type": "application/xhtml+xml" });
-                spineItems.push({ idref: itemId, linear: "yes" });
-
-                navLiItems.push(`<li><a href="text/${chapterFilename}">${escapeHTML(chapter.title)}</a></li>`);
-                ncxNavPoints.push(`
-    <navPoint id="navpoint-${playOrder}" playOrder="${playOrder}">
-      <navLabel><text>${escapeHTML(chapter.title)}</text></navLabel>
-      <content src="text/${chapterFilename}"/>
-    </navPoint>`);
-                playOrder++;
+                manifestItems.push({ id: itemId, href: `text/${filename}`, "media-type": "application/xhtml+xml" });
+                spineItems.push({ idref: itemId });
             });
+            
+            const navLiItems = chapters.map((c, i) => `<li><a href="text/chapter_${i+1}.xhtml">${escapeHTML(c.title)}</a></li>`).join("\n      ");
+            const navXHTML = `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Table of Contents</title></head><body><nav epub:type="toc"><h1>Contents</h1><ol>${navLiItems}</ol></nav></body></html>`;
+            oebps.file("nav.xhtml", navXHTML);
 
-            const navXHTMLContent = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="${language}">
-<head>
-  <title>Table of Contents</title>
-  <link rel="stylesheet" type="text/css" href="css/style.css"/>
-</head>
-<body>
-  <nav epub:type="toc" id="toc">
-    <h1>Table of Contents</h1>
-    <ol>
-      ${navLiItems.join("\n      ")}
-    </ol>
-  </nav>
-</body>
-</html>`;
-            oebps.file("nav.xhtml", navXHTMLContent);
-
-            const ncxContent = `<?xml version="1.0" encoding="UTF-8"?>
-<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
-  <head>
-    <meta name="dtb:uid" content="${bookUUID}"/>
-    <meta name="dtb:depth" content="1"/>
-    <meta name="dtb:totalPageCount" content="0"/>
-    <meta name="dtb:maxPageNumber" content="0"/>
-  </head>
-  <docTitle><text>${escapeHTML(title)}</text></docTitle>
-  <navMap>
-    ${ncxNavPoints.join("\n    ")}
-  </navMap>
-</ncx>`;
-            oebps.file("toc.ncx", ncxContent);
-            manifestItems.push({ id: "ncx", href: "toc.ncx", "media-type": "application/x-dtbncx+xml" });
-
-            let manifestXML = manifestItems.map(item => {
-                let props = item.properties ? ` properties="${item.properties}"` : '';
-                return `<item id="${item.id}" href="${item.href}" media-type="${item['media-type']}"${props}/>`;
-            }).join("\n    ");
-
-            let spineXML = spineItems.map(item => {
-                let linearAttr = item.linear ? ` linear="${item.linear}"` : '';
-                return `<itemref idref="${item.idref}"${linearAttr}/>`;
-            }).join("\n    ");
-
-            const contentOPF = `<?xml version="1.0" encoding="UTF-8"?>
-<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookId" version="3.0">
-  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
-    <dc:identifier id="BookId">${bookUUID}</dc:identifier>
-    <dc:title>${escapeHTML(title)}</dc:title>
-    <dc:language>${language}</dc:language>
-    <dc:creator id="creator">${escapeHTML(author)}</dc:creator>
-    <meta property="dcterms:modified">${new Date().toISOString().replace(/\.\d+Z$/, 'Z')}</meta>
-    ${selectedCoverFile ? '<meta name="cover" content="cover-image"/>' : ''}
-  </metadata>
-  <manifest>
-    ${manifestXML}
-  </manifest>
-  <spine toc="ncx">
-    ${spineXML}
-  </spine>
-</package>`;
+            const bookUUID = `urn:uuid:${generateUUID()}`;
+            const modifiedDate = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+            const manifestXML = manifestItems.map(item => `<item id="${item.id}" href="${item.href}" media-type="${item['media-type']}" ${item.properties ? `properties="${item.properties}"` : ''}/>`).join("\n    ");
+            const spineXML = spineItems.map(item => `<itemref idref="${item.idref}" ${item.linear ? `linear="${item.linear}"` : ''}/>`).join("\n    ");
+            const contentOPF = `<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookId" version="3.0"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="BookId">${bookUUID}</dc:identifier><dc:title>${escapeHTML(title)}</dc:title><dc:language>${escapeHTML(epubLangInput.value.trim() || 'en')}</dc:language><dc:creator>${escapeHTML(author)}</dc:creator><meta property="dcterms:modified">${modifiedDate}</meta>${coverFile ? '<meta name="cover" content="cover-image"/>' : ''}</metadata><manifest>${manifestXML}</manifest><spine>${spineXML}</spine></package>`;
             oebps.file("content.opf", contentOPF);
 
-            const epubBlob = await epubZip.generateAsync({
-                type: "blob",
-                mimeType: "application/epub+zip",
-                compression: "DEFLATE"
-            });
+            const epubBlob = await epubZip.generateAsync({ type: "blob", mimeType: "application/epub+zip" });
+            const safeFileName = title.replace(/[^a-z0-9_\-\s]/gi, '_').replace(/\s+/g, '_') || 'generated_epub';
+            await triggerDownload(epubBlob, `${safeFileName}.epub`, 'application/epub+zip', showAppToast);
 
-            if (downloadLink) {
-                const safeFileName = title.replace(/[^a-z0-9_\-\s]/gi, '_').replace(/\s+/g, '_') || 'generated_epub';
-                const downloadFilename = `${safeFileName}.epub`;
-
-                await triggerDownload(epubBlob, downloadFilename, 'application/epub+zip', showAppToast);
-            }
-
-            if (downloadSec) downloadSec.classList.remove('hidden');
-            statusEl.textContent = `EPUB "${title}" created successfully with ${chapters.length} chapter(s). Download started.`;
-            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-green-50 dark:bg-green-600/10 border border-green-200 dark:border-green-500/30 text-green-700 dark:text-green-400';
-            statusEl.classList.remove('hidden');
-            showAppToast("EPUB created successfully!");
+            downloadSec.classList.remove('hidden');
+            updateStatus(statusEl, `EPUB created successfully with ${chapters.length} chapter(s).`, 'success');
 
         } catch (err) {
             console.error("ZIP to EPUB Error:", err);
-            statusEl.textContent = `Error: ${err.message}`;
-            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
-            statusEl.classList.remove('hidden');
-            showAppToast(`Error creating EPUB: ${err.message}`, true);
+            updateStatus(statusEl, `Error: ${err.message}`, 'error');
         } finally {
             toggleAppSpinner(false);
         }

@@ -3,18 +3,19 @@
  */
 
 import { triggerDownload } from './browser-helpers.js';
+import { updateStatus, setupFileInput } from './tool-helpers.js';
+import { calculateWordCount } from './backup-helpers.js';
 
 async function processMergeBackupFiles(files, mergedTitle, mergedDesc, chapterPrefix, preserveOriginalTitles, showAppToast) {
     let combinedScenes = [];
     let combinedSections = [];
-    const allStatuses = [];
-    const seenStatusCodes = new Set();
+    const allStatuses = new Map();
 
     for (const file of files) {
         try {
             const fileText = await file.text();
             const data = JSON.parse(fileText);
-            const rev = data.revisions && data.revisions[0];
+            const rev = data.revisions?.[0];
             if (rev) {
                 if (rev.scenes) {
                     if (preserveOriginalTitles) {
@@ -28,12 +29,10 @@ async function processMergeBackupFiles(files, mergedTitle, mergedDesc, chapterPr
                     }
                     combinedSections = combinedSections.concat(rev.sections);
                 }
-
-                if (rev.statuses && rev.statuses.length > 0) {
+                if (rev.statuses) {
                     rev.statuses.forEach(status => {
-                        if (!seenStatusCodes.has(status.code)) {
-                            allStatuses.push(status);
-                            seenStatusCodes.add(status.code);
+                        if (!allStatuses.has(status.code)) {
+                            allStatuses.set(status.code, status);
                         }
                     });
                 }
@@ -47,12 +46,9 @@ async function processMergeBackupFiles(files, mergedTitle, mergedDesc, chapterPr
         }
     }
 
-    const finalStatuses = allStatuses.sort((a,b) => {
-        return (a.ranking || Infinity) - (b.ranking || Infinity);
-    }).map((status, index) => ({
-        ...status,
-        ranking: index + 1
-    }));
+    const finalStatuses = Array.from(allStatuses.values())
+        .sort((a,b) => (a.ranking || Infinity) - (b.ranking || Infinity))
+        .map((status, index) => ({ ...status, ranking: index + 1 }));
 
     if (finalStatuses.length === 0) {
         finalStatuses.push({ code: '1', title: 'Todo', color: -2697255, ranking: 1 });
@@ -60,42 +56,27 @@ async function processMergeBackupFiles(files, mergedTitle, mergedDesc, chapterPr
 
     combinedScenes.forEach((s, i) => {
         const n = i + 1;
-        s.code = 'scene' + n;
-        if (preserveOriginalTitles && s.originalTitle) {
-            s.title = chapterPrefix ? `${chapterPrefix}${s.originalTitle}` : s.originalTitle;
-        } else {
-            s.title = chapterPrefix ? `${chapterPrefix}${n}` : `Chapter ${n}`;
-        }
+        s.code = `scene${n}`;
+        s.title = (preserveOriginalTitles && s.originalTitle)
+            ? (chapterPrefix ? `${chapterPrefix}${s.originalTitle}` : s.originalTitle)
+            : (chapterPrefix ? `${chapterPrefix}${n}` : `Chapter ${n}`);
         s.ranking = n;
         delete s.originalTitle;
     });
 
     combinedSections.forEach((s, i) => {
         const n = i + 1;
-        s.code = 'section' + n;
-         if (preserveOriginalTitles && s.originalTitle) {
-            s.title = chapterPrefix ? `${chapterPrefix}${s.originalTitle}` : s.originalTitle;
-        } else {
-            s.title = chapterPrefix ? `${chapterPrefix}${n}` : `Chapter ${n}`;
-        }
+        s.code = `section${n}`;
+        s.title = (preserveOriginalTitles && s.originalTitle)
+            ? (chapterPrefix ? `${chapterPrefix}${s.originalTitle}` : s.originalTitle)
+            : (chapterPrefix ? `${chapterPrefix}${n}` : `Chapter ${n}`);
         s.ranking = n;
         delete s.originalTitle;
-
-        s.section_scenes = [{ code: 'scene' + n, ranking: 1 }];
+        s.section_scenes = [{ code: `scene${n}`, ranking: 1 }];
     });
 
     const now = Date.now();
-    let totalWordCount = 0;
-    combinedScenes.forEach(scene => {
-        try {
-            const sceneContent = JSON.parse(scene.text);
-            sceneContent.blocks.forEach(block => {
-                if (block.type === 'text' && typeof block.text === 'string' && block.text.trim()) {
-                    totalWordCount += block.text.trim().split(/\s+/).length;
-                }
-            });
-        } catch (e) { console.warn("Word count error in merged scene:", e); }
-    });
+    const totalWordCount = calculateWordCount(combinedScenes);
 
     return {
         version: 4,
@@ -132,29 +113,15 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
         console.error("Merge Backup: One or more UI elements not found. Initialization failed.");
         return;
     }
-
-    filesInput.addEventListener('change', () => {
-        if (filesInput.files && filesInput.files.length > 0) {
-            let fileListHtml = '<ul style="margin: 0; padding-left: 15px; font-size: 0.9em;">';
-            for (let i = 0; i < filesInput.files.length; i++) {
-                fileListHtml += `<li>${filesInput.files[i].name}</li>`;
-            }
-            fileListHtml += '</ul>';
-            fileNamesEl.innerHTML = fileListHtml;
-            if(clearFilesBtn) clearFilesBtn.classList.remove('hidden');
-        } else {
-            fileNamesEl.textContent = 'No files selected.';
-            if(clearFilesBtn) clearFilesBtn.classList.add('hidden');
-        }
-        statusEl.classList.add('hidden');
+    
+    setupFileInput({
+        inputEl: filesInput,
+        fileNameEl: fileNamesEl,
+        clearBtnEl: clearFilesBtn,
+        onFileSelected: () => statusEl.classList.add('hidden'),
+        onFileCleared: () => statusEl.classList.add('hidden'),
     });
 
-    clearFilesBtn.addEventListener('click', () => {
-        filesInput.value = '';
-        fileNamesEl.textContent = 'No files selected.';
-        clearFilesBtn.classList.add('hidden');
-        statusEl.classList.add('hidden');
-    });
 
     mergeBtn.addEventListener('click', async () => {
         statusEl.classList.add('hidden');
@@ -166,17 +133,13 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
 
         if (!files.length) {
             showAppToast('Select at least one backup file to merge.', true);
-            statusEl.textContent = 'Error: Select at least one backup file.';
-            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
-            statusEl.classList.remove('hidden');
+            updateStatus(statusEl, 'Error: Select at least one backup file.', 'error');
             filesInput.focus();
             return;
         }
         if (!mergedTitle) {
             showAppToast('Merged Project Title is required.', true);
-            statusEl.textContent = 'Error: Merged Project Title is required.';
-            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
-            statusEl.classList.remove('hidden');
+            updateStatus(statusEl, 'Error: Merged Project Title is required.', 'error');
             mergedTitleInput.focus();
             return;
         }
@@ -185,40 +148,25 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
 
         try {
             const mergedData = await processMergeBackupFiles(
-                files,
-                mergedTitle,
-                mergedDesc,
-                chapterPrefix,
-                preserveOriginalTitles,
-                showAppToast
+                files, mergedTitle, mergedDesc, chapterPrefix, preserveOriginalTitles, showAppToast
             );
 
             if (mergedData.revisions[0].scenes.length === 0) {
                 showAppToast('No valid chapters found in the selected files to merge.', true);
-                if (statusEl) {
-                    statusEl.textContent = 'Error: No valid chapters to merge from selected files.';
-                    statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
-                    statusEl.classList.remove('hidden');
-                }
+                updateStatus(statusEl, 'Error: No valid chapters to merge from selected files.', 'error');
             } else {
                 const blob = new Blob([JSON.stringify(mergedData, null, 2)], { type: 'application/json' });
                 const filenameBase = mergedTitle.replace(/[^a-z0-9_\-\s]/gi, '_').replace(/\s+/g, '_') || 'merged_backup';
                 const filename = `${filenameBase}.json`;
                 await triggerDownload(blob, filename, 'application/json', showAppToast);
 
-                statusEl.textContent = `Backup files merged into "${mergedTitle}". Download started.`;
-                statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-green-50 dark:bg-green-600/10 border border-green-200 dark:border-green-500/30 text-green-700 dark:text-green-400';
-                statusEl.classList.remove('hidden');
+                updateStatus(statusEl, `Backup files merged into "${mergedTitle}". Download started.`, 'success');
                 showAppToast('Backup files merged successfully.');
             }
 
         } catch (err) {
-            if (!(statusEl.textContent && statusEl.textContent.includes('No valid chapters'))) {
-                showAppToast(err.message || 'Error merging backup files.', true);
-                statusEl.textContent = `Error: ${err.message || 'Could not merge backups.'}`;
-                statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
-                statusEl.classList.remove('hidden');
-            }
+            showAppToast(err.message || 'Error merging backup files.', true);
+            updateStatus(statusEl, `Error: ${err.message || 'Could not merge backups.'}`, 'error');
             console.error("Merge Backup Error:", err);
         } finally {
             toggleAppSpinner(false);
