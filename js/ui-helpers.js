@@ -141,7 +141,7 @@ export function showToast(msg, isError = false) {
     }
     toastEl.textContent = msg;
     // Apply Tailwind color classes directly instead of relying on @apply-based CSS classes
-    toastEl.classList.remove('bg-green-600', 'bg-red-600');
+    toastEl.classList.remove('bg-green-600', 'bg-red-600', 'toast-success', 'toast-error');
     toastEl.classList.add(isError ? 'bg-red-600' : 'bg-green-600');
     toastEl.style.opacity = '1';
     setTimeout(() => { toastEl.style.opacity = '0'; }, 3000);

@@ -166,15 +166,14 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
             const li = document.createElement('li');
             li.draggable = true;
             li.dataset.name = chapter.name;
-            li.className = 'flex items-center p-2.5 border-b border-slate-200 dark:border-slate-700 cursor-grab user-select-none transition-all duration-200 rounded-md mb-0.5 last:border-b-0 hover:bg-slate-200/50 dark:hover:bg-slate-700/50';
 
             const handle = document.createElement('span');
-            handle.className = 'mr-3 text-slate-500 text-lg leading-none p-1 rounded-sm transition-colors duration-200 hover:text-primary-600 hover:bg-slate-200 dark:hover:bg-slate-700';
+            handle.className = 'drag-handle';
             handle.textContent = '☰';
 
             const titleInput = document.createElement('input');
             titleInput.type = 'text';
-            titleInput.className = 'flex-grow bg-transparent border-none text-slate-800 dark:text-slate-200 p-1.5 rounded-md border border-transparent text-sm transition-all duration-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 focus:bg-white/50 dark:focus:bg-slate-600/50 focus:border-primary-500 focus:outline-none';
+            titleInput.className = 'chapter-title-input';
             titleInput.value = chapter.title;
             titleInput.ariaLabel = `Title for chapter ${chapter.name}`;
             titleInput.addEventListener('input', () => {
@@ -191,17 +190,16 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
     }
 
     // Drag and Drop Event Handlers for Chapter List
-    const draggingClasses = ['opacity-70', 'bg-primary-600', 'text-white', 'rotate-2', 'shadow-lg'];
     chapterListUl.addEventListener('dragstart', (e) => {
         draggedItem = e.target;
         setTimeout(() => {
-            if (draggedItem) draggedItem.classList.add(...draggingClasses);
+            if (draggedItem) draggedItem.classList.add('dragging');
         }, 0);
     });
 
     chapterListUl.addEventListener('dragend', () => {
         if (draggedItem) {
-            draggedItem.classList.remove(...draggingClasses);
+            draggedItem.classList.remove('dragging');
             draggedItem = null;
         }
     });
@@ -209,7 +207,7 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
     chapterListUl.addEventListener('dragover', (e) => {
         e.preventDefault();
         const afterElement = getDragAfterElement(chapterListUl, e.clientY);
-        const currentDragged = document.querySelector('.opacity-70'); // Using one of the dragging classes to find the element
+        const currentDragged = document.querySelector('.dragging');
         if (currentDragged) {
             if (afterElement == null) {
                 chapterListUl.appendChild(currentDragged);
@@ -230,7 +228,7 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
     });
 
     function getDragAfterElement(container, y) {
-        const draggableElements = [...container.querySelectorAll('li:not(.opacity-70)')];
+        const draggableElements = [...container.querySelectorAll('li:not(.dragging)')];
         return draggableElements.reduce((closest, child) => {
             const box = child.getBoundingClientRect();
             const offset = y - box.top - box.height / 2;
@@ -321,7 +319,7 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
         if (chapters.length === 0) {
             showAppToast("Please upload a ZIP file with .txt chapters.", true);
             statusEl.textContent = 'Error: No chapters loaded to create an EPUB.';
-            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+            statusEl.className = 'status error';
             statusEl.style.display = 'block';
             zipUploadInput.focus();
             return;
@@ -331,7 +329,7 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
         if (!title) {
             showAppToast("EPUB Title is required.", true);
             statusEl.textContent = 'Error: EPUB Title is required.';
-            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+            statusEl.className = 'status error';
             statusEl.style.display = 'block';
             epubTitleInput.focus();
             return;
@@ -341,7 +339,7 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
         if (!author) {
             showAppToast("Author is required.", true);
             statusEl.textContent = 'Error: Author is required.';
-            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+            statusEl.className = 'status error';
             statusEl.style.display = 'block';
             epubAuthorInput.focus();
             return;
@@ -516,14 +514,14 @@ p { text-indent: 1.5em; margin-top: 0; margin-bottom: 0.5em; text-align: justify
 
             if (downloadSec) downloadSec.style.display = 'block';
             statusEl.textContent = `EPUB "${title}" created successfully with ${chapters.length} chapter(s). Download started.`;
-            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-green-50 dark:bg-green-600/10 border border-green-200 dark:border-green-500/30 text-green-700 dark:text-green-400';
+            statusEl.className = 'status success';
             statusEl.style.display = 'block';
             showAppToast("EPUB created successfully!");
 
         } catch (err) {
             console.error("ZIP to EPUB Error:", err);
             statusEl.textContent = `Error: ${err.message}`;
-            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+            statusEl.className = 'status error';
             statusEl.style.display = 'block';
             showAppToast(`Error creating EPUB: ${err.message}`, true);
         } finally {

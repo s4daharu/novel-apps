@@ -194,7 +194,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
                 } else {
                     showAppToast('No chapters found for selection. Check EPUB structure.', true);
                     statusEl.textContent = 'Error: No chapters found for selection. Check EPUB structure.';
-                    statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+                    statusEl.className = 'status error';
                     statusEl.style.display = 'block';
                     splitBtn.disabled = true;
                 }
@@ -203,7 +203,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
                 console.error("EPUB parsing for chapter selection failed:", err);
                 showAppToast(`Error parsing EPUB for chapter list: ${err.message}`, true);
                  statusEl.textContent = `Error: ${err.message || 'Could not parse EPUB for chapter list.'}`;
-                 statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+                 statusEl.className = 'status error';
                  statusEl.style.display = 'block';
                 splitBtn.disabled = true;
             } finally {
@@ -241,7 +241,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
         if (!selectedFile) {
             showAppToast("No file selected for EPUB splitting.", true);
             statusEl.textContent = 'Error: No file selected.';
-            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+            statusEl.className = 'status error';
             statusEl.style.display = 'block';
             uploadInput.focus();
             return;
@@ -249,7 +249,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
         if (parsedChaptersForSelection.length === 0) {
             showAppToast("No chapters available for splitting. Please re-upload or check the EPUB.", true);
             statusEl.textContent = 'Error: No chapters available for splitting.';
-            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+            statusEl.className = 'status error';
             statusEl.style.display = 'block';
             return;
         }
@@ -263,7 +263,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
         if (selectedChapterIndices.length === 0) {
             showAppToast("No chapters selected to split. Please select at least one chapter.", true);
             statusEl.textContent = 'Error: No chapters selected to split.';
-            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+            statusEl.className = 'status error';
             statusEl.style.display = 'block';
             return;
         }
@@ -277,7 +277,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
         if (isNaN(startNumber) || startNumber < 1) {
             showAppToast('Start Number must be 1 or greater.', true);
             statusEl.textContent = 'Error: Start Number must be 1 or greater.';
-            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+            statusEl.className = 'status error';
             statusEl.style.display = 'block';
             startNumberEl.focus();
             return;
@@ -286,7 +286,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
         if (isNaN(offset) || offset < 0) {
             showAppToast('Offset must be 0 or greater.', true);
             statusEl.textContent = 'Error: Offset must be 0 or greater.';
-            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+            statusEl.className = 'status error';
             statusEl.style.display = 'block';
             offsetNumberEl.focus();
             return;
@@ -299,7 +299,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
             if (isNaN(groupSize) || groupSize < 1) {
                 showAppToast('Chapters per File (for grouped mode) must be 1 or greater.', true);
                 statusEl.textContent = 'Error: Chapters per File must be 1 or greater.';
-                statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+                statusEl.className = 'status error';
                 statusEl.style.display = 'block';
                 groupSizeEl.focus();
                 return;
@@ -313,7 +313,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
             if (usableChaps.length === 0) {
                 showAppToast(`Offset of ${offset} resulted in no chapters to process from your selection.`, true);
                 statusEl.textContent = `Warning: Offset of ${offset} resulted in 0 chapters to process from selection.`;
-                statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+                statusEl.className = 'status error';
                 statusEl.style.display = 'block';
                 toggleAppSpinner(false);
                 return;
@@ -355,14 +355,14 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
             }
             downloadSec.style.display = 'block';
             statusEl.textContent = `Extracted ${usableChaps.length} chapter(s) from your selection. Download started.`;
-            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-green-50 dark:bg-green-600/10 border border-green-200 dark:border-green-500/30 text-green-700 dark:text-green-400';
+            statusEl.className = 'status success';
             statusEl.style.display = 'block';
             showAppToast(`Extracted ${usableChaps.length} chapter(s).`);
 
         } catch (err) {
             console.error("EPUB Splitter Error:", err);
             statusEl.textContent = `Error: ${err.message}`;
-            statusEl.className = 'rounded-xl p-4 mt-5 text-center text-sm bg-red-50 dark:bg-red-600/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400';
+            statusEl.className = 'status error';
             statusEl.style.display = 'block';
             showAppToast(`Error splitting EPUB: ${err.message}`, true);
         } finally {

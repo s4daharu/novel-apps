@@ -72,8 +72,7 @@ function updateUIVisibility(hasFile) {
     
     frHud.style.display = hasFile ? 'block' : 'none';
     setTimeout(() => {
-        if(hasFile) frHud.classList.add('translate-y-0');
-        else frHud.classList.remove('translate-y-0');
+        if(hasFile) frHud.classList.add('visible');
     }, 10); // Small delay to allow CSS transition
     
     frDownloadContainer.style.display = hasFile ? 'block' : 'none';
@@ -84,18 +83,10 @@ function updateDownloadButtonState() {
 }
 
 function toggleReplaceUI(show) {
-    const chevronIcon = frReplaceToggleBtn.querySelector('svg');
-    const isCurrentlyExpanded = !frReplaceRow.classList.contains('hidden');
-    const expand = show ?? !isCurrentlyExpanded;
-
-    frReplaceToggleBtn.setAttribute('aria-expanded', expand);
-    if (expand) {
-        frReplaceRow.classList.remove('hidden');
-        chevronIcon?.classList.add('rotate-90');
-    } else {
-        frReplaceRow.classList.add('hidden');
-        chevronIcon?.classList.remove('rotate-90');
-    }
+    const isExpanded = show ?? !frHud.classList.contains('expanded');
+    frHud.classList.toggle('expanded', isExpanded);
+    frReplaceToggleBtn.setAttribute('aria-expanded', isExpanded);
+    frReplaceRow.style.display = isExpanded ? 'block' : 'none';
 }
 
 
@@ -112,7 +103,7 @@ function loadBackupFile(file, showAppToast) {
             updateDownloadButtonState();
             populateScopeSelector();
             
-            frSnippetPreview.innerHTML = `<p class="max-w-prose text-left text-slate-500 dark:text-slate-400 italic">Start typing in the find bar below...</p>`;
+            frSnippetPreview.innerHTML = `<p class="fr-preview-placeholder">Start typing in the find bar below...</p>`;
             updateUIVisibility(true);
             showAppToast("Backup loaded successfully.");
             findPatternInput.focus();
@@ -164,16 +155,20 @@ function getChapterText(sceneIndex) {
 
 function renderSnippetPreview(match) {
     if (!match) {
-        frSnippetPreview.innerHTML = `<p class="max-w-prose text-left text-slate-500 dark:text-slate-400 italic">No match found. Try another search.</p>`;
+        frSnippetPreview.innerHTML = `<p class="fr-preview-placeholder">No match found. Try another search.</p>`;
         return;
     }
     
+    // --- FIX START ---
+    // Calculate the precise index of the match within the full chapter text
+    // to avoid ambiguity if a block's text appears multiple times.
     let precedingTextLength = 0;
     let fullChapterIndex = -1;
     const scene = frData.revisions[0].scenes[match.sceneIndex];
 
     try {
         const sceneContent = JSON.parse(scene.text);
+        // Calculate the length of all text blocks before the matched one, including separators
         for (let i = 0; i < match.blockIndex; i++) {
             const block = sceneContent.blocks[i];
             if (block.type === 'text' && typeof block.text === 'string') {
@@ -182,11 +177,12 @@ function renderSnippetPreview(match) {
         }
         fullChapterIndex = precedingTextLength + match.matchIndexInBlock;
     } catch {
-        frSnippetPreview.innerHTML = `<p class="max-w-prose text-left text-slate-500 dark:text-slate-400 italic">Error rendering preview for this match.</p>`;
+        frSnippetPreview.innerHTML = `<p class="fr-preview-placeholder">Error rendering preview for this match.</p>`;
         return;
     }
 
     const chapterText = getChapterText(match.sceneIndex);
+    // --- FIX END ---
 
     const start = Math.max(0, fullChapterIndex - SNIPPET_CONTEXT_LENGTH);
     const end = Math.min(chapterText.length, fullChapterIndex + match.matchLength + SNIPPET_CONTEXT_LENGTH);
@@ -198,8 +194,8 @@ function renderSnippetPreview(match) {
     const matchedText = escapeHtml(chapterText.substring(fullChapterIndex, fullChapterIndex + match.matchLength));
     const afterText = escapeHtml(chapterText.substring(fullChapterIndex + match.matchLength, end));
 
-    frSnippetPreview.innerHTML = `<div class="max-w-prose text-left">
-        <p>${prefix}${beforeText}<mark class="bg-primary-500 text-white rounded-sm px-1 shadow-md">${matchedText}</mark>${afterText}${suffix}</p>
+    frSnippetPreview.innerHTML = `<div class="fr-snippet-preview-content">
+        <p>${prefix}${beforeText}<mark>${matchedText}</mark>${afterText}${suffix}</p>
     </div>`;
 }
 
@@ -209,7 +205,7 @@ function performFind() {
         allMatches = [];
         currentMatchIndex = -1;
         updateMatchCountUI();
-        frSnippetPreview.innerHTML = `<p class="max-w-prose text-left text-slate-500 dark:text-slate-400 italic">Start typing to find text...</p>`;
+        frSnippetPreview.innerHTML = `<p class="fr-preview-placeholder">Start typing to find text...</p>`;
         return;
     }
 
@@ -328,18 +324,18 @@ function showReviewModal() {
 
     allMatches.forEach((match, index) => {
         const li = document.createElement('li');
-        li.className = 'p-4 border-b border-slate-200 dark:border-slate-700 flex gap-4';
+        li.className = 'fr-review-item';
 
         const before = escapeHtml(match.blockText.substring(0, match.matchIndexInBlock));
         const after = escapeHtml(match.blockText.substring(match.matchIndexInBlock + match.matchLength));
         
         li.innerHTML = `
-            <input type="checkbox" id="review-${index}" data-match-index="${index}" class="mt-1.5 accent-primary-600" checked>
-            <div class="flex-grow">
+            <input type="checkbox" id="review-${index}" data-match-index="${index}" checked>
+            <div class="fr-review-item-content">
                 <label for="review-${index}" class="cursor-pointer">
-                    <div class="text-xs text-slate-500 dark:text-slate-400 mb-2">In: ${escapeHtml(match.chapterTitle)} (Block ${match.blockIndex + 1})</div>
-                    <div class="font-mono text-sm whitespace-pre-wrap break-words leading-relaxed text-slate-800 dark:text-slate-200">
-                        ${before}<del class="bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300 no-underline rounded-sm px-1 py-0.5">${escapeHtml(match.matchedText)}</del><ins class="bg-green-100 dark:bg-green-800/50 text-green-800 dark:text-green-300 no-underline rounded-sm px-1 py-0.5">${escapeHtml(replacementText)}</ins>${after}
+                    <div class="fr-review-item-meta">In: ${escapeHtml(match.chapterTitle)} (Block ${match.blockIndex + 1})</div>
+                    <div class="fr-review-diff">
+                        ${before}<del>${escapeHtml(match.matchedText)}</del><ins>${escapeHtml(replacementText)}</ins>${after}
                     </div>
                 </label>
             </div>
@@ -412,13 +408,13 @@ function resetState() {
     allMatches = [];
     currentMatchIndex = -1;
     modificationsMade = false;
-    frSnippetPreview.innerHTML = '<p class="max-w-prose text-left text-slate-500 dark:text-slate-400 italic">Upload a backup file to begin.</p>';
+    frSnippetPreview.innerHTML = '<p class="fr-preview-placeholder">Upload a backup file to begin.</p>';
     frBackupFileInput.value = '';
     findPatternInput.value = '';
     replaceTextInput.value = '';
     updateDownloadButtonState();
     updateUIVisibility(false);
-    toggleReplaceUI(false);
+    frHud.classList.remove('visible', 'expanded');
     frOptionsPopover.style.display = 'none';
 }
 
