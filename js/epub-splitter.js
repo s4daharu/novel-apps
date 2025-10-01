@@ -134,49 +134,42 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
                 const parser = new DOMParser();
 
                 const extractChapterContent = (doc_element) => {
-                    const clone = doc_element.cloneNode(true);
-                    // More robustly remove titles and unwanted elements
-                    clone.querySelectorAll('script, style, nav, header, footer, .toc, .page-break, [epub\\:type="pagebreak"], [role="navigation"], h1, h2, h3, .title, .chapter-title').forEach(el => el.remove());
-                
                     function convertNodeToText(node) {
                         let text = '';
                         if (node.nodeType === Node.TEXT_NODE) {
-                            // For text nodes, just return their content.
                             return node.textContent;
                         }
                         if (node.nodeType !== Node.ELEMENT_NODE) {
-                            // Ignore comments, etc.
                             return '';
                         }
                 
                         const tagName = node.tagName.toLowerCase();
-                        // Treat these tags as block-level, causing line breaks.
-                        const isBlock = ['p', 'div', 'h4', 'h5', 'h6', 'li', 'blockquote', 'section', 'article', 'header', 'footer', 'tr', 'br', 'hr'].includes(tagName);
+                        // Skip title tags, scripts, and styles to prevent them from appearing in the output text.
+                        if (['h1', 'h2', 'h3', 'script', 'style', 'header', 'footer', 'nav'].includes(tagName)) {
+                            return '';
+                        }
                 
-                        // Add a newline before processing a block element's content.
+                        const isBlock = ['p', 'div', 'h4', 'h5', 'h6', 'li', 'blockquote', 'section', 'article', 'tr', 'br', 'hr'].includes(tagName);
+                
                         if (isBlock) text += '\n';
                 
-                        // Recursively process child nodes.
                         for (const child of node.childNodes) {
                             text += convertNodeToText(child);
                         }
                         
-                        // Add a newline after a block element's content.
                         if (isBlock) text += '\n';
                         
                         return text;
                     }
                 
-                    let rawText = convertNodeToText(clone);
+                    let rawText = convertNodeToText(doc_element.cloneNode(true));
                 
-                    // Post-processing to create clean paragraphs from the raw text.
                     return rawText
-                        .replace(/\r\n?/g, '\n') // Normalize line endings.
-                        .replace(/[ \t]+/g, ' ') // Collapse horizontal whitespace.
-                        .split('\n')             // Split into lines.
-                        .map(line => line.trim())  // Trim whitespace from each line.
-                        .filter(line => line.length > 0) // Remove empty lines.
-                        .join('\n\n');           // Join paragraphs with a double newline.
+                        .replace(/\r\n?/g, '\n')
+                        .split('\n')
+                        .map(line => line.trim())
+                        .filter(line => line.length > 0)
+                        .join('\n\n');
                 };
                 
                 for (const spinePath of spineItems) {
@@ -286,6 +279,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
             }
         }
 
+        splitBtn.disabled = true;
         toggleAppSpinner(true);
 
         try {
@@ -326,6 +320,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
             console.error("EPUB Splitter Error:", err);
             updateStatus(statusEl, `Error: ${err.message}`, 'error');
             showAppToast(`Error splitting EPUB: ${err.message}`, true);
+            splitBtn.disabled = false;
         } finally {
             toggleAppSpinner(false);
         }
