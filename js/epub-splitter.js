@@ -15,215 +15,6 @@ function readFileAsArrayBuffer(file) {
     });
 }
 
-/**
- * Parses an EPUB file to extract a structured list of chapters.
- * @param {File} epubFile The EPUB file object.
- * @returns {Promise<Array<{title: string, text: string}>>} A promise that resolves to an array of chapter objects.
- */
-async function parseEpubForChapters(epubFile) {
-    const parser = new DOMParser();
-    const EPUB_NS = 'http://www.idpf.org/2007/ops';
-
-    const getFileAsString = async (zip, path) => {
-        const file = zip.file(path);
-        if (!file) return null;
-        return file.async('string');
-    };
-    
-    const resolvePath = (path, base) => {
-        // If it's an external URI, return it as is.
-        if (/^[a-z]+:/i.test(path)) {
-            return path;
-        }
-        // If it's an absolute path from the root.
-        if (path.startsWith('/')) {
-            const decodedPath = decodeURIComponent(path);
-            return decodedPath.substring(1);
-        }
-        if (!base) {
-            return decodeURIComponent(path);
-        }
-
-        // Using URL constructor for robust path resolution for relative paths.
-        const dummyBase = 'file:///base/';
-        const baseUrl = new URL(base.endsWith('/') ? base : base + '/', dummyBase);
-        const resolvedUrl = new URL(path, baseUrl);
-        
-        return decodeURIComponent(resolvedUrl.pathname.replace(/^\/base\//, ''));
-    };
-
-    const buffer = await readFileAsArrayBuffer(epubFile);
-    const JSZip = await getJSZip();
-    const epub = await JSZip.loadAsync(buffer);
-    
-    const containerXmlText = await getFileAsString(epub, 'META-INF/container.xml');
-    if (!containerXmlText) throw new Error('META-INF/container.xml not found.');
-    const containerDoc = parser.parseFromString(containerXmlText, 'application/xml');
-    const opfPath = containerDoc.querySelector('rootfile')?.getAttribute('full-path');
-    if (!opfPath) throw new Error('Could not find OPF file path in container.xml');
-    
-    const opfDir = opfPath.includes('/') ? opfPath.substring(0, opfPath.lastIndexOf('/')) : '';
-
-    const opfText = await getFileAsString(epub, opfPath);
-    if (!opfText) throw new Error(`OPF file not found at ${opfPath}`);
-    const opfDoc = parser.parseFromString(opfText, 'application/xml');
-
-    let navPath = opfDoc.querySelector('manifest item[properties~="nav"]')?.getAttribute('href');
-    let isNavDoc = true;
-    
-    if (!navPath) {
-        const spineTocId = opfDoc.querySelector('spine[toc]')?.getAttribute('toc');
-        if (spineTocId) {
-            navPath = opfDoc.querySelector(`manifest item[id="${spineTocId}"]`)?.getAttribute('href');
-            isNavDoc = false;
-        }
-    }
-    
-    if (!navPath) throw new Error('Could not find NAV or NCX document in OPF manifest.');
-    
-    const fullNavPath = resolvePath(navPath, opfDir);
-    
-    const navText = await getFileAsString(epub, fullNavPath);
-    if (!navText) throw new Error(`Navigation document not found at ${fullNavPath}`);
-    const navDoc = parser.parseFromString(navText, isNavDoc ? 'application/xhtml+xml' : 'application/xml');
-    if (navDoc.querySelector('parsererror')) throw new Error(`Error parsing navigation document: ${fullNavPath}`);
-
-    const chapterLinks = [];
-    const navDir = fullNavPath.includes('/') ? fullNavPath.substring(0, fullNavPath.lastIndexOf('/')) : '';
-    
-    if (isNavDoc) { // XHTML Nav document
-        const navs = Array.from(navDoc.getElementsByTagName('nav'));
-        // FIX: Use getAttributeNS for namespaced attributes
-        const tocNav = navs.find(n => 
-            n.getAttributeNS(EPUB_NS, 'type') === 'toc' ||
-            n.getAttribute('epub:type') === 'toc' // Fallback for non-standard parsing
-        );
-        
-        if (tocNav) {
-            const links = Array.from(tocNav.getElementsByTagName('a'));
-            links.forEach(el => {
-                const title = el.textContent?.trim();
-                const href = el.getAttribute('href');
-                if (title && href) {
-                    chapterLinks.push({ title, href: resolvePath(href, navDir) });
-                }
-            });
-        } else {
-            console.warn('No nav element with epub:type="toc" found. Trying all links...');
-            // Fallback: get all links if TOC nav not found
-            const links = Array.from(navDoc.getElementsByTagName('a'));
-            links.forEach(el => {
-                const title = el.textContent?.trim();
-                const href = el.getAttribute('href');
-                if (title && href) {
-                    chapterLinks.push({ title, href: resolvePath(href, navDir) });
-                }
-            });
-        }
-    } else { // NCX document
-        const navPoints = Array.from(navDoc.getElementsByTagName('navPoint'));
-        navPoints.forEach(el => {
-            const textEl = el.querySelector('navLabel text');
-            const title = textEl?.textContent?.trim();
-            const contentEl = el.querySelector('content');
-            const href = contentEl?.getAttribute('src');
-            if (title && href) {
-                chapterLinks.push({ title, href: resolvePath(href, navDir) });
-            }
-        });
-    }
-
-    if (chapterLinks.length === 0) throw new Error('No chapters found in the Table of Contents.');
-
-    const contentCache = new Map();
-    const chapters = [];
-    
-    for (const link of chapterLinks) {
-        const [filePath, fragmentId] = link.href.split('#');
-        if (!filePath) continue;
-        
-        let contentDoc;
-        if (contentCache.has(filePath)) {
-            contentDoc = contentCache.get(filePath);
-        } else {
-            const contentHtml = await getFileAsString(epub, filePath);
-            if (contentHtml) {
-                contentDoc = parser.parseFromString(contentHtml, 'application/xhtml+xml');
-                if (contentDoc.querySelector('parsererror')) {
-                    contentDoc = parser.parseFromString(contentHtml, 'text/html');
-                }
-                contentCache.set(filePath, contentDoc);
-            } else {
-                console.warn(`Content file not found: ${filePath}`);
-                continue;
-            }
-        }
-        
-        let chapterElement = null;
-        
-        if (fragmentId) {
-            const targetElement = contentDoc.getElementById(fragmentId);
-            
-            if (targetElement) {
-                // Try .closest() first (works in modern browsers)
-                chapterElement = targetElement.closest('section, div, article');
-                
-                // Fallback: manually walk up the DOM tree
-                if (!chapterElement) {
-                    let current = targetElement.parentElement;
-                    while (current && current !== contentDoc.body) {
-                        const tagName = current.tagName?.toLowerCase();
-                        if (tagName === 'section' || tagName === 'div' || tagName === 'article') {
-                            chapterElement = current;
-                            break;
-                        }
-                        current = current.parentElement;
-                    }
-                }
-            } else {
-                console.warn(`Fragment #${fragmentId} not found in ${filePath}`);
-            }
-        }
-        
-        // Fallback: if no fragment or element not found, try to find first chapter section
-        if (!chapterElement) {
-            // Try to find section with epub:type="chapter"
-            const sections = Array.from(contentDoc.getElementsByTagName('section'));
-            const chapterSection = sections.find(s => 
-                s.getAttributeNS(EPUB_NS, 'type') === 'chapter' ||
-                s.getAttribute('epub:type') === 'chapter'
-            );
-            
-            if (chapterSection) {
-                chapterElement = chapterSection;
-            } else if (sections.length > 0) {
-                // Use first section if no explicit chapter sections
-                chapterElement = sections[0];
-            } else {
-                // Last resort: use entire body
-                chapterElement = contentDoc.body;
-            }
-        }
-
-        if (chapterElement) {
-            // Cloning prevents modification of the cached DOM object.
-            const clonedElement = chapterElement.cloneNode(true);
-            clonedElement.querySelectorAll('script, style').forEach(el => el.remove());
-            const text = clonedElement.textContent.trim();
-            
-            if (text && text.length > 20) { // Ensure meaningful content
-                chapters.push({ title: link.title, text });
-            } else {
-                console.warn(`Chapter "${link.title}" has insufficient content (${text.length} chars)`);
-            }
-        } else {
-            console.warn(`Could not extract chapter content for href: ${link.href}`);
-        }
-    }
-    
-    return chapters;
-}
-
 export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
     const uploadInput = document.getElementById('epubUpload');
     const fileNameEl = document.getElementById('epubFileName');
@@ -312,23 +103,98 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
 
             toggleAppSpinner(true);
             try {
-                const chapters = await parseEpubForChapters(selectedFile);
+                const buffer = await readFileAsArrayBuffer(selectedFile);
+                const JSZip = await getJSZip();
+                const epub = await JSZip.loadAsync(buffer);
                 
-                parsedChaptersForSelection = chapters.map((chap, index) => ({
+                // Step 1: Parse container.xml to find OPF location
+                const containerXml = await epub.file('META-INF/container.xml').async('text');
+                const containerDoc = new DOMParser().parseFromString(containerXml, 'text/xml');
+                const opfPath = containerDoc.querySelector('rootfile').getAttribute('full-path');
+                
+                // Step 2: Parse package.opf to get spine items
+                const opfContent = await epub.file(opfPath).async('text');
+                const opfDoc = new DOMParser().parseFromString(opfContent, 'text/xml');
+                
+                // Get base path for resolving relative hrefs
+                const opfBasePath = opfPath.substring(0, opfPath.lastIndexOf('/') + 1);
+                
+                // Build manifest map (id -> href)
+                const manifestItems = {};
+                opfDoc.querySelectorAll('manifest > item').forEach(item => {
+                    manifestItems[item.getAttribute('id')] = item.getAttribute('href');
+                });
+                
+                // Step 3: Get spine reading order (exclude nav/toc)
+                const spineItems = [];
+                opfDoc.querySelectorAll('spine > itemref').forEach(itemref => {
+                    const idref = itemref.getAttribute('idref');
+                    const href = manifestItems[idref];
+                    if (href && !href.includes('toc') && !href.includes('nav')) {
+                        spineItems.push(opfBasePath + href);
+                    }
+                });
+                
+                // Step 4: Parse each spine item and extract chapters
+                const tempChapters = [];
+                const parser = new DOMParser();
+                
+                for (const spinePath of spineItems) {
+                    const file = epub.file(spinePath);
+                    if (!file) continue;
+                    
+                    const content = await file.async('text');
+                    const doc = parser.parseFromString(content, 'application/xhtml+xml');
+                    
+                    // Check for multiple chapter sections within the file
+                    const chapterSections = doc.querySelectorAll('section[epub\\:type="chapter"], section[*|type="chapter"]');
+                    
+                    if (chapterSections.length > 0) {
+                        // Multiple chapters in one file
+                        chapterSections.forEach((section, idx) => {
+                            const titleEl = section.querySelector('h1, h2, h3');
+                            const title = titleEl ? titleEl.textContent.trim() : `Chapter ${tempChapters.length + 1}`;
+                            const text = section.textContent.trim();
+                            
+                            if (text.length > 50) {
+                                tempChapters.push({
+                                    title: title,
+                                    text: text,
+                                    source: `${spinePath}#${section.getAttribute('id') || idx}`
+                                });
+                            }
+                        });
+                    } else {
+                        // Entire file is one chapter
+                        const bodyText = doc.body?.textContent?.trim() || '';
+                        if (bodyText.length > 200) {
+                            const titleEl = doc.querySelector('h1, h2, h3, title');
+                            const title = titleEl ? titleEl.textContent.trim() : `Chapter ${tempChapters.length + 1}`;
+                            
+                            tempChapters.push({
+                                title: title,
+                                text: bodyText,
+                                source: spinePath
+                            });
+                        }
+                    }
+                }
+                
+                parsedChaptersForSelection = tempChapters.map((chap, index) => ({
                     index: index,
                     title: chap.title,
                     text: chap.text
                 }));
-
+                
                 displayChapterSelectionUI(parsedChaptersForSelection);
-
+                
                 if (parsedChaptersForSelection.length > 0) {
-                    showAppToast(`Found ${parsedChaptersForSelection.length} chapters. Review selection.`, false);
+                    showAppToast(`Found ${parsedChaptersForSelection.length} chapters.`, false);
                 } else {
-                    showAppToast('No chapters found for selection. Check EPUB structure.', true);
-                    updateStatus(statusEl, 'Error: No chapters found for selection. Check EPUB structure.', 'error');
+                    showAppToast('No chapters found. Check EPUB structure.', true);
+                    updateStatus(statusEl, 'Error: No chapters found.', 'error');
                 }
-
+                
             } catch (err) {
                 console.error("EPUB parsing failed:", err);
                 showAppToast(`Error parsing EPUB: ${err.message}`, true);
