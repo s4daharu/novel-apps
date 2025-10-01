@@ -22,24 +22,10 @@ This version is fully compatible with modern browsers and includes:
 
 ## Local Development
 
-### Prerequisites
-- Node.js 18 or higher
-- npm
+This is a pure static HTML, CSS, and JavaScript application. There is no build step required.
 
-### Setup
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-### Development
-1. Build the project:
-   ```bash
-   npm run build
-   ```
-
-2. Serve the files locally (using any static file server):
+1. Clone the repository.
+2. Serve the files locally using any static file server:
    ```bash
    # Using Python
    python -m http.server 8000
@@ -50,51 +36,31 @@ This version is fully compatible with modern browsers and includes:
    # Using PHP
    php -S localhost:8000
    ```
-
-3. Open your browser and navigate to `http://localhost:8000`
+3. Open your browser and navigate to the local URL (e.g., `http://localhost:8000`).
 
 ## GitHub Pages Deployment
 
-This project includes automatic deployment to GitHub Pages via GitHub Actions.
+This project can be deployed directly to GitHub Pages.
 
-### Manual Deployment
-
-1. **Build the project**:
-   ```bash
-   npm run build
-   ```
-
-2. **Deploy to GitHub Pages**:
-   - Go to your repository on GitHub
-   - Navigate to Settings → Pages
-   - Set Source to "Deploy from a branch"
-   - Select "gh-pages" branch
-   - Save changes
-
-3. **Enable GitHub Pages**:
-   - The site will be available at `https://yourusername.github.io/repository-name/`
-
-### Automatic Deployment
-
-The project includes a GitHub Actions workflow that automatically builds and deploys to GitHub Pages when you push to the `main` branch.
+1. Go to your repository on GitHub.
+2. Navigate to Settings → Pages.
+3. Under "Build and deployment", set the Source to "Deploy from a branch".
+4. Select the `main` branch and the `/ (root)` folder.
+5. Save changes.
+6. The site will be available at `https://<your-username>.github.io/<repository-name>/`.
 
 ## File Structure
 
 ```
 ├── index.html              # Main HTML file
-├── index.css               # Styles
 ├── js/                     # JavaScript modules
 │   ├── index.js           # Entry point
 │   ├── main.js            # Main application logic
-│   ├── ui-helpers.js      # UI helper functions
-│   ├── browser-helpers.js # Browser-compatible file operations
-│   └── epub-splitter.js   # EPUB processing functionality
+│   └── ...                # Other tool scripts
 ├── icons/                  # App icons
 ├── jszip.min.js           # JSZip library for file operations
 ├── manifest.json          # PWA manifest
-├── service-worker.js      # Service worker for PWA features
-├── build.js               # Build script
-└── package.json           # Dependencies and scripts
+└── service-worker.js      # Service worker for PWA features
 ```
 
 ## Key Changes from Mobile Version
