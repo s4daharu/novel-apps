@@ -97,21 +97,41 @@ async function getChapterListFromEpub(zip) {
     if (navDoc.querySelector('parsererror')) throw new Error(`Error parsing navigation document: ${fullNavPath}`);
 
     const chapters = [];
-    const selector = isNavDoc ? 'nav[epub\\:type="toc"] ol a' : 'navMap navPoint';
     const navDir = fullNavPath.includes('/') ? fullNavPath.substring(0, fullNavPath.lastIndexOf('/')) : '';
-    
-    navDoc.querySelectorAll(selector).forEach((el, index) => {
-        const title = (isNavDoc ? el.textContent : el.querySelector('navLabel text')?.textContent)?.trim();
-        const href = (isNavDoc ? el.getAttribute('href') : el.querySelector('content')?.getAttribute('src'));
-        if (title && href) {
-            chapters.push({
-                title: title,
-                href: resolvePath(href, navDir),
-                id: `epubzip-chap-${index}`,
-                originalIndex: index
+
+    if (isNavDoc) { // XHTML Nav document
+        const navs = Array.from(navDoc.getElementsByTagName('nav'));
+        const tocNav = navs.find(n => n.getAttribute('epub:type') === 'toc');
+        if (tocNav) {
+            const links = Array.from(tocNav.getElementsByTagName('a'));
+            links.forEach((el, index) => {
+                const title = el.textContent?.trim();
+                const href = el.getAttribute('href');
+                if (title && href) {
+                    chapters.push({
+                        title: title,
+                        href: resolvePath(href, navDir),
+                        id: `epubzip-chap-${index}`,
+                        originalIndex: index
+                    });
+                }
             });
         }
-    });
+    } else { // NCX document
+        const navPoints = Array.from(navDoc.getElementsByTagName('navPoint'));
+        navPoints.forEach((el, index) => {
+            const title = el.querySelector('navLabel text')?.textContent?.trim();
+            const href = el.querySelector('content')?.getAttribute('src');
+            if (title && href) {
+                chapters.push({
+                    title: title,
+                    href: resolvePath(href, navDir),
+                    id: `epubzip-chap-${index}`,
+                    originalIndex: index
+                });
+            }
+        });
+    }
 
     if (chapters.length === 0) throw new Error('No chapters found in the Table of Contents.');
     return chapters;
@@ -271,8 +291,10 @@ export function initializeEpubToZip(showAppToast, toggleAppSpinner) {
                 let chapterElement = null;
                 if (fragmentId) {
                     const targetElement = contentDoc.getElementById(fragmentId);
-                     if (targetElement) {
-                        chapterElement = targetElement.closest('section, div, article') || targetElement.parentElement;
+                    if (targetElement) {
+                        // The fragment ID can be on the chapter container itself or a child.
+                        // .closest() handles both cases.
+                        chapterElement = targetElement.closest('section, div, article');
                     } else {
                         console.warn(`Fragment #${fragmentId} not found in ${filePath}, falling back to body.`);
                     }
@@ -284,8 +306,10 @@ export function initializeEpubToZip(showAppToast, toggleAppSpinner) {
 
                 let chapterText = '';
                 if (chapterElement) {
-                    chapterElement.querySelectorAll('script, style').forEach(el => el.remove());
-                    chapterText = chapterElement.textContent.trim();
+                    // Clone to avoid side effects on the cached DOM.
+                    const clonedElement = chapterElement.cloneNode(true);
+                    clonedElement.querySelectorAll('script, style').forEach(el => el.remove());
+                    chapterText = clonedElement.textContent.trim();
                 } else {
                      console.warn(`Could not extract chapter content for href: ${fullHref}`);
                 }
