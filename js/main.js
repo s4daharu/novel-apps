@@ -414,16 +414,8 @@ export function initializeApp() {
     // Preload critical tools for mobile-first experience
     preloadCriticalTools();
 
-    // Initialize only the tools that are immediately visible
-    const hash = window.location.hash;
-    if (hash.startsWith('#tool-')) {
-        const toolId = hash.substring('#tool-'.length);
-        if (toolSectionsMap[toolId]) {
-            initializeTool(toolId);
-        }
-    }
-
-    // Add intersection observer for lazy loading
+    // Add intersection observer for lazy loading. This will handle initialization
+    // when a tool becomes visible, which is the single source of truth.
     setupLazyLoading();
 
     // Add touch gesture listeners for mobile navigation
