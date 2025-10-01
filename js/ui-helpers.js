@@ -1,7 +1,6 @@
 /**
  * Browser-compatible UI helper functions
  */
-import { initializeTool } from './main.js';
 
 let toastEl = null;
 let sidebarEl = null;
@@ -170,7 +169,7 @@ export function toggleSpinner(spinnerElement, show) {
     spinnerElement.classList.toggle('hidden', !show);
 }
 
-async function loadToolIntoContainer(toolId, currentToolSectionsMap) {
+async function loadToolIntoContainer(toolId, currentToolSectionsMap, initializeToolCallback) {
     const toolInfo = currentToolSectionsMap[toolId];
     if (!toolInfo || !toolInfo.htmlPath) {
         console.error(`No HTML path defined for tool: ${toolId}`);
@@ -192,7 +191,7 @@ async function loadToolIntoContainer(toolId, currentToolSectionsMap) {
         }
 
         // Initialize the tool's JavaScript logic after its HTML is in the DOM
-        await initializeTool(toolId);
+        await initializeToolCallback(toolId);
         return true;
     } catch (error) {
         console.error(`Error loading tool ${toolId}:`, error);
@@ -222,7 +221,7 @@ export function showDashboard(fromPopStateUpdate = false, currentToolSectionsMap
     sessionStorage.removeItem('activeToolId');
 }
 
-export async function launchAppFromCard(appId, fromPopStateUpdate = false, currentToolSectionsMap) {
+export async function launchAppFromCard(appId, fromPopStateUpdate = false, currentToolSectionsMap, initializeToolCallback) {
     const dashboardAppEl = document.getElementById('dashboardApp');
     const appTitleEl = document.getElementById('appTitle');
     const toolInfo = currentToolSectionsMap[appId];
@@ -236,7 +235,7 @@ export async function launchAppFromCard(appId, fromPopStateUpdate = false, curre
     if (dashboardAppEl) dashboardAppEl.classList.add('hidden');
     if (appTitleEl) appTitleEl.textContent = toolInfo.title;
 
-    const success = await loadToolIntoContainer(appId, currentToolSectionsMap);
+    const success = await loadToolIntoContainer(appId, currentToolSectionsMap, initializeToolCallback);
 
     if (!success) {
         showDashboard(fromPopStateUpdate, currentToolSectionsMap);
