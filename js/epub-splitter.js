@@ -90,16 +90,31 @@ async function parseEpubForChapters(epubFile) {
     if (navDoc.querySelector('parsererror')) throw new Error(`Error parsing navigation document: ${fullNavPath}`);
 
     const chapterLinks = [];
-    const selector = isNavDoc ? 'nav[epub\\:type="toc"] ol a' : 'navMap navPoint';
     const navDir = fullNavPath.includes('/') ? fullNavPath.substring(0, fullNavPath.lastIndexOf('/')) : '';
     
-    navDoc.querySelectorAll(selector).forEach(el => {
-        const title = (isNavDoc ? el.textContent : el.querySelector('navLabel text')?.textContent)?.trim();
-        const href = (isNavDoc ? el.getAttribute('href') : el.querySelector('content')?.getAttribute('src'));
-        if (title && href) {
-            chapterLinks.push({ title, href: resolvePath(href, navDir) });
+    if (isNavDoc) { // XHTML Nav document
+        const navs = Array.from(navDoc.getElementsByTagName('nav'));
+        const tocNav = navs.find(n => n.getAttribute('epub:type') === 'toc');
+        if (tocNav) {
+            const links = Array.from(tocNav.getElementsByTagName('a'));
+            links.forEach(el => {
+                const title = el.textContent?.trim();
+                const href = el.getAttribute('href');
+                if (title && href) {
+                    chapterLinks.push({ title, href: resolvePath(href, navDir) });
+                }
+            });
         }
-    });
+    } else { // NCX document
+        const navPoints = Array.from(navDoc.getElementsByTagName('navPoint'));
+        navPoints.forEach(el => {
+            const title = el.querySelector('navLabel text')?.textContent?.trim();
+            const href = el.querySelector('content')?.getAttribute('src');
+            if (title && href) {
+                chapterLinks.push({ title, href: resolvePath(href, navDir) });
+            }
+        });
+    }
 
     if (chapterLinks.length === 0) throw new Error('No chapters found in the Table of Contents.');
 
@@ -131,19 +146,24 @@ async function parseEpubForChapters(epubFile) {
         if (fragmentId) {
             const targetElement = contentDoc.getElementById(fragmentId);
             if (targetElement) {
-                chapterElement = targetElement.closest('section, div, article') || targetElement.parentElement;
+                // The fragment ID can be on the chapter container itself or a child (like a heading).
+                // .closest() will find the nearest ancestor (or self) that matches.
+                chapterElement = targetElement.closest('section, div, article');
             } else {
                  console.warn(`Fragment #${fragmentId} not found in ${filePath}`);
             }
         }
         
+        // If no fragment or element not found, default to the whole body.
         if (!chapterElement) {
             chapterElement = contentDoc.body;
         }
 
         if (chapterElement) {
-            chapterElement.querySelectorAll('script, style').forEach(el => el.remove());
-            const text = chapterElement.textContent.trim();
+            // Cloning prevents modification of the cached DOM object.
+            const clonedElement = chapterElement.cloneNode(true);
+            clonedElement.querySelectorAll('script, style').forEach(el => el.remove());
+            const text = clonedElement.textContent.trim();
             if (text) {
                  chapters.push({ title: link.title, text });
             }
