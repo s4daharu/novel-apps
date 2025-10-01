@@ -8,6 +8,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,6 +21,15 @@ if (fs.existsSync(distDir)) {
 }
 fs.mkdirSync(distDir, { recursive: true });
 
+// Build CSS first and output directly to dist
+console.log('Building Tailwind CSS...');
+try {
+    execSync(`npx tailwindcss -i ./index.css -o ./dist/index.css --minify`, { stdio: 'inherit' });
+    console.log('Tailwind CSS built successfully.');
+} catch (error) {
+    console.error('Failed to build Tailwind CSS:', error);
+    process.exit(1);
+}
 
 // Files to copy directly
 const filesToCopy = [
