@@ -107,25 +107,20 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
                 const JSZip = await getJSZip();
                 const epub = await JSZip.loadAsync(buffer);
                 
-                // Step 1: Parse container.xml to find OPF location
                 const containerXml = await epub.file('META-INF/container.xml').async('text');
                 const containerDoc = new DOMParser().parseFromString(containerXml, 'text/xml');
                 const opfPath = containerDoc.querySelector('rootfile').getAttribute('full-path');
                 
-                // Step 2: Parse package.opf to get spine items
                 const opfContent = await epub.file(opfPath).async('text');
                 const opfDoc = new DOMParser().parseFromString(opfContent, 'text/xml');
                 
-                // Get base path for resolving relative hrefs
                 const opfBasePath = opfPath.substring(0, opfPath.lastIndexOf('/') + 1);
                 
-                // Build manifest map (id -> href)
                 const manifestItems = {};
                 opfDoc.querySelectorAll('manifest > item').forEach(item => {
                     manifestItems[item.getAttribute('id')] = item.getAttribute('href');
                 });
                 
-                // Step 3: Get spine reading order (exclude nav/toc)
                 const spineItems = [];
                 opfDoc.querySelectorAll('spine > itemref').forEach(itemref => {
                     const idref = itemref.getAttribute('idref');
@@ -135,9 +130,54 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
                     }
                 });
                 
-                // Step 4: Parse each spine item and extract chapters
                 const tempChapters = [];
                 const parser = new DOMParser();
+
+                const extractChapterContent = (doc_element) => {
+                    const clone = doc_element.cloneNode(true);
+                    // More robustly remove titles and unwanted elements
+                    clone.querySelectorAll('script, style, nav, header, footer, .toc, .page-break, [epub\\:type="pagebreak"], [role="navigation"], h1, h2, h3, .title, .chapter-title').forEach(el => el.remove());
+                
+                    function convertNodeToText(node) {
+                        let text = '';
+                        if (node.nodeType === Node.TEXT_NODE) {
+                            // For text nodes, just return their content.
+                            return node.textContent;
+                        }
+                        if (node.nodeType !== Node.ELEMENT_NODE) {
+                            // Ignore comments, etc.
+                            return '';
+                        }
+                
+                        const tagName = node.tagName.toLowerCase();
+                        // Treat these tags as block-level, causing line breaks.
+                        const isBlock = ['p', 'div', 'h4', 'h5', 'h6', 'li', 'blockquote', 'section', 'article', 'header', 'footer', 'tr', 'br', 'hr'].includes(tagName);
+                
+                        // Add a newline before processing a block element's content.
+                        if (isBlock) text += '\n';
+                
+                        // Recursively process child nodes.
+                        for (const child of node.childNodes) {
+                            text += convertNodeToText(child);
+                        }
+                        
+                        // Add a newline after a block element's content.
+                        if (isBlock) text += '\n';
+                        
+                        return text;
+                    }
+                
+                    let rawText = convertNodeToText(clone);
+                
+                    // Post-processing to create clean paragraphs from the raw text.
+                    return rawText
+                        .replace(/\r\n?/g, '\n') // Normalize line endings.
+                        .replace(/[ \t]+/g, ' ') // Collapse horizontal whitespace.
+                        .split('\n')             // Split into lines.
+                        .map(line => line.trim())  // Trim whitespace from each line.
+                        .filter(line => line.length > 0) // Remove empty lines.
+                        .join('\n\n');           // Join paragraphs with a double newline.
+                };
                 
                 for (const spinePath of spineItems) {
                     const file = epub.file(spinePath);
@@ -145,53 +185,29 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
                     
                     const content = await file.async('text');
                     let doc = parser.parseFromString(content, 'application/xhtml+xml');
-                    if (doc.getElementsByTagName("parsererror").length > 0) {
+                    if (doc.querySelector("parsererror")) {
                         doc = parser.parseFromString(content, 'text/html');
                     }
-
-                    const extractFormattedText = (node) => {
-                        if (!node) return '';
-                        const clone = node.cloneNode(true);
-                        clone.querySelectorAll('script, style, nav, header, footer, .toc, .page-break, [epub\\:type="pagebreak"]').forEach(el => el.remove());
-                        
-                        let text = '';
-                        const blockElements = Array.from(clone.querySelectorAll('p, h1, h2, h3, h4, h5, h6, div, blockquote, li'));
-                        
-                        if (blockElements.length > 0) {
-                            text = blockElements.map(p => p.textContent.trim()).filter(t => t.length > 0).join('\n\n');
-                        } else {
-                            text = clone.textContent.trim().replace(/\s*\n\s*/g, '\n\n');
-                        }
-                        return text;
-                    };
 
                     const chapterSections = doc.querySelectorAll('section[epub\\:type="chapter"], section[*|type="chapter"]');
                     
                     if (chapterSections.length > 0) {
-                        chapterSections.forEach((section, idx) => {
+                        chapterSections.forEach((section) => {
                             const titleEl = section.querySelector('h1, h2, h3');
                             const title = titleEl ? titleEl.textContent.trim() : `Chapter ${tempChapters.length + 1}`;
-                            const text = extractFormattedText(section);
+                            const text = extractChapterContent(section);
                             
-                            if (text.length > 50) {
-                                tempChapters.push({
-                                    title: title,
-                                    text: text,
-                                    source: `${spinePath}#${section.getAttribute('id') || idx}`
-                                });
+                            if (text) {
+                                tempChapters.push({ title, text });
                             }
                         });
                     } else if (doc.body) {
-                        const titleEl = doc.querySelector('h1, h2, h3, title');
+                        const titleEl = doc.body.querySelector('h1, h2, h3, title');
                         const title = titleEl ? titleEl.textContent.trim() : `Chapter ${tempChapters.length + 1}`;
-                        const bodyText = extractFormattedText(doc.body);
+                        const text = extractChapterContent(doc.body);
                         
-                        if (bodyText.length > 50) {
-                            tempChapters.push({
-                                title: title,
-                                text: bodyText,
-                                source: spinePath
-                            });
+                        if (text) {
+                            tempChapters.push({ title, text });
                         }
                     }
                 }
