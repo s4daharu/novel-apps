@@ -144,17 +144,34 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
                     if (!file) continue;
                     
                     const content = await file.async('text');
-                    const doc = parser.parseFromString(content, 'application/xhtml+xml');
-                    
-                    // Check for multiple chapter sections within the file
+                    let doc = parser.parseFromString(content, 'application/xhtml+xml');
+                    if (doc.getElementsByTagName("parsererror").length > 0) {
+                        doc = parser.parseFromString(content, 'text/html');
+                    }
+
+                    const extractFormattedText = (node) => {
+                        if (!node) return '';
+                        const clone = node.cloneNode(true);
+                        clone.querySelectorAll('script, style, nav, header, footer, .toc, .page-break, [epub\\:type="pagebreak"]').forEach(el => el.remove());
+                        
+                        let text = '';
+                        const blockElements = Array.from(clone.querySelectorAll('p, h1, h2, h3, h4, h5, h6, div, blockquote, li'));
+                        
+                        if (blockElements.length > 0) {
+                            text = blockElements.map(p => p.textContent.trim()).filter(t => t.length > 0).join('\n\n');
+                        } else {
+                            text = clone.textContent.trim().replace(/\s*\n\s*/g, '\n\n');
+                        }
+                        return text;
+                    };
+
                     const chapterSections = doc.querySelectorAll('section[epub\\:type="chapter"], section[*|type="chapter"]');
                     
                     if (chapterSections.length > 0) {
-                        // Multiple chapters in one file
                         chapterSections.forEach((section, idx) => {
                             const titleEl = section.querySelector('h1, h2, h3');
                             const title = titleEl ? titleEl.textContent.trim() : `Chapter ${tempChapters.length + 1}`;
-                            const text = section.textContent.trim();
+                            const text = extractFormattedText(section);
                             
                             if (text.length > 50) {
                                 tempChapters.push({
@@ -164,13 +181,12 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
                                 });
                             }
                         });
-                    } else {
-                        // Entire file is one chapter
-                        const bodyText = doc.body?.textContent?.trim() || '';
-                        if (bodyText.length > 200) {
-                            const titleEl = doc.querySelector('h1, h2, h3, title');
-                            const title = titleEl ? titleEl.textContent.trim() : `Chapter ${tempChapters.length + 1}`;
-                            
+                    } else if (doc.body) {
+                        const titleEl = doc.querySelector('h1, h2, h3, title');
+                        const title = titleEl ? titleEl.textContent.trim() : `Chapter ${tempChapters.length + 1}`;
+                        const bodyText = extractFormattedText(doc.body);
+                        
+                        if (bodyText.length > 50) {
                             tempChapters.push({
                                 title: title,
                                 text: bodyText,
