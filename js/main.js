@@ -17,14 +17,14 @@ import {
 
 // Extend toolSectionsMap with HTML component paths
 export const toolSectionsMap = {
-    'splitter': { elementId: 'splitterApp', title: 'EPUB Chapter Splitter', htmlPath: 'js/components/splitter.html' },
-    'zipEpub': { elementId: 'zipEpubApp', title: 'ZIP ↔ EPUB', htmlPath: 'js/components/zipEpub.html' },
-    'zipToEpub': { elementId: 'zipToEpubApp', title: 'ZIP to EPUB', htmlPath: 'js/components/zip-to-epub.html' },
-    'epubToZip': { elementId: 'epubToZipApp', title: 'EPUB to ZIP', htmlPath: 'js/components/epub-to-zip.html' },
-    'createBackupFromZip': { elementId: 'createBackupFromZipApp', title: 'Create Backup from ZIP', htmlPath: 'js/components/create-backup-from-zip.html' },
-    'mergeBackup': { elementId: 'mergeBackupApp', title: 'Merge Backup Files', htmlPath: 'js/components/merge-backup.html' },
-    'augmentBackupWithZip': { elementId: 'augmentBackupWithZipApp', title: 'Augment Backup with ZIP', htmlPath: 'js/components/augment-backup-with-zip.html' },
-    'findReplaceBackup': { elementId: 'findReplaceBackupApp', title: 'Find & Replace in Backup File', htmlPath: 'js/components/find-replace-backup.html' }
+    'splitter': { elementId: 'splitterApp', title: 'EPUB Chapter Splitter', htmlPath: './js/components/splitter.html' },
+    'zipEpub': { elementId: 'zipEpubApp', title: 'ZIP ↔ EPUB', htmlPath: './js/components/zipEpub.html' },
+    'zipToEpub': { elementId: 'zipToEpubApp', title: 'ZIP to EPUB', htmlPath: './js/components/zip-to-epub.html' },
+    'epubToZip': { elementId: 'epubToZipApp', title: 'EPUB to ZIP', htmlPath: './js/components/epub-to-zip.html' },
+    'createBackupFromZip': { elementId: 'createBackupFromZipApp', title: 'Create Backup from ZIP', htmlPath: './js/components/create-backup-from-zip.html' },
+    'mergeBackup': { elementId: 'mergeBackupApp', title: 'Merge Backup Files', htmlPath: './js/components/merge-backup.html' },
+    'augmentBackupWithZip': { elementId: 'augmentBackupWithZipApp', title: 'Augment Backup with ZIP', htmlPath: './js/components/augment-backup-with-zip.html' },
+    'findReplaceBackup': { elementId: 'findReplaceBackupApp', title: 'Find & Replace in Backup File', htmlPath: './js/components/find-replace-backup.html' }
 };
 
 // PWA functions removed as requested
