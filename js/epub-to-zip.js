@@ -9,6 +9,7 @@ import { escapeHTML } from './ui-helpers.js';
 let currentZipInstance = null;
 let currentTocEntries = [];
 const domParser = new DOMParser();
+const EPUB_NS = 'http://www.idpf.org/2007/ops';
 
 function readFileAsArrayBuffer(file) {
     return new Promise((resolve, reject) => {
@@ -38,7 +39,6 @@ function resolvePath(path, base) {
     }
     // If it's an absolute path from the root.
     if (path.startsWith('/')) {
-        // We still need to decode, as zip paths aren't encoded.
         const decodedPath = decodeURIComponent(path);
         return decodedPath.substring(1);
     }
@@ -101,22 +101,31 @@ async function getChapterListFromEpub(zip) {
 
     if (isNavDoc) { // XHTML Nav document
         const navs = Array.from(navDoc.getElementsByTagName('nav'));
-        const tocNav = navs.find(n => n.getAttribute('epub:type') === 'toc');
+        const tocNav = navs.find(n => 
+            n.getAttributeNS(EPUB_NS, 'type') === 'toc' ||
+            n.getAttribute('epub:type') === 'toc'
+        );
+        
+        let links;
         if (tocNav) {
-            const links = Array.from(tocNav.getElementsByTagName('a'));
-            links.forEach((el, index) => {
-                const title = el.textContent?.trim();
-                const href = el.getAttribute('href');
-                if (title && href) {
-                    chapters.push({
-                        title: title,
-                        href: resolvePath(href, navDir),
-                        id: `epubzip-chap-${index}`,
-                        originalIndex: index
-                    });
-                }
-            });
+            links = Array.from(tocNav.getElementsByTagName('a'));
+        } else {
+            console.warn('No nav element with epub:type="toc" found. Trying all links...');
+            links = Array.from(navDoc.getElementsByTagName('a'));
         }
+
+        links.forEach((el, index) => {
+            const title = el.textContent?.trim();
+            const href = el.getAttribute('href');
+            if (title && href) {
+                chapters.push({
+                    title: title,
+                    href: resolvePath(href, navDir),
+                    id: `epubzip-chap-${index}`,
+                    originalIndex: index
+                });
+            }
+        });
     } else { // NCX document
         const navPoints = Array.from(navDoc.getElementsByTagName('navPoint'));
         navPoints.forEach((el, index) => {
@@ -292,21 +301,41 @@ export function initializeEpubToZip(showAppToast, toggleAppSpinner) {
                 if (fragmentId) {
                     const targetElement = contentDoc.getElementById(fragmentId);
                     if (targetElement) {
-                        // The fragment ID can be on the chapter container itself or a child.
-                        // .closest() handles both cases.
                         chapterElement = targetElement.closest('section, div, article');
+                         if (!chapterElement) {
+                            let current = targetElement.parentElement;
+                            while (current && current !== contentDoc.body) {
+                                const tagName = current.tagName?.toLowerCase();
+                                if (tagName === 'section' || tagName === 'div' || tagName === 'article') {
+                                    chapterElement = current;
+                                    break;
+                                }
+                                current = current.parentElement;
+                            }
+                        }
                     } else {
-                        console.warn(`Fragment #${fragmentId} not found in ${filePath}, falling back to body.`);
+                        console.warn(`Fragment #${fragmentId} not found in ${filePath}`);
                     }
                 }
                 
                 if (!chapterElement) {
-                    chapterElement = contentDoc.body;
+                    const sections = Array.from(contentDoc.getElementsByTagName('section'));
+                    const chapterSection = sections.find(s => 
+                        s.getAttributeNS(EPUB_NS, 'type') === 'chapter' ||
+                        s.getAttribute('epub:type') === 'chapter'
+                    );
+                    
+                    if (chapterSection) {
+                        chapterElement = chapterSection;
+                    } else if (sections.length > 0) {
+                        chapterElement = sections[0];
+                    } else {
+                        chapterElement = contentDoc.body;
+                    }
                 }
 
                 let chapterText = '';
                 if (chapterElement) {
-                    // Clone to avoid side effects on the cached DOM.
                     const clonedElement = chapterElement.cloneNode(true);
                     clonedElement.querySelectorAll('script, style').forEach(el => el.remove());
                     chapterText = clonedElement.textContent.trim();
