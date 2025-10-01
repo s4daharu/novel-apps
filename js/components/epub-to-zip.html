@@ -1,0 +1,44 @@
+<!-- EPUB to ZIP (TXT) Converter -->
+<div id="epubToZipApp" class="space-y-5">
+  <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">EPUB to ZIP (TXT)</h1>
+  <div class="max-w-md mx-auto">
+    <label for="epubUploadForTxt" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-violet-600 hover:bg-violet-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 w-full cursor-pointer" id="epubUploadForTxtLabel">Upload EPUB File</label>
+    <input type="file" id="epubUploadForTxt" accept=".epub" class="hidden" aria-labelledby="epubUploadForTxtLabel">
+    <div class="mt-2.5 flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 p-2 rounded-md min-h-[40px]">
+        <span id="epubFileNameForTxt" class="text-slate-500 dark:text-slate-300 max-w-[calc(100%-30px)] overflow-hidden text-ellipsis whitespace-nowrap inline-block"></span>
+        <button type="button" id="clearEpubUploadForTxt" class="bg-transparent border-none text-slate-500 text-2xl font-bold cursor-pointer ml-2 p-1 leading-none transition-colors hover:text-slate-800 dark:hover:text-white hidden" aria-label="Clear EPUB file">&times;</button>
+    </div>
+  </div>
+
+  <div id="epubToZipChapterSelectionArea" class="mt-4 hidden">
+    <h4 class="text-lg font-semibold text-slate-800 dark:text-slate-200 text-center">Select Chapters to Extract:</h4>
+    <div class="my-4 flex justify-center gap-3">
+      <button type="button" id="epubToZipSelectAllChapters" class="inline-flex items-center justify-center rounded-lg font-medium bg-teal-600 hover:bg-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 px-3 py-1 text-sm">Select All</button>
+      <button type="button" id="epubToZipDeselectAllChapters" class="inline-flex items-center justify-center rounded-lg font-medium bg-teal-600 hover:bg-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 px-3 py-1 text-sm">Deselect All</button>
+    </div>
+    <ul id="epubToZipChapterList" class="max-w-xl mx-auto max-h-48 overflow-y-auto bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 list-none text-left" aria-label="List of EPUB chapters for text extraction">
+      <!-- Chapters will be populated here by JS -->
+    </ul>
+  </div>
+
+  <div class="max-w-md mx-auto space-y-4">
+    <div>
+      <label class="flex items-center gap-2 justify-center text-slate-800 dark:text-slate-200 select-none cursor-pointer" for="epubToZipEnableRemoveLines">
+        <input type="checkbox" id="epubToZipEnableRemoveLines" class="w-4 h-4 align-middle rounded border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-primary-500 accent-primary-600"/>
+        Remove initial lines from chapters
+      </label>
+    </div>
+    <div id="epubToZipRemoveLinesOptionsGroup" class="text-center hidden">
+      <label for="epubToZipLinesToRemove" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Number of lines to remove:</label>
+      <input type="number" id="epubToZipLinesToRemove" min="0" value="1" aria-describedby="statusMessageEpubToZip" class="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 max-w-[100px] mx-auto">
+    </div>
+  </div>
+  <div class="text-center">
+    <button id="extractChaptersBtn" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 disabled:opacity-60 disabled:cursor-not-allowed" disabled>Extract Chapters to ZIP</button>
+  </div>
+  <div id="spinnerEpubToZip" class="w-10 h-10 border-4 border-slate-200 dark:border-slate-700 rounded-full border-t-primary-600 animate-spin my-4 mx-auto hidden" role="status" aria-live="polite" aria-label="Loading"></div>
+  <div id="statusMessageEpubToZip" class="rounded-xl p-4 mt-5 text-center text-sm hidden" aria-live="polite"></div>
+  <div class="text-center hidden" id="downloadSectionEpubToZip">
+    <a id="downloadLinkZipFromEpub" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-orange-600 hover:bg-orange-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100">Download Chapter TXTs</a>
+  </div>
+</div>

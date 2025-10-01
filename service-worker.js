@@ -9,7 +9,7 @@ const RUNTIME_CACHE = `novel-apps-runtime-${CACHE_VERSION}`;
 const STATIC_PATHS = new Set([
   './',
   './index.html',
-  // './index.css', // Removed as it's an empty file causing a 404, which fails the SW installation.
+  './index.css',
   './manifest.json',
   './jszip.min.js'
 ]);

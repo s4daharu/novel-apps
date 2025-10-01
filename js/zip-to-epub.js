@@ -86,6 +86,27 @@ function textToXHTML(text, chapterTitle, useMarkdown, language) {
 </html>`;
 }
 
+/**
+ * Cleans up a filename to be used as a default chapter title.
+ * @param {string} filename The original filename from the ZIP.
+ * @returns {string} A cleaned-up, more readable title.
+ */
+function cleanTitleFromFilename(filename) {
+    let title = filename
+        .replace(/\.txt$/i, '') // Remove .txt extension
+        .replace(/^[0-9\s._-]+/, '') // Remove leading numbers, spaces, dots, underscores, hyphens
+        .replace(/[_-]/g, ' ') // Replace underscores and hyphens with spaces
+        .trim();
+    
+    // Capitalize the first letter
+    if (title.length > 0) {
+        title = title.charAt(0).toUpperCase() + title.slice(1);
+    }
+    
+    return title || "Untitled Chapter";
+}
+
+
 export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
     const zipUploadInput = document.getElementById('zipUploadForEpub');
     const zipFileNameEl = document.getElementById('zipFileNameForEpub');
@@ -186,7 +207,7 @@ export function initializeZipToEpub(showAppToast, toggleAppSpinner) {
                         chapterPromises.push(file.async('string').then(text => ({
                             name: file.name,
                             content: text,
-                            title: file.name.replace(/\.txt$/i, '').replace(/_/g, ' ')
+                            title: cleanTitleFromFilename(file.name)
                         })));
                     }
                 });

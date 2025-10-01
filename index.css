@@ -1,0 +1,17 @@
+/* Performance optimizations */
+.tool-section {
+    will-change: transform, opacity;
+}
+
+.tool-card {
+    will-change: transform;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
