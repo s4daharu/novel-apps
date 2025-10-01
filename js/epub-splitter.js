@@ -320,9 +320,9 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
             console.error("EPUB Splitter Error:", err);
             updateStatus(statusEl, `Error: ${err.message}`, 'error');
             showAppToast(`Error splitting EPUB: ${err.message}`, true);
-            splitBtn.disabled = false;
         } finally {
             toggleAppSpinner(false);
+            splitBtn.disabled = false;
         }
     });
 }
