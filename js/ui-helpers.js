@@ -1,13 +1,10 @@
 /**
  * Browser-compatible UI helper functions
  */
+import { initializeTool } from './main.js';
 
 let toastEl = null;
 let sidebarEl = null;
-
-
-
-// Tool sections map will be imported from main.js to ensure consistency
 
 // --- Touch Gesture State (simplified for browser) ---
 let touchStartX = 0;
@@ -17,16 +14,11 @@ let touchEndY = 0;
 let isSwipeInitiatedFromEdge = false;
 let isPotentiallySwipingSidebar = false;
 
-const SWIPE_THRESHOLD = 80; // Increased threshold for better swipe detection
+const SWIPE_THRESHOLD = 80;
 const SWIPE_EDGE_THRESHOLD = 60;
 const SIDEBAR_SWIPE_CLOSE_THRESHOLD = 80;
-const MAX_VERTICAL_SWIPE = 100; // Allow more vertical movement
+const MAX_VERTICAL_SWIPE = 100;
 
-/**
- * Escapes a string for safe insertion into HTML content.
- * @param {string} str The string to escape.
- * @returns {string} The escaped string.
- */
 export function escapeHTML(str) {
     if (typeof str !== 'string') return '';
     const lookup = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -59,7 +51,6 @@ export function initializeTheme() {
 
     themeToggles.forEach(btn => btn.addEventListener('click', toggleTheme));
 
-    // Apply initial theme on load
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
@@ -73,25 +64,17 @@ export function initializeTheme() {
 }
 
 export function initializeTooltips() {
-    // Use event delegation on the body for dynamically added tooltips
     document.body.addEventListener('click', (e) => {
         const trigger = e.target.closest('.tooltip-trigger');
-
-        // Close all other tooltips
         document.querySelectorAll('.tooltip-trigger.active').forEach(activeTrigger => {
-            if (activeTrigger !== trigger) {
-                activeTrigger.classList.remove('active');
-            }
+            if (activeTrigger !== trigger) activeTrigger.classList.remove('active');
         });
-
-        // Toggle the clicked tooltip
         if (trigger) {
             e.stopPropagation();
             trigger.classList.toggle('active');
         }
     });
 
-    // Add keyboard support using delegation
     document.body.addEventListener('keydown', (e) => {
         if (e.target.matches('.tooltip-trigger') && (e.key === 'Enter' || e.key === ' ')) {
             e.preventDefault();
@@ -99,38 +82,27 @@ export function initializeTooltips() {
         }
     });
 
-    // Close on escape key
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            document.querySelectorAll('.tooltip-trigger.active').forEach(trigger => {
-                trigger.classList.remove('active');
-            });
+            document.querySelectorAll('.tooltip-trigger.active').forEach(trigger => trigger.classList.remove('active'));
         }
     });
 }
 
-
 export function toggleMenu() {
     sidebarEl = sidebarEl || document.getElementById('sidebar');
     if (!sidebarEl) return;
-    if (sidebarEl.classList.contains('translate-x-full')) {
-        sidebarEl.classList.remove('translate-x-full');
-        sidebarEl.classList.add('translate-x-0', 'open');
-    } else {
-        sidebarEl.classList.add('translate-x-full');
-        sidebarEl.classList.remove('translate-x-0', 'open');
-    }
+    sidebarEl.classList.toggle('translate-x-full');
+    sidebarEl.classList.toggle('translate-x-0');
+    sidebarEl.classList.toggle('open');
 }
 
 export function handleTouchStart(event) {
-    const targetElement = event.target;
-    // Check if the touch starts on an interactive element. If so, bail out of swipe logic.
-    if (targetElement.closest('button, a, input, select, textarea, [role="button"]')) {
+    if (event.target.closest('button, a, input, select, textarea, [role="button"]')) {
         isPotentiallySwipingSidebar = false;
         isSwipeInitiatedFromEdge = false;
         return;
     }
-
     sidebarEl = sidebarEl || document.getElementById('sidebar');
     const touch = event.touches[0];
     touchStartX = touch.clientX;
@@ -140,7 +112,6 @@ export function handleTouchStart(event) {
 
     if (!sidebarEl) return;
 
-    // Check for sidebar swipe (edge gestures)
     if (!sidebarEl.classList.contains('open') && touchStartX > window.innerWidth - SWIPE_EDGE_THRESHOLD) {
         isSwipeInitiatedFromEdge = true;
         isPotentiallySwipingSidebar = true;
@@ -152,19 +123,13 @@ export function handleTouchStart(event) {
 
 export function handleTouchMove(event) {
     if (!isPotentiallySwipingSidebar || event.touches.length === 0) return;
-
     const touch = event.touches[0];
     touchEndX = touch.clientX;
     touchEndY = touch.clientY;
-
     const deltaX = touchEndX - touchStartX;
     const deltaY = touchEndY - touchStartY;
-
-    // Handle sidebar swipe
-    if (isPotentiallySwipingSidebar && isSwipeInitiatedFromEdge) {
-        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
-            event.preventDefault();
-        }
+    if (isPotentiallySwipingSidebar && isSwipeInitiatedFromEdge && Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+        event.preventDefault();
     }
 }
 
@@ -173,7 +138,6 @@ export function handleTouchEnd() {
     const deltaX = touchEndX - touchStartX;
     const deltaY = touchEndY - touchStartY;
 
-    // Handle sidebar swipe
     if (isSwipeInitiatedFromEdge && isPotentiallySwipingSidebar && sidebarEl) {
         if (Math.abs(deltaY) < MAX_VERTICAL_SWIPE) {
             if (!sidebarEl.classList.contains('open') && deltaX < -SWIPE_THRESHOLD && touchStartX > window.innerWidth - SWIPE_EDGE_THRESHOLD) {
@@ -183,14 +147,10 @@ export function handleTouchEnd() {
             }
         }
     }
-
-    // Reset all swipe states
     isSwipeInitiatedFromEdge = false;
     isPotentiallySwipingSidebar = false;
-    touchStartX = 0; touchStartY = 0; touchEndX = 0; touchEndY = 0;
+    touchStartX = touchStartY = touchEndX = touchEndY = 0;
 }
-
-
 
 export function showToast(msg, isError = false) {
     toastEl = toastEl || document.getElementById('toast');
@@ -199,7 +159,6 @@ export function showToast(msg, isError = false) {
         return;
     }
     toastEl.textContent = msg;
-    // Apply Tailwind color classes directly instead of relying on @apply-based CSS classes
     toastEl.classList.remove('bg-green-600', 'bg-red-600');
     toastEl.classList.add(isError ? 'bg-red-600' : 'bg-green-600');
     toastEl.style.opacity = '1';
@@ -207,176 +166,91 @@ export function showToast(msg, isError = false) {
 }
 
 export function toggleSpinner(spinnerElement, show) {
-    if (!spinnerElement) {
-        return;
-    }
-    if (show) {
-        spinnerElement.classList.remove('hidden');
-    } else {
-        spinnerElement.classList.add('hidden');
-    }
+    if (!spinnerElement) return;
+    spinnerElement.classList.toggle('hidden', !show);
 }
 
-/**
- * Hides all floating UI elements specific to the Find & Replace tool.
- * This ensures a clean state when navigating away from the tool.
- */
-function hideFindReplaceOverlays() {
-    const frReviewModal = document.getElementById('frReviewModal');
-    if (frReviewModal) {
-        frReviewModal.classList.add('hidden');
+async function loadToolIntoContainer(toolId, currentToolSectionsMap) {
+    const toolInfo = currentToolSectionsMap[toolId];
+    if (!toolInfo || !toolInfo.htmlPath) {
+        console.error(`No HTML path defined for tool: ${toolId}`);
+        return false;
     }
 
-    const frOptionsPopover = document.getElementById('frOptionsPopover');
-    if (frOptionsPopover) {
-        frOptionsPopover.classList.add('hidden');
-    }
-}
+    try {
+        const response = await fetch(toolInfo.htmlPath);
+        if (!response.ok) throw new Error(`Failed to load tool HTML: ${response.statusText}`);
+        const html = await response.text();
+        
+        const toolContainer = document.getElementById('tool-container-host');
+        toolContainer.innerHTML = html;
 
-
-function displayTool(appId, currentToolSectionsMap) {
-    const dashboardAppEl = document.getElementById('dashboardApp');
-    const appTitleEl = document.getElementById('appTitle');
-    const mainContentEl = document.getElementById('main-content');
-
-
-    if (dashboardAppEl) dashboardAppEl.classList.add('hidden');
-    hideFindReplaceOverlays();
-    
-    if (mainContentEl) {
-        mainContentEl.style.paddingBottom = (appId === 'findReplaceBackup') ? '0' : '';
-    }
-
-    let currentTitle = 'Novel-Apps';
-    let toolDisplayed = false;
-
-    for (const id in currentToolSectionsMap) {
-        const toolInfo = currentToolSectionsMap[id];
-        const appElement = document.getElementById(toolInfo.elementId);
-        if (appElement) {
-            if (id === appId) {
-                appElement.classList.remove('hidden');
-                // The find & replace tool has a flex layout, others are block
-                if (id === 'findReplaceBackup') {
-                    appElement.classList.add('flex');
-                    appElement.classList.remove('block');
-                } else {
-                    appElement.classList.add('block');
-                    appElement.classList.remove('flex');
-                }
-                currentTitle = toolInfo.title;
-                toolDisplayed = true;
-            } else {
-                appElement.classList.add('hidden');
-                appElement.classList.remove('flex', 'block');
-            }
+        // Ensure the main tool container is visible after loading
+        const toolAppElement = document.getElementById(toolInfo.elementId);
+        if (toolAppElement) {
+            toolAppElement.classList.remove('hidden');
         }
-    }
-    if (appTitleEl) appTitleEl.textContent = currentTitle;
 
-    sidebarEl = sidebarEl || document.getElementById('sidebar');
-    if (sidebarEl && sidebarEl.classList.contains('translate-x-0')) {
-        toggleMenu();
+        // Initialize the tool's JavaScript logic after its HTML is in the DOM
+        await initializeTool(toolId);
+        return true;
+    } catch (error) {
+        console.error(`Error loading tool ${toolId}:`, error);
+        showToast(`Failed to load tool: ${toolInfo.title}`, true);
+        return false;
     }
-    return toolDisplayed;
 }
 
 export function showDashboard(fromPopStateUpdate = false, currentToolSectionsMap) {
     const dashboardAppEl = document.getElementById('dashboardApp');
     const appTitleEl = document.getElementById('appTitle');
-    const mainContentEl = document.getElementById('main-content');
-    
+    const toolContainer = document.getElementById('tool-container-host');
+
     if (dashboardAppEl) dashboardAppEl.classList.remove('hidden');
-    hideFindReplaceOverlays();
-    
-    if (mainContentEl) {
-        mainContentEl.style.paddingBottom = '';
-    }
-
-    for (const id in currentToolSectionsMap) {
-        const toolInfo = currentToolSectionsMap[id];
-        const appElement = document.getElementById(toolInfo.elementId);
-        if (appElement) {
-            appElement.classList.add('hidden');
-            appElement.classList.remove('flex', 'block');
-        }
-    }
-
+    if (toolContainer) toolContainer.innerHTML = '';
     if (appTitleEl) appTitleEl.textContent = 'Novel-Apps';
 
     sidebarEl = sidebarEl || document.getElementById('sidebar');
-    if (sidebarEl && sidebarEl.classList.contains('translate-x-0')) {
+    if (sidebarEl && sidebarEl.classList.contains('open')) {
         toggleMenu();
     }
 
-    // Update bottom navigation active state
-    updateBottomNavActiveState('dashboard');
-
     const targetHash = '#dashboard';
     if (!fromPopStateUpdate && window.location.hash !== targetHash) {
-        const historyUrl = window.location.protocol === 'blob:' ? null : targetHash;
-        history.pushState({ view: 'dashboard' }, 'Novel-Apps Dashboard', historyUrl);
-        console.log("UI: Pushed history state for Dashboard. URL used:", historyUrl === null ? "null (blob)" : historyUrl);
-    } else if (fromPopStateUpdate) {
-         console.log("UI: Show Dashboard from popstate, hash is:", window.location.hash);
+        history.pushState({ view: 'dashboard' }, 'Novel-Apps Dashboard', targetHash);
     }
     sessionStorage.removeItem('activeToolId');
 }
 
-export function launchAppFromCard(appId, fromPopStateUpdate = false, currentToolSectionsMap) {
-    const toolDisplayed = displayTool(appId, currentToolSectionsMap);
+export async function launchAppFromCard(appId, fromPopStateUpdate = false, currentToolSectionsMap) {
+    const dashboardAppEl = document.getElementById('dashboardApp');
+    const appTitleEl = document.getElementById('appTitle');
+    const toolInfo = currentToolSectionsMap[appId];
 
-    if (!toolDisplayed) {
-        console.warn(`Tool with ID '${appId}' not found or failed to launch. Showing dashboard.`);
+    if (!toolInfo) {
+        console.warn(`Tool with ID '${appId}' not found. Showing dashboard.`);
         showDashboard(fromPopStateUpdate, currentToolSectionsMap);
-        if (!fromPopStateUpdate) {
-             const targetDashboardHash = '#dashboard';
-             const historyUrl = window.location.protocol === 'blob:' ? null : targetDashboardHash;
-             if (window.location.hash !== targetDashboardHash && historyUrl !== null) {
-                history.replaceState({ view: 'dashboard' }, 'Novel-Apps Dashboard', historyUrl);
-             }
-        }
         return;
     }
 
-    const toolInfo = currentToolSectionsMap[appId];
+    if (dashboardAppEl) dashboardAppEl.classList.add('hidden');
+    if (appTitleEl) appTitleEl.textContent = toolInfo.title;
+
+    const success = await loadToolIntoContainer(appId, currentToolSectionsMap);
+
+    if (!success) {
+        showDashboard(fromPopStateUpdate, currentToolSectionsMap);
+        return;
+    }
+
+    sidebarEl = sidebarEl || document.getElementById('sidebar');
+    if (sidebarEl && sidebarEl.classList.contains('open')) {
+        toggleMenu();
+    }
+    
     const targetToolHash = `#tool-${appId}`;
-
-    // Update bottom navigation active state
-    updateBottomNavActiveState(appId);
-
     if (!fromPopStateUpdate && window.location.hash !== targetToolHash) {
-        if (toolInfo) {
-            const historyUrl = window.location.protocol === 'blob:' ? null : targetToolHash;
-            history.pushState({ view: 'tool', toolId: appId }, toolInfo.title, historyUrl);
-            console.log(`UI: Pushed history state for tool '${appId}'. URL used:`, historyUrl === null ? "null (blob)" : historyUrl);
-        } else {
-            console.error(`Tool info not found for ${appId} during pushState, though displayTool succeeded.`);
-        }
-    } else if (fromPopStateUpdate) {
-        console.log(`UI: Launch app '${appId}' from popstate, hash is:`, window.location.hash);
+        history.pushState({ view: 'tool', toolId: appId }, toolInfo.title, targetToolHash);
     }
     sessionStorage.setItem('activeToolId', appId);
-}
-
-// Update bottom navigation active state
-export function updateBottomNavActiveState(activeView) {
-    const bottomNav = document.getElementById('bottomNav');
-    if (!bottomNav) return;
-
-    const navItems = bottomNav.querySelectorAll('.nav-item');
-    // Reset all items
-    navItems.forEach(item => {
-        item.classList.remove('active', 'bg-primary-600', 'text-white', 'shadow-lg');
-        const icon = item.querySelector('.nav-icon');
-        if (icon) icon.classList.remove('scale-110');
-    });
-
-    // Find matching nav item using data attributes
-    const activeNavItem = bottomNav.querySelector(`[data-tool-id="${activeView}"]`);
-    if (activeNavItem) {
-        activeNavItem.classList.add('active', 'bg-primary-600', 'text-white', 'shadow-lg');
-        const icon = activeNavItem.querySelector('.nav-icon');
-        if (icon) icon.classList.add('scale-110');
-    }
 }
