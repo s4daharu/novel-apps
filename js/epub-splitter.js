@@ -30,18 +30,27 @@ async function parseEpubForChapters(epubFile) {
     };
     
     const resolvePath = (path, base) => {
-        if (!base || path.startsWith('/') || /^[a-z_]+:/.test(path)) return path.startsWith('/') ? path.substring(1) : path;
-        const parts = base.split('/').concat(path.split('/'));
-        const resolved = [];
-        for (const part of parts) {
-            if (part === '.' || part === '') continue;
-            if (part === '..') {
-                if(resolved.length > 0) resolved.pop();
-            } else {
-                resolved.push(part);
-            }
+        // If it's an external URI, return it as is.
+        if (/^[a-z]+:/i.test(path)) {
+            return path;
         }
-        return resolved.join('/');
+        // If it's an absolute path from the root.
+        if (path.startsWith('/')) {
+            // We still need to decode, as zip paths aren't encoded.
+            const decodedPath = decodeURIComponent(path);
+            return decodedPath.substring(1);
+        }
+        if (!base) {
+            return decodeURIComponent(path);
+        }
+
+        // Using URL constructor for robust path resolution for relative paths.
+        const dummyBase = 'file:///base/';
+        const baseUrl = new URL(base.endsWith('/') ? base : base + '/', dummyBase);
+        const resolvedUrl = new URL(path, baseUrl);
+        
+        // The pathname is percent-encoded, so we need to decode it for jszip.
+        return decodeURIComponent(resolvedUrl.pathname.replace(/^\/base\//, ''));
     };
 
     const buffer = await readFileAsArrayBuffer(epubFile);
