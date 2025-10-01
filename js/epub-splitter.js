@@ -15,6 +15,138 @@ function readFileAsArrayBuffer(file) {
     });
 }
 
+/**
+ * Parses an EPUB file to extract a structured list of chapters.
+ * @param {File} epubFile The EPUB file object.
+ * @returns {Promise<Array<{title: string, text: string}>>} A promise that resolves to an array of chapter objects.
+ */
+async function parseEpubForChapters(epubFile) {
+    const parser = new DOMParser();
+
+    const getFileAsString = async (zip, path) => {
+        const file = zip.file(path);
+        if (!file) return null;
+        return file.async('string');
+    };
+    
+    const resolvePath = (path, base) => {
+        if (!base || path.startsWith('/') || /^[a-z_]+:/.test(path)) return path.startsWith('/') ? path.substring(1) : path;
+        const parts = base.split('/').concat(path.split('/'));
+        const resolved = [];
+        for (const part of parts) {
+            if (part === '.' || part === '') continue;
+            if (part === '..') {
+                if(resolved.length > 0) resolved.pop();
+            } else {
+                resolved.push(part);
+            }
+        }
+        return resolved.join('/');
+    };
+
+    const buffer = await readFileAsArrayBuffer(epubFile);
+    const JSZip = await getJSZip();
+    const epub = await JSZip.loadAsync(buffer);
+    
+    const containerXmlText = await getFileAsString(epub, 'META-INF/container.xml');
+    if (!containerXmlText) throw new Error('META-INF/container.xml not found.');
+    const containerDoc = parser.parseFromString(containerXmlText, 'application/xml');
+    const opfPath = containerDoc.querySelector('rootfile')?.getAttribute('full-path');
+    if (!opfPath) throw new Error('Could not find OPF file path in container.xml');
+    
+    const opfDir = opfPath.includes('/') ? opfPath.substring(0, opfPath.lastIndexOf('/')) : '';
+
+    const opfText = await getFileAsString(epub, opfPath);
+    if (!opfText) throw new Error(`OPF file not found at ${opfPath}`);
+    const opfDoc = parser.parseFromString(opfText, 'application/xml');
+
+    let navPath = opfDoc.querySelector('manifest item[properties~="nav"]')?.getAttribute('href');
+    let isNavDoc = true;
+    
+    if (!navPath) {
+        const spineTocId = opfDoc.querySelector('spine[toc]')?.getAttribute('toc');
+        if (spineTocId) {
+            navPath = opfDoc.querySelector(`manifest item[id="${spineTocId}"]`)?.getAttribute('href');
+            isNavDoc = false;
+        }
+    }
+    
+    if (!navPath) throw new Error('Could not find NAV or NCX document in OPF manifest.');
+    
+    const fullNavPath = resolvePath(navPath, opfDir);
+    
+    const navText = await getFileAsString(epub, fullNavPath);
+    if (!navText) throw new Error(`Navigation document not found at ${fullNavPath}`);
+    const navDoc = parser.parseFromString(navText, isNavDoc ? 'application/xhtml+xml' : 'application/xml');
+    if (navDoc.querySelector('parsererror')) throw new Error(`Error parsing navigation document: ${fullNavPath}`);
+
+    const chapterLinks = [];
+    const selector = isNavDoc ? 'nav[epub\\:type="toc"] ol a' : 'navMap navPoint';
+    const navDir = fullNavPath.includes('/') ? fullNavPath.substring(0, fullNavPath.lastIndexOf('/')) : '';
+    
+    navDoc.querySelectorAll(selector).forEach(el => {
+        const title = (isNavDoc ? el.textContent : el.querySelector('navLabel text')?.textContent)?.trim();
+        const href = (isNavDoc ? el.getAttribute('href') : el.querySelector('content')?.getAttribute('src'));
+        if (title && href) {
+            chapterLinks.push({ title, href: resolvePath(href, navDir) });
+        }
+    });
+
+    if (chapterLinks.length === 0) throw new Error('No chapters found in the Table of Contents.');
+
+    const contentCache = new Map();
+    const chapters = [];
+    
+    for (const link of chapterLinks) {
+        const [filePath, fragmentId] = link.href.split('#');
+        if (!filePath) continue;
+        
+        let contentDoc;
+        if (contentCache.has(filePath)) {
+            contentDoc = contentCache.get(filePath);
+        } else {
+            const contentHtml = await getFileAsString(epub, filePath);
+            if (contentHtml) {
+                contentDoc = parser.parseFromString(contentHtml, 'application/xhtml+xml');
+                if (contentDoc.querySelector('parsererror')) {
+                    contentDoc = parser.parseFromString(contentHtml, 'text/html');
+                }
+                contentCache.set(filePath, contentDoc);
+            } else {
+                console.warn(`Content file not found: ${filePath}`);
+                continue;
+            }
+        }
+        
+        let chapterElement = null;
+        if (fragmentId) {
+            const targetElement = contentDoc.getElementById(fragmentId);
+            if (targetElement) {
+                chapterElement = targetElement.closest('section, div, article') || targetElement.parentElement;
+            } else {
+                 console.warn(`Fragment #${fragmentId} not found in ${filePath}`);
+            }
+        }
+        
+        if (!chapterElement) {
+            chapterElement = contentDoc.body;
+        }
+
+        if (chapterElement) {
+            chapterElement.querySelectorAll('script, style').forEach(el => el.remove());
+            const text = chapterElement.textContent.trim();
+            if (text) {
+                 chapters.push({ title: link.title, text });
+            }
+        } else {
+            console.warn(`Could not extract chapter content for href: ${link.href}`);
+        }
+    }
+    
+    return chapters;
+}
+
+
 export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
     const uploadInput = document.getElementById('epubUpload');
     const fileNameEl = document.getElementById('epubFileName');
@@ -103,32 +235,12 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
 
             toggleAppSpinner(true);
             try {
-                const buffer = await readFileAsArrayBuffer(selectedFile);
-                const JSZip = await getJSZip();
-                const epub = await JSZip.loadAsync(buffer);
-                const tempChapters = [];
-                // Simplified chapter finding logic
-                const contentFiles = [];
-                epub.forEach((path, file) => {
-                    if (!file.dir && (path.toLowerCase().endsWith('.xhtml') || path.toLowerCase().endsWith('.html'))) {
-                       contentFiles.push(file.async('text'));
-                    }
-                });
-
-                const contents = await Promise.all(contentFiles);
-                const parser = new DOMParser();
-                contents.forEach(content => {
-                    const doc = parser.parseFromString(content, 'text/html');
-                    const text = doc.body?.textContent?.replace(/\s+/g, ' ').trim() || '';
-                    if (text.length > 200) { // Arbitrary length to filter out small/nav files
-                       tempChapters.push(doc.body.textContent.trim());
-                    }
-                });
+                const chapters = await parseEpubForChapters(selectedFile);
                 
-                parsedChaptersForSelection = tempChapters.map((text, index) => ({
+                parsedChaptersForSelection = chapters.map((chap, index) => ({
                     index: index,
-                    title: `Chapter ${index + 1} (Preview: ${text.substring(0, 50).replace(/\s+/g, ' ')}${text.length > 50 ? '...' : ''})`,
-                    text: text
+                    title: chap.title,
+                    text: chap.text
                 }));
 
                 displayChapterSelectionUI(parsedChaptersForSelection);
