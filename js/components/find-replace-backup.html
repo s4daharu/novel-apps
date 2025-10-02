@@ -14,7 +14,6 @@
   <div id="frHeader" class="flex-shrink-0 flex items-center justify-between p-2 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 hidden">
     <h2 id="frFileName" class="text-sm font-medium text-slate-700 dark:text-slate-300 truncate px-2"></h2>
     <div class="flex items-center gap-2">
-        <button id="downloadCurrentFrBackupBtn" class="inline-flex items-center justify-center px-3 py-1.5 text-sm rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed" disabled>Download</button>
         <button id="frCloseToolBtn" class="inline-flex items-center justify-center px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 dark:text-white shadow-md transition-all">Close</button>
     </div>
   </div>
@@ -28,7 +27,7 @@
               <!-- Single result preview will be populated here by JS -->
           </div>
           <div id="frHelperText" class="text-center p-8 text-slate-500 dark:text-slate-400">
-              <p>Enter a search term above to find results in your backup file.</p>
+              <p>Enter a search term to find results in your backup file.</p>
           </div>
       </div>
     </div>
@@ -53,9 +52,10 @@
                   <button id="replaceNextBtn" class="flex-grow bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 h-10 rounded-md inline-flex items-center justify-center text-sm font-medium transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed">Replace</button>
                   <button id="replaceAllBtn" class="flex-grow bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 h-10 rounded-md inline-flex items-center justify-center text-sm font-medium transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed">Replace All</button>
               </div>
-               <!-- Search Options (moved from popover) -->
-              <div>
-                  <div class="flex justify-center bg-slate-100 dark:bg-slate-700 rounded-md p-1 max-w-xs mx-auto">
+               <!-- Search Options -->
+               <div class="flex items-center justify-center gap-4 flex-wrap">
+                  <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Options:</span>
+                  <div class="flex justify-center bg-slate-100 dark:bg-slate-700 rounded-md p-1">
                       <label class="flex-1 flex justify-center p-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="useRegexBackup" title="Use Regular Expression">
                           <input type="checkbox" id="useRegexBackup" class="hidden">
                           <span class="text-sm font-mono text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600">Regex</span>
@@ -69,6 +69,7 @@
                           <span class="text-sm font-medium text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600">" "</span>
                       </label>
                   </div>
+                  <button id="downloadCurrentFrBackupBtn" class="inline-flex items-center justify-center px-3 py-1.5 text-sm rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed" disabled>Download</button>
               </div>
           </div>
       </div>
