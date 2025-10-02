@@ -132,7 +132,6 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
     const resetState = () => {
         backupFiles = [];
         fileIdCounter = 0;
-        filesInput.value = '';
         fileListContainer.classList.add('hidden');
         initialFileNamesArea.classList.remove('hidden');
         initialFileNamesArea.querySelector('#mergeBackupFileNames').textContent = 'No files selected.';
@@ -187,9 +186,12 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
     };
 
     const handleFileSelection = async (event) => {
-        resetState();
+        resetState(); // Reset UI from previous selection
         const files = Array.from(event.target.files);
-        if (files.length === 0) return;
+        if (files.length === 0) {
+            filesInput.value = ''; // Ensure input is cleared if user cancels dialog
+            return;
+        }
 
         toggleAppSpinner(true);
         const filePromises = files.map(file => new Promise((resolve) => {
@@ -240,6 +242,7 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
             renderCoverSelection();
         } else {
             resetState();
+            filesInput.value = ''; // Clear the input if no valid files were processed
             initialFileNamesArea.querySelector('#mergeBackupFileNames').textContent = 'No valid backup files were selected.';
             showAppToast('No valid backup files found among the selection.', true);
         }
@@ -247,7 +250,11 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
     };
 
     filesInput.addEventListener('change', handleFileSelection);
-    clearFilesBtn.addEventListener('click', resetState);
+    
+    clearFilesBtn.addEventListener('click', () => {
+        resetState();
+        filesInput.value = '';
+    });
 
     fileListUl.addEventListener('dragstart', (e) => {
         if (e.target.tagName === 'LI') {
