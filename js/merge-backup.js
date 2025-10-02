@@ -1,18 +1,22 @@
 /**
- * Browser-compatible Merge Backup functionality with reordering and cover selection.
+ * Browser-compatible Merge Backup functionality
  */
 
 import { triggerDownload } from './browser-helpers.js';
 import { updateStatus } from './tool-helpers.js';
 import { calculateWordCount } from './backup-helpers.js';
-import { escapeHTML } from './ui-helpers.js';
 
-async function processMergeBackupFiles(backups, mergedTitle, mergedDesc, chapterPrefix, preserveOriginalTitles, selectedCover, showAppToast) {
+let selectedBackupFiles = []; // Array of { id, file, title, cover, data }
+let selectedCoverData = null;
+let draggedItemId = null;
+
+
+async function processMergeBackupFiles(backupDataArray, mergedTitle, mergedDesc, chapterPrefix, preserveOriginalTitles, coverData, showAppToast) {
     let combinedScenes = [];
     let combinedSections = [];
     const allStatuses = new Map();
 
-    for (const data of backups) {
+    for (const data of backupDataArray) {
         try {
             const rev = data.revisions?.[0];
             if (rev) {
@@ -23,7 +27,7 @@ async function processMergeBackupFiles(backups, mergedTitle, mergedDesc, chapter
                     combinedScenes = combinedScenes.concat(rev.scenes);
                 }
                 if (rev.sections) {
-                     if (preserveOriginalTitles) {
+                    if (preserveOriginalTitles) {
                         rev.sections.forEach(s => (s.originalTitle = s.title));
                     }
                     combinedSections = combinedSections.concat(rev.sections);
@@ -36,17 +40,17 @@ async function processMergeBackupFiles(backups, mergedTitle, mergedDesc, chapter
                     });
                 }
             } else {
-                 console.warn(`Skipping backup '${data.title || 'untitled'}' in merge: No valid revision found.`);
-                 showAppToast(`Skipped a backup (no revision data).`, true);
+                console.warn(`Skipping a file in merge: No valid revision found.`);
+                showAppToast(`Skipped a file (no revision data).`, true);
             }
         } catch (e) {
-            console.warn(`Skipping a backup in merge due to processing error:`, e);
-            showAppToast(`Skipped a backup during merge (invalid data).`, true);
+            console.warn(`Skipping a file in merge due to error:`, e);
+            showAppToast(`Skipped a file during merge (error).`, true);
         }
     }
 
     const finalStatuses = Array.from(allStatuses.values())
-        .sort((a,b) => (a.ranking || Infinity) - (b.ranking || Infinity))
+        .sort((a, b) => (a.ranking || Infinity) - (b.ranking || Infinity))
         .map((status, index) => ({ ...status, ranking: index + 1 }));
 
     if (finalStatuses.length === 0) {
@@ -77,11 +81,12 @@ async function processMergeBackupFiles(backups, mergedTitle, mergedDesc, chapter
     const now = Date.now();
     const totalWordCount = calculateWordCount(combinedScenes);
 
-    const mergedData = {
+    return {
         version: 4,
         code: Math.floor(Math.random() * 0xFFFFFFFF).toString(16).padStart(8, '0'),
         title: mergedTitle,
         description: mergedDesc,
+        cover: coverData,
         show_table_of_contents: true,
         apply_automatic_indentation: false,
         last_update_date: now,
@@ -94,217 +99,188 @@ async function processMergeBackupFiles(backups, mergedTitle, mergedDesc, chapter
             sections: combinedSections
         }]
     };
-
-    if (selectedCover) {
-        // Standardize on the newer coverImage object format for merged files
-        mergedData.coverImage = selectedCover;
-    }
-
-    return mergedData;
 }
 
 export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
     const mergeBtn = document.getElementById('mergeBackupBtn');
     const filesInput = document.getElementById('mergeBackupFiles');
-    const fileListContainer = document.getElementById('mergeBackupFilelistContainer');
-    const fileListUl = document.getElementById('mergeBackupFileList');
+    const fileListEl = document.getElementById('mergeBackupFileList');
     const clearFilesBtn = document.getElementById('clearMergeBackupFiles');
-    const initialFileNamesArea = document.getElementById('mergeBackupFileNamesArea');
     const mergedTitleInput = document.getElementById('mergeProjectTitle');
     const mergedDescInput = document.getElementById('mergeDescription');
     const chapterPrefixInput = document.getElementById('mergePrefix');
     const preserveTitlesCheckbox = document.getElementById('mergePreserveTitles');
     const statusEl = document.getElementById('statusMergeBackup');
-    const coverSelectionArea = document.getElementById('coverSelectionArea');
-    const coverOptionsContainer = document.getElementById('coverOptionsContainer');
+    const coverSelectionArea = document.getElementById('mergeCoverSelectionArea');
+    const coverGridEl = document.getElementById('mergeCoverGrid');
 
-    let backupFiles = [];
-    let draggedItem = null;
-    let fileIdCounter = 0;
-
-    if (!mergeBtn || !filesInput || !fileListContainer || !fileListUl || !clearFilesBtn ||
-        !initialFileNamesArea || !mergedTitleInput || !mergedDescInput || !chapterPrefixInput || 
-        !preserveTitlesCheckbox || !statusEl || !coverSelectionArea || !coverOptionsContainer) {
+    if (!mergeBtn || !filesInput || !fileListEl || !clearFilesBtn ||
+        !mergedTitleInput || !mergedDescInput || !chapterPrefixInput || !preserveTitlesCheckbox || !statusEl ||
+        !coverSelectionArea || !coverGridEl) {
         console.error("Merge Backup: One or more UI elements not found. Initialization failed.");
         return;
     }
 
-    const resetState = () => {
-        backupFiles = [];
-        fileIdCounter = 0;
-        fileListContainer.classList.add('hidden');
-        initialFileNamesArea.classList.remove('hidden');
-        initialFileNamesArea.querySelector('#mergeBackupFileNames').textContent = 'No files selected.';
-        coverSelectionArea.classList.add('hidden');
-        fileListUl.innerHTML = '';
-        coverOptionsContainer.innerHTML = '';
-        statusEl.classList.add('hidden');
-    };
-
-    const renderFileList = () => {
-        fileListUl.innerHTML = '';
-        backupFiles.forEach((fileInfo) => {
+    function renderFileList() {
+        fileListEl.innerHTML = '';
+        if (selectedBackupFiles.length === 0) {
+            fileListEl.innerHTML = '<li class="p-3 text-center text-sm text-slate-500 dark:text-slate-400">No files selected.</li>';
+            return;
+        }
+        selectedBackupFiles.forEach(item => {
             const li = document.createElement('li');
-            li.className = 'flex items-center p-2 border-b border-slate-200 dark:border-slate-700 last:border-b-0 cursor-grab bg-white dark:bg-slate-700/50';
             li.draggable = true;
-            li.dataset.id = fileInfo.id;
-            li.innerHTML = `<span class="text-2xl text-slate-400 mr-2" aria-hidden="true">⠿</span><span class="flex-grow text-sm truncate">${escapeHTML(fileInfo.name)}</span>`;
-            fileListUl.appendChild(li);
+            li.dataset.id = item.id;
+            li.className = 'flex items-center p-2.5 border-b border-slate-200 dark:border-slate-700 cursor-grab user-select-none transition-all duration-200 rounded-md mb-0.5 last:border-b-0 hover:bg-slate-200/50 dark:hover:bg-slate-700/50';
+            li.innerHTML = `<span class="text-slate-800 dark:text-slate-200 p-1.5 text-sm">${item.title}</span>`;
+            fileListEl.appendChild(li);
         });
-    };
+    }
 
-    const renderCoverSelection = () => {
-        coverOptionsContainer.innerHTML = '';
-        const covers = backupFiles.filter(f => f.coverDataUrl);
-        
+    function renderCoverSelection() {
+        coverGridEl.innerHTML = '';
+        const covers = selectedBackupFiles.filter(item => item.cover);
+
         if (covers.length === 0) {
             coverSelectionArea.classList.add('hidden');
             return;
         }
         
-        coverOptionsContainer.innerHTML += `
-            <label class="relative cursor-pointer">
-                <input type="radio" name="cover-select" value="none" class="sr-only" checked>
-                <div class="h-full min-h-[120px] flex items-center justify-center bg-slate-200 dark:bg-slate-700 rounded-md border-2 border-transparent peer-checked:border-primary-500 peer-checked:ring-2 peer-checked:ring-primary-500">
-                    <span class="text-slate-500 dark:text-slate-400 text-sm text-center">No Cover</span>
-                </div>
-            </label>
-        `;
+        coverSelectionArea.classList.remove('hidden');
 
-        covers.forEach((fileInfo) => {
-            const coverHtml = `
-                <label class="relative cursor-pointer group">
-                    <input type="radio" name="cover-select" value="${fileInfo.id}" class="sr-only">
-                    <img src="${fileInfo.coverDataUrl}" alt="Cover from ${escapeHTML(fileInfo.name)}" class="w-full h-full object-cover rounded-md border-2 border-transparent group-hover:opacity-80 peer-checked:border-primary-500 peer-checked:ring-2 peer-checked:ring-primary-500">
-                    <div class="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs text-center p-1 truncate rounded-b-md">${escapeHTML(fileInfo.name)}</div>
-                </label>
-            `;
-            coverOptionsContainer.innerHTML += coverHtml;
+        // "No Cover" option
+        const noCoverEl = document.createElement('div');
+        noCoverEl.className = 'w-full aspect-[2/3] bg-slate-200 dark:bg-slate-800 rounded-md flex items-center justify-center text-center text-xs p-2 text-slate-600 dark:text-slate-300 cursor-pointer transition-all duration-200';
+        noCoverEl.textContent = 'No Cover';
+        noCoverEl.dataset.coverId = 'none';
+        coverGridEl.appendChild(noCoverEl);
+
+        // Cover thumbnails
+        covers.forEach(item => {
+            const coverEl = document.createElement('div');
+            coverEl.className = 'w-full aspect-[2/3] bg-cover bg-center rounded-md cursor-pointer transition-all duration-200';
+            coverEl.style.backgroundImage = `url(data:image/jpeg;base64,${item.cover})`;
+            coverEl.dataset.coverId = item.id;
+            coverGridEl.appendChild(coverEl);
         });
 
-        coverSelectionArea.classList.remove('hidden');
-    };
+        updateCoverSelectionUI();
+    }
 
-    const handleFileSelection = async (event) => {
-        resetState(); // Reset UI from previous selection
-        const files = Array.from(event.target.files);
-        if (files.length === 0) {
-            filesInput.value = ''; // Ensure input is cleared if user cancels dialog
-            return;
-        }
+    function updateCoverSelectionUI() {
+        coverGridEl.querySelectorAll('[data-cover-id]').forEach(el => {
+            const isSelected = (selectedCoverData && el.dataset.coverId === selectedBackupFiles.find(f => f.cover === selectedCoverData)?.id) || (!selectedCoverData && el.dataset.coverId === 'none');
+            el.classList.toggle('ring-4', isSelected);
+            el.classList.toggle('ring-primary-500', isSelected);
+        });
+    }
+
+    async function handleFileSelection(event) {
+        const files = event.target.files;
+        if (!files || files.length === 0) return;
 
         toggleAppSpinner(true);
-        const filePromises = files.map(file => new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-                const id = `file-${fileIdCounter++}`;
-                let fileInfo = { id, name: file.name, jsonData: null, cover: null, coverDataUrl: null };
-                try {
-                    const data = JSON.parse(reader.result);
-                    const rev = data.revisions?.[0];
-                    if (!rev || !rev.scenes || !rev.sections) {
-                        throw new Error('Invalid backup structure (missing revisions, scenes, or sections).');
-                    }
-                    fileInfo.jsonData = data;
+        statusEl.classList.add('hidden');
 
-                    if (data.cover && typeof data.cover === 'string' && data.cover.length > 50) {
-                        let mimeType = 'image/jpeg';
-                        if (data.cover.startsWith('/9j/')) mimeType = 'image/jpeg';
-                        else if (data.cover.startsWith('iVBORw0KGgo')) mimeType = 'image/png';
-                        
-                        fileInfo.cover = { data: data.cover, mimeType: mimeType };
-                        fileInfo.coverDataUrl = `data:${mimeType};base64,${data.cover}`;
-                    } else if (data.coverImage && data.coverImage.data && data.coverImage.mimeType) {
-                        fileInfo.cover = data.coverImage;
-                        fileInfo.coverDataUrl = `data:${data.coverImage.mimeType};base64,${data.coverImage.data}`;
-                    }
-                } catch (e) {
-                    console.warn(`Could not process ${file.name}: ${e.message}`);
-                    showAppToast(`Skipped ${file.name}: not a valid backup file.`, true);
-                    fileInfo = null;
-                }
-                resolve(fileInfo);
-            };
-            reader.onerror = () => {
-                showAppToast(`Error reading file ${file.name}.`, true);
-                resolve(null);
+        const filePromises = Array.from(files).map(async (file, index) => {
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                return {
+                    id: `backup-${Date.now()}-${index}`,
+                    file: file,
+                    title: data.title || file.name,
+                    cover: data.cover || null,
+                    data: data
+                };
+            } catch (e) {
+                showAppToast(`Could not parse ${file.name}. It may not be a valid backup file.`, true);
+                return null;
             }
-            reader.readAsText(file);
-        }));
+        });
 
-        const results = await Promise.all(filePromises);
-        backupFiles = results.filter(f => f !== null);
-        
-        if (backupFiles.length > 0) {
-            initialFileNamesArea.classList.add('hidden');
-            fileListContainer.classList.remove('hidden');
-            renderFileList();
-            renderCoverSelection();
-        } else {
-            resetState();
-            filesInput.value = ''; // Clear the input if no valid files were processed
-            initialFileNamesArea.querySelector('#mergeBackupFileNames').textContent = 'No valid backup files were selected.';
-            showAppToast('No valid backup files found among the selection.', true);
+        selectedBackupFiles = (await Promise.all(filePromises)).filter(Boolean);
+
+        if (selectedBackupFiles.length > 0) {
+            clearFilesBtn.classList.remove('hidden');
+            mergeBtn.disabled = false;
+            // Set default selected cover
+            selectedCoverData = selectedBackupFiles.find(f => f.cover)?.cover || null;
         }
+
+        renderFileList();
+        renderCoverSelection();
         toggleAppSpinner(false);
-    };
+    }
+    
+    function clearFileSelection() {
+        filesInput.value = '';
+        selectedBackupFiles = [];
+        selectedCoverData = null;
+        renderFileList();
+        coverSelectionArea.classList.add('hidden');
+        clearFilesBtn.classList.add('hidden');
+        mergeBtn.disabled = true;
+        statusEl.classList.add('hidden');
+    }
 
     filesInput.addEventListener('change', handleFileSelection);
-    
-    clearFilesBtn.addEventListener('click', () => {
-        resetState();
-        filesInput.value = '';
-    });
+    clearFilesBtn.addEventListener('click', clearFileSelection);
 
-    fileListUl.addEventListener('dragstart', (e) => {
-        if (e.target.tagName === 'LI') {
-            draggedItem = e.target;
-            setTimeout(() => e.target.classList.add('opacity-50'), 0);
+    fileListEl.addEventListener('dragstart', (e) => {
+        if (e.target.matches('li')) {
+            draggedItemId = e.target.dataset.id;
+            e.target.classList.add('opacity-50');
         }
     });
 
-    fileListUl.addEventListener('dragend', () => {
-        if (draggedItem) {
-            draggedItem.classList.remove('opacity-50');
-            draggedItem = null;
+    fileListEl.addEventListener('dragend', (e) => {
+        if (e.target.matches('li')) {
+            e.target.classList.remove('opacity-50');
+            draggedItemId = null;
         }
     });
 
-    fileListUl.addEventListener('dragover', e => {
+    fileListEl.addEventListener('dragover', e => e.preventDefault());
+
+    fileListEl.addEventListener('drop', (e) => {
         e.preventDefault();
-        const afterElement = [...fileListUl.querySelectorAll('li:not(.opacity-50)')].reduce((closest, child) => {
-            const box = child.getBoundingClientRect();
-            const offset = e.clientY - box.top - box.height / 2;
-            return (offset < 0 && offset > closest.offset) ? { offset, element: child } : closest;
-        }, { offset: Number.NEGATIVE_INFINITY }).element;
+        if (!draggedItemId) return;
+        const targetLi = e.target.closest('li');
+        if (!targetLi || targetLi.dataset.id === draggedItemId) return;
+
+        const draggedIndex = selectedBackupFiles.findIndex(item => item.id === draggedItemId);
+        let targetIndex = Array.from(fileListEl.children).indexOf(targetLi);
+
+        const [draggedItem] = selectedBackupFiles.splice(draggedIndex, 1);
+        selectedBackupFiles.splice(targetIndex, 0, draggedItem);
         
-        if (draggedItem) {
-            if (afterElement == null) {
-                fileListUl.appendChild(draggedItem);
-            } else {
-                fileListUl.insertBefore(draggedItem, afterElement);
-            }
-        }
+        renderFileList();
     });
-    
-    fileListUl.addEventListener('drop', e => {
-        e.preventDefault();
-        if (!draggedItem) return;
-        const newIdOrder = Array.from(fileListUl.children).map(li => li.dataset.id);
-        backupFiles.sort((a, b) => newIdOrder.indexOf(a.id) - newIdOrder.indexOf(b.id));
+
+    coverGridEl.addEventListener('click', (e) => {
+        const targetCover = e.target.closest('[data-cover-id]');
+        if (!targetCover) return;
+        const coverId = targetCover.dataset.coverId;
+        if (coverId === 'none') {
+            selectedCoverData = null;
+        } else {
+            const selectedFile = selectedBackupFiles.find(item => item.id === coverId);
+            selectedCoverData = selectedFile ? selectedFile.cover : null;
+        }
+        updateCoverSelectionUI();
     });
 
     mergeBtn.addEventListener('click', async () => {
         statusEl.classList.add('hidden');
-        const backupsToMerge = backupFiles.map(f => f.jsonData);
         const mergedTitle = mergedTitleInput.value.trim();
         const mergedDesc = mergedDescInput.value.trim();
         const chapterPrefix = chapterPrefixInput.value.trim();
         const preserveOriginalTitles = preserveTitlesCheckbox.checked;
 
-        if (backupsToMerge.length === 0) {
-            showAppToast('Select at least one valid backup file to merge.', true);
-            updateStatus(statusEl, 'Error: Select at least one valid backup file.', 'error');
+        if (selectedBackupFiles.length === 0) {
+            showAppToast('Select at least one backup file to merge.', true);
+            updateStatus(statusEl, 'Error: Select at least one backup file.', 'error');
             filesInput.focus();
             return;
         }
@@ -315,32 +291,27 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
             return;
         }
 
-        const selectedCoverRadio = document.querySelector('input[name="cover-select"]:checked');
-        let selectedCover = null;
-        if (selectedCoverRadio && selectedCoverRadio.value !== 'none') {
-            const selectedFileId = selectedCoverRadio.value;
-            const coverFile = backupFiles.find(f => f.id === selectedFileId);
-            if (coverFile) {
-                selectedCover = coverFile.cover;
-            }
-        }
-
         toggleAppSpinner(true);
+
         try {
+            const orderedBackupData = selectedBackupFiles.map(item => item.data);
             const mergedData = await processMergeBackupFiles(
-                backupsToMerge, mergedTitle, mergedDesc, chapterPrefix, preserveOriginalTitles, selectedCover, showAppToast
+                orderedBackupData, mergedTitle, mergedDesc, chapterPrefix, preserveOriginalTitles, selectedCoverData, showAppToast
             );
+
             if (mergedData.revisions[0].scenes.length === 0) {
                 showAppToast('No valid chapters found in the selected files to merge.', true);
                 updateStatus(statusEl, 'Error: No valid chapters to merge from selected files.', 'error');
             } else {
                 const blob = new Blob([JSON.stringify(mergedData, null, 2)], { type: 'application/json' });
-                const filenameBase = mergedTitle.replace(/[^a-z0-9_\-\s]/gi, '_').replace(/\s+/g, '_') || 'merged_backup';
+                const filenameBase = mergedTitle.replace(/[^a-z0-9_\\-\\s]/gi, '_').replace(/\\s+/g, '_') || 'merged_backup';
                 const filename = `${filenameBase}.json`;
                 await triggerDownload(blob, filename, 'application/json', showAppToast);
+
                 updateStatus(statusEl, `Backup files merged into "${mergedTitle}". Download started.`, 'success');
                 showAppToast('Backup files merged successfully.');
             }
+
         } catch (err) {
             showAppToast(err.message || 'Error merging backup files.', true);
             updateStatus(statusEl, `Error: ${err.message || 'Could not merge backups.'}`, 'error');

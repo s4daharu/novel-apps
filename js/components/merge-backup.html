@@ -6,32 +6,22 @@
   <div class="max-w-md mx-auto mb-6">
     <label for="mergeBackupFiles" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-violet-600 hover:bg-violet-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 w-full cursor-pointer" id="mergeBackupFilesLabel">Upload Backup Files</label>
     <input type="file" id="mergeBackupFiles" class="hidden" accept=".json,.txt,.nov" multiple aria-labelledby="mergeBackupFilesLabel">
-    
-    <!-- Sortable File List -->
-    <div id="mergeBackupFilelistContainer" class="mt-4 hidden">
-        <div class="flex justify-between items-center mb-2">
-            <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200">Files to Merge</h3>
-            <button type="button" id="clearMergeBackupFiles" class="text-sm text-red-500 hover:text-red-700 font-medium" aria-label="Clear all files">Clear All</button>
-        </div>
-        <p class="text-xs text-center text-slate-500 dark:text-slate-400 mb-2">Drag and drop to reorder the files. Merging will follow this order.</p>
-        <ul id="mergeBackupFileList" class="list-none p-0 my-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-100 dark:bg-slate-800 max-h-64 overflow-y-auto">
-            <!-- Draggable file items will be populated here -->
-        </ul>
+    <div class="mt-2.5 flex items-center justify-between">
+      <p class="text-sm text-slate-600 dark:text-slate-400">Files to merge (drag to reorder):</p>
+      <button type="button" id="clearMergeBackupFiles" class="bg-transparent border-none text-slate-500 text-sm font-medium cursor-pointer p-1 transition-colors hover:text-red-500 hidden" aria-label="Clear backup files">Clear All</button>
     </div>
-    <div id="mergeBackupFileNamesArea" class="text-left p-3 rounded-lg mt-2 bg-slate-100 dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600/50">
-        <div id="mergeBackupFileNames" class="text-sm text-slate-700 dark:text-slate-300">No files selected.</div>
-    </div>
-    <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Upload multiple .json or .nov backup files to merge</p>
+    <ul id="mergeBackupFileList" class="list-none p-0 my-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-100 dark:bg-slate-800 max-h-48 overflow-y-auto">
+      <li class="p-3 text-center text-sm text-slate-500 dark:text-slate-400">No files selected.</li>
+    </ul>
   </div>
 
   <!-- Cover Selection Section -->
-  <div id="coverSelectionArea" class="max-w-xl mx-auto hidden mt-6">
-      <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 text-center mb-4">Select Cover for Merged Backup</h3>
-      <div id="coverOptionsContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          <!-- Cover options will be populated here -->
-      </div>
+  <div id="mergeCoverSelectionArea" class="max-w-2xl mx-auto mb-6 hidden">
+    <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-3 text-center">Select a Cover for the Merged Backup</h3>
+    <div id="mergeCoverGrid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 p-3 bg-slate-100 dark:bg-slate-700/30 rounded-lg border border-slate-200 dark:border-slate-600/50">
+      <!-- Cover options will be populated here by JS -->
+    </div>
   </div>
-
 
   <!-- Configuration Sections -->
   <div class="space-y-6 max-w-md mx-auto">
@@ -95,7 +85,7 @@
 
   <!-- Action Button -->
   <div class="mt-8 flex justify-center">
-    <button id="mergeBackupBtn" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 disabled:opacity-60 disabled:cursor-not-allowed">
+    <button id="mergeBackupBtn" class="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 disabled:opacity-60 disabled:cursor-not-allowed" disabled>
       Merge and Download
     </button>
   </div>
