@@ -9,7 +9,7 @@ let loadedFileName = ''; // Name of the loaded file
 let allMatches = []; // Array of all found matches across the selected scope
 let currentMatchIndex = -1; // Index of the currently highlighted match in `allMatches`
 let modificationsMade = false; // Flag to enable the download button
-const CONTEXT_LENGTH = 70; // Characters of context before/after match
+const CONTEXT_LENGTH = 100; // Characters of context before/after match
 
 // --- DOM ELEMENTS (DECLARED AT MODULE LEVEL FOR WIDER ACCESS) ---
 let frContainer, frUploadArea, frBackupFileInput,
