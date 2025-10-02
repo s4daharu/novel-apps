@@ -42,8 +42,50 @@ function parseXml(xmlString, sourceFileName = 'XML') {
 
 function extractTextFromHtml(htmlString) {
     const doc = domParser.parseFromString(htmlString, 'text/html');
-    doc.body.querySelectorAll('script, style').forEach(el => el.remove());
-    return doc.body.textContent.trim().replace(/\s+/g, ' ');
+    const body = doc.body;
+    if (!body) return '';
+
+    // We will traverse the DOM and build the text content to better handle line breaks.
+    let output = '';
+    function traverse(node) {
+        // Node types: 1 for element, 3 for text
+        if (node.nodeType === 3) {
+            output += node.textContent;
+            return;
+        }
+        if (node.nodeType !== 1) return;
+
+        const tagName = node.tagName.toLowerCase();
+        // Ignore script/style content
+        if (tagName === 'script' || tagName === 'style') {
+            return;
+        }
+        
+        const isBlock = ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote', 'section', 'article', 'tr', 'hr'].includes(tagName);
+
+        if (isBlock && output.length > 0 && !output.endsWith('\n\n')) {
+             if (!output.endsWith('\n')) output += '\n';
+             output += '\n';
+        }
+        
+        if (tagName === 'br') {
+            output += '\n';
+        }
+
+        for (const child of node.childNodes) {
+            traverse(child);
+        }
+        
+        if (isBlock && output.length > 0 && !output.endsWith('\n\n')) {
+            if (!output.endsWith('\n')) output += '\n';
+            output += '\n';
+        }
+    }
+
+    traverse(body);
+
+    // Final cleanup: Remove excessive newlines but preserve paragraph breaks.
+    return output.replace(/\n{3,}/g, '\n\n').trim();
 }
 
 function resolvePath(relativePath, baseDirPath) {
@@ -106,7 +148,7 @@ function extractChaptersFromToc(tocDoc, tocType, baseDir) {
         });
     } else {
         // Handle NAV document (EPUB 3)
-        tocDoc.querySelectorAll('nav[epub\\:type="toc"] ol a[href]').forEach((el, index) => {
+        tocDoc.querySelectorAll('nav[epub\\:type="toc"] ol a[href], nav[*|type="toc"] ol a[href]').forEach((el, index) => {
             const label = el.textContent?.trim();
             const src = el.getAttribute('href');
             if (label && src) {
@@ -124,7 +166,7 @@ function extractChaptersFromToc(tocDoc, tocType, baseDir) {
 
 async function getChapterListFromEpub(zip, localUpdateStatus) {
     const opfFullPath = await findOpfPath(zip);
-    if (!opfFullPath) throw new Error("Could not find EPUB's OPF file.");
+    if (!opfFullPath) throw new Error("Could not find EPUB's OPF file (container.xml or rootfile).");
     
     const opfDir = opfFullPath.includes('/') ? opfFullPath.substring(0, opfFullPath.lastIndexOf('/')) : '';
     const opfContent = await readFileFromZip(zip, opfFullPath);
@@ -134,16 +176,23 @@ async function getChapterListFromEpub(zip, localUpdateStatus) {
     if (!opfDoc) throw new Error(`Could not parse OPF XML at ${opfFullPath}`);
 
     const tocInfo = findTocHref(opfDoc);
-    if (!tocInfo) throw new Error("No standard Table of Contents (NAV/NCX) found.");
+    if (!tocInfo) throw new Error("No standard Table of Contents (NAV/NCX) found in OPF file.");
 
     const tocFullPath = resolvePath(tocInfo.href, opfDir);
     const tocContent = await readFileFromZip(zip, tocFullPath);
     if (!tocContent) throw new Error(`ToC file not found at ${tocFullPath}`);
     
-    const tocDoc = tocInfo.type === 'ncx' ? parseXml(tocContent, tocFullPath) : domParser.parseFromString(tocContent, 'application/xhtml+xml');
+    const tocDoc = parseXml(tocContent, tocFullPath);
     if (!tocDoc) throw new Error(`Could not parse ToC file at ${tocFullPath}`);
 
     const chapters = extractChaptersFromToc(tocDoc, tocInfo.type, opfDir);
+    if (chapters.length === 0) {
+        // Fallback for NAV documents that might be parsed as HTML
+        const htmlTocDoc = domParser.parseFromString(tocContent, 'application/xhtml+xml');
+        const navChapters = extractChaptersFromToc(htmlTocDoc, 'nav', opfDir);
+        if (navChapters.length > 0) return [...new Map(navChapters.map(item => [item.href, item])).values()];
+    }
+
     return [...new Map(chapters.map(item => [item.href, item])).values()]; // Deduplicate by href
 }
 
@@ -266,7 +315,7 @@ export function initializeEpubToZip(showAppToast, toggleAppSpinner) {
                 }
 
                 if (chapterText.trim()) {
-                    const filename = `${sanitizeFilenameForZip(entry.title)}.txt`;
+                    const filename = `${String(filesAdded + 1).padStart(4, '0')}_${sanitizeFilenameForZip(entry.title)}.txt`;
                     outputZip.file(filename, chapterText);
                     filesAdded++;
                 }
