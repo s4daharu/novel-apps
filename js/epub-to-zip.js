@@ -71,18 +71,18 @@ async function findOpfPath(zip) {
     const containerXml = await readFileFromZip(zip, 'META-INF/container.xml');
     if (!containerXml) return null;
     const doc = parseXml(containerXml, 'container.xml');
-    const rootfilePath = doc?.querySelector('rootfile[full-path]')?.getAttribute('full-path');
+    const rootfilePath = doc?.querySelector('*|rootfile[full-path]')?.getAttribute('full-path');
     if (!rootfilePath) return null;
     return rootfilePath;
 }
 
 function findTocHref(opfDoc) {
-    const navItem = opfDoc.querySelector('manifest > item[properties~="nav"]');
+    const navItem = opfDoc.querySelector('*|manifest > *|item[properties~="nav"]');
     if (navItem) return { href: navItem.getAttribute('href'), type: 'nav' };
     
-    const spineTocId = opfDoc.querySelector('spine[toc]')?.getAttribute('toc');
+    const spineTocId = opfDoc.querySelector('*|spine[toc]')?.getAttribute('toc');
     if (spineTocId) {
-        const ncxItem = opfDoc.querySelector(`manifest > item[id="${spineTocId}"]`);
+        const ncxItem = opfDoc.querySelector(`*|manifest > *|item[id="${spineTocId}"]`);
         if (ncxItem) return { href: ncxItem.getAttribute('href'), type: 'ncx' };
     }
     return null;
@@ -90,19 +90,35 @@ function findTocHref(opfDoc) {
 
 function extractChaptersFromToc(tocDoc, tocType, baseDir) {
     const chapters = [];
-    const selector = tocType === 'ncx' ? 'navMap navPoint' : 'nav[epub\\:type="toc"] ol a[href]';
-    tocDoc.querySelectorAll(selector).forEach((el, index) => {
-        const label = tocType === 'ncx' ? el.querySelector('navLabel > text')?.textContent?.trim() : el.textContent?.trim();
-        const src = tocType === 'ncx' ? el.querySelector('content')?.getAttribute('src') : el.getAttribute('href');
-        if (label && src) {
-            chapters.push({
-                title: label,
-                href: resolvePath(src.split('#')[0], baseDir),
-                id: `epubzip-chap-${index}`,
-                originalIndex: index
-            });
-        }
-    });
+    if (tocType === 'ncx') {
+        // Handle NCX with namespace support. The wildcard '*' selector is used.
+        tocDoc.querySelectorAll('*|navPoint').forEach((el, index) => {
+            const label = el.querySelector('*|navLabel > *|text')?.textContent?.trim();
+            const src = el.querySelector('*|content')?.getAttribute('src');
+            if (label && src) {
+                chapters.push({
+                    title: label,
+                    href: resolvePath(src.split('#')[0], baseDir),
+                    id: `epubzip-chap-${index}`,
+                    originalIndex: index
+                });
+            }
+        });
+    } else {
+        // Handle NAV document (EPUB 3)
+        tocDoc.querySelectorAll('nav[epub\\:type="toc"] ol a[href]').forEach((el, index) => {
+            const label = el.textContent?.trim();
+            const src = el.getAttribute('href');
+            if (label && src) {
+                chapters.push({
+                    title: label,
+                    href: resolvePath(src.split('#')[0], baseDir),
+                    id: `epubzip-chap-${index}`,
+                    originalIndex: index
+                });
+            }
+        });
+    }
     return chapters;
 }
 
