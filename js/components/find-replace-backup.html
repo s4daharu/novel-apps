@@ -19,56 +19,59 @@
     </div>
   </div>
 
-  <!-- Main Content Area -->
-  <div id="frMainContent" class="flex-grow w-full overflow-y-auto bg-slate-50 dark:bg-slate-800 hidden p-4 md:p-8 flex justify-center">
-    <div class="w-full max-w-2xl">
-        <div id="frSingleResultPreview" class="p-4 bg-white dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 text-sm hidden min-h-[8rem]">
-            <!-- Single result preview will be populated here by JS -->
-        </div>
-        <div id="frHelperText" class="text-center p-8 text-slate-500 dark:text-slate-400">
-            <p>Enter a search term above to find results in your backup file.</p>
-        </div>
+  <!-- Scrollable container for main content and controls -->
+  <div class="flex-grow overflow-y-auto">
+    <!-- Main Content Area -->
+    <div id="frMainContent" class="w-full bg-slate-50 dark:bg-slate-800 hidden p-4 md:p-8 flex justify-center">
+      <div class="w-full max-w-2xl">
+          <div id="frSingleResultPreview" class="p-4 bg-white dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 text-sm hidden min-h-[8rem]">
+              <!-- Single result preview will be populated here by JS -->
+          </div>
+          <div id="frHelperText" class="text-center p-8 text-slate-500 dark:text-slate-400">
+              <p>Enter a search term above to find results in your backup file.</p>
+          </div>
+      </div>
     </div>
-  </div>
 
-  <!-- Controls Panel (replaces floating HUD) -->
-  <div id="frHud" class="flex-shrink-0 bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-md border-t border-slate-300 dark:border-slate-700 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] hidden">
-    <div class="relative max-w-4xl mx-auto">
-        <!-- Main controls -->
-        <div class="space-y-3">
-            <!-- Find Row -->
-            <div class="flex items-center gap-2">
-                <div class="relative flex-grow">
-                     <input type="text" id="findPattern" placeholder="Find" class="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 pr-24 text-base text-slate-800 dark:text-slate-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500">
-                     <div id="frMatchCountDisplay" class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1 pointer-events-none">No results</div>
-                </div>
-                <button id="findPreviousBtn" class="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-10 h-10 rounded-md inline-flex items-center justify-center text-2xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Find Previous">‹</button>
-                <button id="findNextBtn" class="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-10 h-10 rounded-md inline-flex items-center justify-center text-2xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Find Next">›</button>
-            </div>
-            <!-- Replace Row -->
-            <div class="flex items-center gap-2">
-                <input type="text" id="replaceText" placeholder="Replace with" class="flex-grow bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 text-base text-slate-800 dark:text-slate-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500">
-                <button id="replaceNextBtn" class="flex-grow bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 h-10 rounded-md inline-flex items-center justify-center text-sm font-medium transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed">Replace</button>
-                <button id="replaceAllBtn" class="flex-grow bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 h-10 rounded-md inline-flex items-center justify-center text-sm font-medium transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed">Replace All</button>
-            </div>
-             <!-- Search Options (moved from popover) -->
-            <div>
-                <div class="flex justify-center bg-slate-100 dark:bg-slate-700 rounded-md p-1 max-w-xs mx-auto">
-                    <label class="flex-1 flex justify-center p-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="useRegexBackup" title="Use Regular Expression">
-                        <input type="checkbox" id="useRegexBackup" class="hidden">
-                        <span class="text-sm font-mono text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600">Regex</span>
-                    </label>
-                    <label class="flex-1 flex justify-center p-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="frCaseSensitiveCheckbox" title="Case Sensitive">
-                        <input type="checkbox" id="frCaseSensitiveCheckbox" class="hidden">
-                        <span class="text-sm font-medium text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600">Aa</span>
-                    </label>
-                    <label class="flex-1 flex justify-center p-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="frWholeWordCheckbox" title="Match Whole Word">
-                        <input type="checkbox" id="frWholeWordCheckbox" class="hidden">
-                        <span class="text-sm font-medium text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600">" "</span>
-                    </label>
-                </div>
-            </div>
-        </div>
+    <!-- Controls Panel (now inside scrollable area) -->
+    <div id="frHud" class="bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-md border-t border-slate-300 dark:border-slate-700 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] hidden">
+      <div class="relative max-w-4xl mx-auto">
+          <!-- Main controls -->
+          <div class="space-y-3">
+              <!-- Find Row -->
+              <div class="flex items-center gap-2">
+                  <div class="relative flex-grow">
+                       <input type="text" id="findPattern" placeholder="Find" class="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 pr-24 text-base text-slate-800 dark:text-slate-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500">
+                       <div id="frMatchCountDisplay" class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1 pointer-events-none">No results</div>
+                  </div>
+                  <button id="findPreviousBtn" class="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-10 h-10 rounded-md inline-flex items-center justify-center text-2xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Find Previous">‹</button>
+                  <button id="findNextBtn" class="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-10 h-10 rounded-md inline-flex items-center justify-center text-2xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Find Next">›</button>
+              </div>
+              <!-- Replace Row -->
+              <div class="flex items-center gap-2">
+                  <input type="text" id="replaceText" placeholder="Replace with" class="flex-grow bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 text-base text-slate-800 dark:text-slate-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500">
+                  <button id="replaceNextBtn" class="flex-grow bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 h-10 rounded-md inline-flex items-center justify-center text-sm font-medium transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed">Replace</button>
+                  <button id="replaceAllBtn" class="flex-grow bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 h-10 rounded-md inline-flex items-center justify-center text-sm font-medium transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50 disabled:cursor-not-allowed">Replace All</button>
+              </div>
+               <!-- Search Options (moved from popover) -->
+              <div>
+                  <div class="flex justify-center bg-slate-100 dark:bg-slate-700 rounded-md p-1 max-w-xs mx-auto">
+                      <label class="flex-1 flex justify-center p-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="useRegexBackup" title="Use Regular Expression">
+                          <input type="checkbox" id="useRegexBackup" class="hidden">
+                          <span class="text-sm font-mono text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600">Regex</span>
+                      </label>
+                      <label class="flex-1 flex justify-center p-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="frCaseSensitiveCheckbox" title="Case Sensitive">
+                          <input type="checkbox" id="frCaseSensitiveCheckbox" class="hidden">
+                          <span class="text-sm font-medium text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600">Aa</span>
+                      </label>
+                      <label class="flex-1 flex justify-center p-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="frWholeWordCheckbox" title="Match Whole Word">
+                          <input type="checkbox" id="frWholeWordCheckbox" class="hidden">
+                          <span class="text-sm font-medium text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600">" "</span>
+                      </label>
+                  </div>
+              </div>
+          </div>
+      </div>
     </div>
   </div>
 
