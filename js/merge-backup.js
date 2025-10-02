@@ -196,14 +196,17 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
                 let fileInfo = { name: file.name, jsonData: null, cover: null, coverDataUrl: null };
                 try {
                     const data = JSON.parse(reader.result);
+                    if (!data.revisions || !Array.isArray(data.revisions) || !data.revisions[0] || !data.revisions[0].scenes || !data.revisions[0].sections) {
+                        throw new Error('Invalid backup file structure.');
+                    }
                     fileInfo.jsonData = data;
                     if (data.coverImage && data.coverImage.data && data.coverImage.mimeType) {
                         fileInfo.cover = data.coverImage;
                         fileInfo.coverDataUrl = `data:${data.coverImage.mimeType};base64,${data.coverImage.data}`;
                     }
                 } catch (e) {
-                    console.warn(`Could not parse ${file.name} as JSON.`);
-                    showAppToast(`Could not read ${file.name}. It might not be a valid backup file.`, true);
+                    console.warn(`Could not process ${file.name}: ${e.message}`);
+                    showAppToast(`Skipped ${file.name}: ${e.message}`, true);
                 }
                 resolve(fileInfo);
             };
@@ -237,17 +240,22 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
             setTimeout(() => e.target.classList.add('opacity-50'), 0);
         }
     });
+
     fileListUl.addEventListener('dragend', (e) => {
         if (draggedItem) {
             draggedItem.classList.remove('opacity-50');
-            draggedItem = null;
+            
+            const newOrder = Array.from(fileListUl.children).map(li => {
+                const originalIndex = parseInt(li.dataset.index, 10);
+                return backupFiles[originalIndex];
+            });
 
-            const newOrder = Array.from(fileListUl.children).map(li => backupFiles[li.dataset.index]);
             backupFiles = newOrder;
-            // Re-render to update indexes
-            renderFileList();
+            renderFileList(); // Re-render to update indexes
+            draggedItem = null;
         }
     });
+
     fileListUl.addEventListener('dragover', e => {
         e.preventDefault();
         const afterElement = [...fileListUl.querySelectorAll('li:not(.opacity-50)')].reduce((closest, child) => {
@@ -260,6 +268,10 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
             if (afterElement == null) fileListUl.appendChild(draggedItem);
             else fileListUl.insertBefore(draggedItem, afterElement);
         }
+    });
+    
+    fileListUl.addEventListener('drop', e => {
+        e.preventDefault();
     });
 
     mergeBtn.addEventListener('click', async () => {
