@@ -258,6 +258,86 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
         renderFileList();
     });
 
+    // --- Mobile Touch Drag & Drop ---
+    let draggedElement = null;
+    let touchStartCoords = { x: 0, y: 0 };
+    const DRAG_THRESHOLD = 10; // pixels to move before initiating a drag
+
+    fileListEl.addEventListener('touchstart', (e) => {
+        const targetLi = e.target.closest('li');
+        if (!targetLi || selectedBackupFiles.length < 2) return;
+        
+        draggedItemId = targetLi.dataset.id;
+        draggedElement = targetLi;
+        touchStartCoords = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        
+        // No style changes yet, wait for move to confirm drag intention
+    }, { passive: true });
+
+    fileListEl.addEventListener('touchmove', (e) => {
+        if (!draggedElement) return;
+
+        const touch = e.touches[0];
+        const deltaY = Math.abs(touch.clientY - touchStartCoords.y);
+        
+        // Only start dragging if finger has moved enough vertically
+        if (deltaY > DRAG_THRESHOLD) {
+            e.preventDefault(); // Prevent page scroll
+
+            // Apply dragging styles only once when drag is confirmed
+            if (!draggedElement.classList.contains('dragging-touch')) {
+                 draggedElement.classList.add('dragging-touch', 'opacity-50', 'bg-primary-100', 'dark:bg-slate-700', 'scale-105', 'shadow-lg');
+            }
+
+            const elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (!elementUnderTouch) return;
+            
+            const targetLi = elementUnderTouch.closest('li');
+
+            if (targetLi && targetLi !== draggedElement) {
+                const rect = targetLi.getBoundingClientRect();
+                const halfway = rect.top + rect.height / 2;
+
+                if (touch.clientY < halfway) {
+                    targetLi.parentNode.insertBefore(draggedElement, targetLi);
+                } else {
+                    targetLi.parentNode.insertBefore(draggedElement, targetLi.nextSibling);
+                }
+            }
+        }
+    }, { passive: false });
+
+    fileListEl.addEventListener('touchend', (e) => {
+        if (!draggedElement) return;
+        
+        // If it was a drag (not a tap), sync the data array
+        if (draggedElement.classList.contains('dragging-touch')) {
+            const newOrderedIds = Array.from(fileListEl.children).map(li => li.dataset.id);
+            selectedBackupFiles.sort((a, b) => newOrderedIds.indexOf(a.id) - newOrderedIds.indexOf(b.id));
+        }
+
+        // Clean up styles regardless
+        draggedElement.classList.remove('dragging-touch', 'opacity-50', 'bg-primary-100', 'dark:bg-slate-700', 'scale-105', 'shadow-lg');
+
+        // Reset state
+        draggedItemId = null;
+        draggedElement = null;
+    });
+
+    fileListEl.addEventListener('touchcancel', (e) => {
+        if (!draggedElement) return;
+
+        // Clean up styles
+        draggedElement.classList.remove('dragging-touch', 'opacity-50', 'bg-primary-100', 'dark:bg-slate-700', 'scale-105', 'shadow-lg');
+        
+        // Reset state
+        draggedItemId = null;
+        draggedElement = null;
+
+        // Re-render the list from the data array to restore original order, as the DOM might be mixed up
+        renderFileList();
+    });
+
     coverGridEl.addEventListener('click', (e) => {
         const targetCover = e.target.closest('[data-cover-id]');
         if (!targetCover) return;
