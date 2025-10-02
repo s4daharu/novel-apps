@@ -262,36 +262,47 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
     let draggedElement = null;
     let touchStartCoords = { x: 0, y: 0 };
     const DRAG_THRESHOLD = 10; // pixels to move before initiating a drag
+    let isDragging = false; // Add a state to track if drag is active
 
     fileListEl.addEventListener('touchstart', (e) => {
         const targetLi = e.target.closest('li');
         if (!targetLi || selectedBackupFiles.length < 2) return;
-        
+
         draggedItemId = targetLi.dataset.id;
         draggedElement = targetLi;
         touchStartCoords = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-        
-        // No style changes yet, wait for move to confirm drag intention
+        isDragging = false; // Reset dragging state on new touch
     }, { passive: true });
 
     fileListEl.addEventListener('touchmove', (e) => {
         if (!draggedElement) return;
 
         const touch = e.touches[0];
-        const deltaY = Math.abs(touch.clientY - touchStartCoords.y);
-        
-        // Only start dragging if finger has moved enough vertically
-        if (deltaY > DRAG_THRESHOLD) {
-            e.preventDefault(); // Prevent page scroll
+        const deltaX = touch.clientX - touchStartCoords.x;
+        const deltaY = touch.clientY - touchStartCoords.y;
 
-            // Apply dragging styles only once when drag is confirmed
-            if (!draggedElement.classList.contains('dragging-touch')) {
-                 draggedElement.classList.add('dragging-touch', 'opacity-50', 'bg-primary-100', 'dark:bg-slate-700', 'scale-105', 'shadow-lg');
+        // If we haven't started dragging yet, decide if we should
+        if (!isDragging) {
+            // Only start dragging if the vertical movement is significant and more than horizontal
+            if (Math.abs(deltaY) > DRAG_THRESHOLD && Math.abs(deltaY) > Math.abs(deltaX)) {
+                isDragging = true;
+                // Apply dragging styles now that drag is confirmed
+                draggedElement.classList.add('dragging-touch', 'opacity-50', 'bg-primary-100', 'dark:bg-slate-700', 'scale-105', 'shadow-lg');
+            } else if (Math.abs(deltaX) > DRAG_THRESHOLD) {
+                // If horizontal movement is more significant, cancel the drag
+                draggedElement = null;
+                draggedItemId = null;
+                return;
             }
+        }
+
+        // If we are actively dragging, prevent scrolling and do the reordering
+        if (isDragging) {
+            e.preventDefault(); // Prevent page scroll
 
             const elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
             if (!elementUnderTouch) return;
-            
+
             const targetLi = elementUnderTouch.closest('li');
 
             if (targetLi && targetLi !== draggedElement) {
@@ -307,11 +318,11 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
         }
     }, { passive: false });
 
-    fileListEl.addEventListener('touchend', (e) => {
+    fileListEl.addEventListener('touchend', () => {
         if (!draggedElement) return;
-        
-        // If it was a drag (not a tap), sync the data array
-        if (draggedElement.classList.contains('dragging-touch')) {
+
+        // If it was a drag (not just a tap), sync the data array
+        if (isDragging) {
             const newOrderedIds = Array.from(fileListEl.children).map(li => li.dataset.id);
             selectedBackupFiles.sort((a, b) => newOrderedIds.indexOf(a.id) - newOrderedIds.indexOf(b.id));
         }
@@ -322,19 +333,21 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
         // Reset state
         draggedItemId = null;
         draggedElement = null;
+        isDragging = false;
     });
 
-    fileListEl.addEventListener('touchcancel', (e) => {
+    fileListEl.addEventListener('touchcancel', () => {
         if (!draggedElement) return;
 
         // Clean up styles
         draggedElement.classList.remove('dragging-touch', 'opacity-50', 'bg-primary-100', 'dark:bg-slate-700', 'scale-105', 'shadow-lg');
-        
+
         // Reset state
         draggedItemId = null;
         draggedElement = null;
+        isDragging = false;
 
-        // Re-render the list from the data array to restore original order, as the DOM might be mixed up
+        // Re-render the list from the data array to restore original order
         renderFileList();
     });
 
