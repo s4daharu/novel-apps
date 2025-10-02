@@ -120,6 +120,7 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
 
     let backupFiles = [];
     let draggedItem = null;
+    let fileIdCounter = 0;
 
     if (!mergeBtn || !filesInput || !fileListContainer || !fileListUl || !clearFilesBtn ||
         !initialFileNamesArea || !mergedTitleInput || !mergedDescInput || !chapterPrefixInput || 
@@ -130,6 +131,7 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
 
     const resetState = () => {
         backupFiles = [];
+        fileIdCounter = 0;
         filesInput.value = '';
         fileListContainer.classList.add('hidden');
         initialFileNamesArea.classList.remove('hidden');
@@ -142,11 +144,11 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
 
     const renderFileList = () => {
         fileListUl.innerHTML = '';
-        backupFiles.forEach((fileInfo, index) => {
+        backupFiles.forEach((fileInfo) => {
             const li = document.createElement('li');
             li.className = 'flex items-center p-2 border-b border-slate-200 dark:border-slate-700 last:border-b-0 cursor-grab bg-white dark:bg-slate-700/50';
             li.draggable = true;
-            li.dataset.index = index;
+            li.dataset.id = fileInfo.id;
             li.innerHTML = `<span class="text-2xl text-slate-400 mr-2" aria-hidden="true">⠿</span><span class="flex-grow text-sm truncate">${escapeHTML(fileInfo.name)}</span>`;
             fileListUl.appendChild(li);
         });
@@ -161,7 +163,6 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
             return;
         }
         
-        // No Cover option
         coverOptionsContainer.innerHTML += `
             <label class="relative cursor-pointer">
                 <input type="radio" name="cover-select" value="none" class="sr-only" checked>
@@ -171,10 +172,10 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
             </label>
         `;
 
-        covers.forEach((fileInfo, index) => {
+        covers.forEach((fileInfo) => {
             const coverHtml = `
                 <label class="relative cursor-pointer group">
-                    <input type="radio" name="cover-select" value="${index}" class="sr-only">
+                    <input type="radio" name="cover-select" value="${fileInfo.id}" class="sr-only">
                     <img src="${fileInfo.coverDataUrl}" alt="Cover from ${escapeHTML(fileInfo.name)}" class="w-full h-full object-cover rounded-md border-2 border-transparent group-hover:opacity-80 peer-checked:border-primary-500 peer-checked:ring-2 peer-checked:ring-primary-500">
                     <div class="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs text-center p-1 truncate rounded-b-md">${escapeHTML(fileInfo.name)}</div>
                 </label>
@@ -194,45 +195,43 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
         const filePromises = files.map(file => new Promise((resolve) => {
             const reader = new FileReader();
             reader.onload = () => {
-                let fileInfo = { name: file.name, jsonData: null, cover: null, coverDataUrl: null };
+                const id = `file-${fileIdCounter++}`;
+                let fileInfo = { id, name: file.name, jsonData: null, cover: null, coverDataUrl: null };
                 try {
                     const data = JSON.parse(reader.result);
-                    if (!data.revisions || !Array.isArray(data.revisions) || !data.revisions[0] || !data.revisions[0].scenes || !data.revisions[0].sections) {
-                        throw new Error('Invalid backup file structure.');
+                    const rev = data.revisions?.[0];
+                    if (!rev || !rev.scenes || !rev.sections) {
+                        throw new Error('Invalid backup structure (missing revisions, scenes, or sections).');
                     }
                     fileInfo.jsonData = data;
 
-                    // Handle both cover formats for backward compatibility
                     if (data.cover && typeof data.cover === 'string' && data.cover.length > 50) {
-                        // Handle legacy "cover": "base64string" format
-                        let mimeType = 'image/jpeg'; // Default assumption
-                        const b64_start = data.cover.substring(0, 20);
-                        if (b64_start.startsWith('/9j/')) mimeType = 'image/jpeg';
-                        else if (b64_start.startsWith('iVBORw0KGgo')) mimeType = 'image/png';
-                        else if (b64_start.startsWith('R0lGODlh')) mimeType = 'image/gif';
+                        let mimeType = 'image/jpeg';
+                        if (data.cover.startsWith('/9j/')) mimeType = 'image/jpeg';
+                        else if (data.cover.startsWith('iVBORw0KGgo')) mimeType = 'image/png';
                         
                         fileInfo.cover = { data: data.cover, mimeType: mimeType };
                         fileInfo.coverDataUrl = `data:${mimeType};base64,${data.cover}`;
                     } else if (data.coverImage && data.coverImage.data && data.coverImage.mimeType) {
-                        // Handle modern "coverImage": { data, mimeType } format
                         fileInfo.cover = data.coverImage;
                         fileInfo.coverDataUrl = `data:${data.coverImage.mimeType};base64,${data.coverImage.data}`;
                     }
                 } catch (e) {
                     console.warn(`Could not process ${file.name}: ${e.message}`);
-                    showAppToast(`Skipped ${file.name}: ${e.message}`, true);
-                    fileInfo.jsonData = null; // Ensure it gets filtered out
+                    showAppToast(`Skipped ${file.name}: not a valid backup file.`, true);
+                    fileInfo = null;
                 }
                 resolve(fileInfo);
             };
             reader.onerror = () => {
-                resolve({ name: file.name, jsonData: null, cover: null, coverDataUrl: null });
                 showAppToast(`Error reading file ${file.name}.`, true);
+                resolve(null);
             }
             reader.readAsText(file);
         }));
 
-        backupFiles = (await Promise.all(filePromises)).filter(f => f.jsonData !== null);
+        const results = await Promise.all(filePromises);
+        backupFiles = results.filter(f => f !== null);
         
         if (backupFiles.length > 0) {
             initialFileNamesArea.classList.add('hidden');
@@ -240,7 +239,9 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
             renderFileList();
             renderCoverSelection();
         } else {
+            resetState();
             initialFileNamesArea.querySelector('#mergeBackupFileNames').textContent = 'No valid backup files were selected.';
+            showAppToast('No valid backup files found among the selection.', true);
         }
         toggleAppSpinner(false);
     };
@@ -248,7 +249,6 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
     filesInput.addEventListener('change', handleFileSelection);
     clearFilesBtn.addEventListener('click', resetState);
 
-    // Drag and Drop Logic
     fileListUl.addEventListener('dragstart', (e) => {
         if (e.target.tagName === 'LI') {
             draggedItem = e.target;
@@ -256,10 +256,10 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
         }
     });
 
-    fileListUl.addEventListener('dragend', (e) => {
+    fileListUl.addEventListener('dragend', () => {
         if (draggedItem) {
             draggedItem.classList.remove('opacity-50');
-            draggedItem = null; // Reset after sorting is done in 'drop'
+            draggedItem = null;
         }
     });
 
@@ -272,26 +272,19 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
         }, { offset: Number.NEGATIVE_INFINITY }).element;
         
         if (draggedItem) {
-            if (afterElement == null) fileListUl.appendChild(draggedItem);
-            else fileListUl.insertBefore(draggedItem, afterElement);
+            if (afterElement == null) {
+                fileListUl.appendChild(draggedItem);
+            } else {
+                fileListUl.insertBefore(draggedItem, afterElement);
+            }
         }
     });
     
     fileListUl.addEventListener('drop', e => {
         e.preventDefault();
-        if (draggedItem) {
-            const newOrderedFiles = Array.from(fileListUl.children).map(li => {
-                const originalIndex = parseInt(li.dataset.index, 10);
-                // Find the original file object by its initial index
-                return backupFiles.find(f => f.originalIndex === originalIndex) || backupFiles[originalIndex];
-            });
-
-            backupFiles = newOrderedFiles;
-            
-            // Re-render to update the data-index attributes to match the new order
-            backupFiles.forEach((f, i) => f.originalIndex = i); // Keep track of original position
-            renderFileList(); 
-        }
+        if (!draggedItem) return;
+        const newIdOrder = Array.from(fileListUl.children).map(li => li.dataset.id);
+        backupFiles.sort((a, b) => newIdOrder.indexOf(a.id) - newIdOrder.indexOf(b.id));
     });
 
     mergeBtn.addEventListener('click', async () => {
@@ -318,9 +311,8 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
         const selectedCoverRadio = document.querySelector('input[name="cover-select"]:checked');
         let selectedCover = null;
         if (selectedCoverRadio && selectedCoverRadio.value !== 'none') {
-            const coverIndexInFilteredArray = parseInt(selectedCoverRadio.value, 10);
-            const filesWithCovers = backupFiles.filter(f => f.cover);
-            const coverFile = filesWithCovers[coverIndexInFilteredArray];
+            const selectedFileId = selectedCoverRadio.value;
+            const coverFile = backupFiles.find(f => f.id === selectedFileId);
             if (coverFile) {
                 selectedCover = coverFile.cover;
             }
