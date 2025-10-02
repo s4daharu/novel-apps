@@ -54,19 +54,18 @@
               </div>
                <!-- Search Options -->
                <div class="flex items-center justify-center gap-4 flex-wrap">
-                  <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Options:</span>
                   <div class="flex justify-center bg-slate-100 dark:bg-slate-700 rounded-md p-1">
-                      <label class="flex-1 flex justify-center p-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="useRegexBackup" title="Use Regular Expression">
+                      <label class="flex-1 flex justify-center px-3 py-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="useRegexBackup" title="Use Regular Expression">
                           <input type="checkbox" id="useRegexBackup" class="hidden">
                           <span class="text-sm font-mono text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600">Regex</span>
                       </label>
-                      <label class="flex-1 flex justify-center p-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="frCaseSensitiveCheckbox" title="Case Sensitive">
+                      <label class="flex-1 flex justify-center px-3 py-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="frCaseSensitiveCheckbox" title="Case Sensitive">
                           <input type="checkbox" id="frCaseSensitiveCheckbox" class="hidden">
-                          <span class="text-sm font-medium text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600">Aa</span>
+                          <span class="text-sm font-medium text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600 whitespace-nowrap">Case-sensitive</span>
                       </label>
-                      <label class="flex-1 flex justify-center p-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="frWholeWordCheckbox" title="Match Whole Word">
+                      <label class="flex-1 flex justify-center px-3 py-1.5 transition-colors duration-200 rounded-md has-[:checked]:bg-primary-500/20" for="frWholeWordCheckbox" title="Match Whole Word">
                           <input type="checkbox" id="frWholeWordCheckbox" class="hidden">
-                          <span class="text-sm font-medium text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600">" "</span>
+                          <span class="text-sm font-medium text-slate-600 dark:text-slate-300 has-[:checked]:text-primary-600 whitespace-nowrap">Whole word</span>
                       </label>
                   </div>
                   <button id="downloadCurrentFrBackupBtn" class="inline-flex items-center justify-center px-3 py-1.5 text-sm rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed" disabled>Download</button>
