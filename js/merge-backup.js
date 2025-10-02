@@ -96,6 +96,7 @@ async function processMergeBackupFiles(backups, mergedTitle, mergedDesc, chapter
     };
 
     if (selectedCover) {
+        // Standardize on the newer coverImage object format for merged files
         mergedData.coverImage = selectedCover;
     }
 
@@ -200,13 +201,27 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
                         throw new Error('Invalid backup file structure.');
                     }
                     fileInfo.jsonData = data;
-                    if (data.coverImage && data.coverImage.data && data.coverImage.mimeType) {
+
+                    // Handle both cover formats for backward compatibility
+                    if (data.cover && typeof data.cover === 'string' && data.cover.length > 50) {
+                        // Handle legacy "cover": "base64string" format
+                        let mimeType = 'image/jpeg'; // Default assumption
+                        const b64_start = data.cover.substring(0, 20);
+                        if (b64_start.startsWith('/9j/')) mimeType = 'image/jpeg';
+                        else if (b64_start.startsWith('iVBORw0KGgo')) mimeType = 'image/png';
+                        else if (b64_start.startsWith('R0lGODlh')) mimeType = 'image/gif';
+                        
+                        fileInfo.cover = { data: data.cover, mimeType: mimeType };
+                        fileInfo.coverDataUrl = `data:${mimeType};base64,${data.cover}`;
+                    } else if (data.coverImage && data.coverImage.data && data.coverImage.mimeType) {
+                        // Handle modern "coverImage": { data, mimeType } format
                         fileInfo.cover = data.coverImage;
                         fileInfo.coverDataUrl = `data:${data.coverImage.mimeType};base64,${data.coverImage.data}`;
                     }
                 } catch (e) {
                     console.warn(`Could not process ${file.name}: ${e.message}`);
                     showAppToast(`Skipped ${file.name}: ${e.message}`, true);
+                    fileInfo.jsonData = null; // Ensure it gets filtered out
                 }
                 resolve(fileInfo);
             };
@@ -244,15 +259,7 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
     fileListUl.addEventListener('dragend', (e) => {
         if (draggedItem) {
             draggedItem.classList.remove('opacity-50');
-            
-            const newOrder = Array.from(fileListUl.children).map(li => {
-                const originalIndex = parseInt(li.dataset.index, 10);
-                return backupFiles[originalIndex];
-            });
-
-            backupFiles = newOrder;
-            renderFileList(); // Re-render to update indexes
-            draggedItem = null;
+            draggedItem = null; // Reset after sorting is done in 'drop'
         }
     });
 
@@ -272,6 +279,19 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
     
     fileListUl.addEventListener('drop', e => {
         e.preventDefault();
+        if (draggedItem) {
+            const newOrderedFiles = Array.from(fileListUl.children).map(li => {
+                const originalIndex = parseInt(li.dataset.index, 10);
+                // Find the original file object by its initial index
+                return backupFiles.find(f => f.originalIndex === originalIndex) || backupFiles[originalIndex];
+            });
+
+            backupFiles = newOrderedFiles;
+            
+            // Re-render to update the data-index attributes to match the new order
+            backupFiles.forEach((f, i) => f.originalIndex = i); // Keep track of original position
+            renderFileList(); 
+        }
     });
 
     mergeBtn.addEventListener('click', async () => {
@@ -283,8 +303,8 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
         const preserveOriginalTitles = preserveTitlesCheckbox.checked;
 
         if (backupsToMerge.length === 0) {
-            showAppToast('Select at least one backup file to merge.', true);
-            updateStatus(statusEl, 'Error: Select at least one backup file.', 'error');
+            showAppToast('Select at least one valid backup file to merge.', true);
+            updateStatus(statusEl, 'Error: Select at least one valid backup file.', 'error');
             filesInput.focus();
             return;
         }
@@ -298,9 +318,10 @@ export function initializeMergeBackup(showAppToast, toggleAppSpinner) {
         const selectedCoverRadio = document.querySelector('input[name="cover-select"]:checked');
         let selectedCover = null;
         if (selectedCoverRadio && selectedCoverRadio.value !== 'none') {
-            const coverIndex = parseInt(selectedCoverRadio.value, 10);
-            const coverFile = backupFiles.filter(f => f.cover)[coverIndex];
-            if(coverFile) {
+            const coverIndexInFilteredArray = parseInt(selectedCoverRadio.value, 10);
+            const filesWithCovers = backupFiles.filter(f => f.cover);
+            const coverFile = filesWithCovers[coverIndexInFilteredArray];
+            if (coverFile) {
                 selectedCover = coverFile.cover;
             }
         }
