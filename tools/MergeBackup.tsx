@@ -70,7 +70,8 @@ const MergeBackup: React.FC = () => {
         dispatch({ type: 'SET_FIELD', field: 'isLoading', value: true });
         dispatch({ type: 'SET_FIELD', field: 'status', value: { message: 'Reading files...', type: 'info' } });
 
-        const filePromises = Array.from(files).map(async (file, index) => {
+        // FIX: Explicitly type the 'file' parameter to resolve TypeScript inference errors.
+        const filePromises = Array.from(files).map(async (file: File, index) => {
             try {
                 const text = await file.text();
                 const data = JSON.parse(text);
