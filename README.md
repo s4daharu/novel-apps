@@ -40,14 +40,12 @@ This is a pure static HTML, CSS, and JavaScript application. There is no build s
 
 ## GitHub Pages Deployment
 
-This project can be deployed directly to GitHub Pages.
+This project is configured for automatic deployment to GitHub Pages using GitHub Actions.
 
 1. Go to your repository on GitHub.
-2. Navigate to Settings → Pages.
-3. Under "Build and deployment", set the Source to "Deploy from a branch".
-4. Select the `main` branch and the `/ (root)` folder.
-5. Save changes.
-6. The site will be available at `https://<your-username>.github.io/<repository-name>/`.
+2. Navigate to **Settings** → **Pages**.
+3. Under "Build and deployment", set the **Source** to **GitHub Actions**.
+4. The site will be automatically deployed on every push to the `main` branch and will be available at `https://<your-username>.github.io/<repository-name>/`.
 
 ## File Structure
 
@@ -84,7 +82,7 @@ This project can be deployed directly to GitHub Pages.
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test locally with `npm run build`
+4. Test locally
 5. Submit a pull request
 
 ## License

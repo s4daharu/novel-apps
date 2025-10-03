@@ -17,6 +17,7 @@ import {
 
 // Extend toolSectionsMap with HTML component paths
 export const toolSectionsMap = {
+    'novelSplitter': { elementId: 'novelSplitterApp', title: 'Novel Splitter', htmlPath: './js/components/novel-splitter.html' },
     'splitter': { elementId: 'splitterApp', title: 'EPUB Chapter Splitter', htmlPath: './js/components/splitter.html' },
     'zipEpub': { elementId: 'zipEpubApp', title: 'ZIP ↔ EPUB', htmlPath: './js/components/zipEpub.html' },
     'zipToEpub': { elementId: 'zipToEpubApp', title: 'ZIP to EPUB', htmlPath: './js/components/zip-to-epub.html' },
@@ -44,6 +45,7 @@ function registerServiceWorker() {
 
 // Spinner element ID mapping for each tool
 const spinnerIdMap = {
+    'novelSplitter': 'spinnerNovelSplitter',
     'splitter': 'spinnerSplitter',
     'zipToEpub': 'spinnerZipToEpub',
     'epubToZip': 'spinnerEpubToZip',
@@ -56,6 +58,7 @@ const spinnerIdMap = {
 
 // Lazy loading for better performance
 const toolModules = {
+    'novelSplitter': () => import('./novel-splitter.js'),
     'splitter': () => import('./epub-splitter.js'),
     'zipToEpub': () => import('./zip-to-epub.js'),
     'epubToZip': () => import('./epub-to-zip.js'),
@@ -110,6 +113,7 @@ export async function initializeTool(toolId) {
 // Get the appropriate initializer function name for each tool
 function getToolInitializer(toolId) {
     const initializers = {
+        'novelSplitter': 'initializeNovelSplitter',
         'splitter': 'initializeEpubSplitter',
         'zipToEpub': 'initializeZipToEpub',
         'epubToZip': 'initializeEpubToZip',
