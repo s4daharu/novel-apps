@@ -31,18 +31,39 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-      - name: Build artifact
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build application
+        # Create the output directory and run esbuild
         run: |
           mkdir -p ./_site
-          cp index.html index.css index.tsx App.tsx types.ts manifest.json service-worker.js ./_site/
-          cp -r components contexts hooks tools utils icons ./_site/
+          npm run build
+      
+      - name: Prepare artifact by copying static files
+        run: |
+          # Copy static assets to the build directory (_site)
+          cp index.html index.css manifest.json service-worker.js ./_site/
+          cp -r icons ./_site/
+          # Modify index.html in the build directory to point to the bundled JS file
+          sed -i 's/src=".\/index.tsx"/src=".\/index.js"/' ./_site/index.html
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           # Upload only the built site
           path: './_site'
+          
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

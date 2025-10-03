@@ -9,39 +9,36 @@ A comprehensive set of tools for novelists and writers, rebuilt with React and T
 - **ZIP to EPUB Converter**: Convert ZIP files containing text chapters into EPUB format.
 - **EPUB to ZIP Converter**: Extract chapters from EPUB files into a ZIP of text files.
 - **Backup File Management**: Create, extend, merge, and find/replace within novel backup files.
-- **Modern Tech Stack**: Built with React 18, TypeScript, and Tailwind CSS for a maintainable and performant experience.
+- **Modern Tech Stack**: Built with React 19, TypeScript, and Tailwind CSS for a maintainable and performant experience.
 
 ## Browser Compatibility
 
 This version is fully compatible with modern browsers and includes:
 - ✅ Standard browser file upload/download APIs
 - ✅ JSZip for file compression/decompression
-- ✅ Modern ES modules with React loaded via CDN (no build step needed)
+- ✅ Modern ES modules with React loaded via CDN
 - ✅ Responsive design for all screen sizes
 - ✅ Touch gesture support for mobile devices
 - ✅ PWA support for offline use
 
 ## Local Development
 
-This is a pure static application that uses modern browser features. There is no build step required.
+This project uses React and TypeScript. To run it locally, you need a development server that can transpile TSX/JSX on the fly.
 
-1. Clone the repository.
-2. Serve the files locally using any static file server:
-   ```bash
-   # Using Python
-   python -m http.server 8000
-
-   # Using Node.js
-   npx serve .
-
-   # Using PHP
-   php -S localhost:8000
-   ```
-3. Open your browser and navigate to the local URL (e.g., `http://localhost:8000`).
+1.  Clone the repository.
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
+3.  Start the development server using `esbuild`:
+    ```bash
+    npm run dev
+    ```
+4.  Open your browser and navigate to `http://localhost:8000`. The server will automatically rebuild when you make changes.
 
 ## GitHub Pages Deployment
 
-This project is configured for automatic deployment to GitHub Pages using GitHub Actions.
+This project is configured for automatic deployment to GitHub Pages using GitHub Actions. The workflow will automatically transpile the TypeScript code and deploy the static assets.
 
 1. Go to your repository on GitHub.
 2. Navigate to **Settings** → **Pages**.

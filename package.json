@@ -1,0 +1,12 @@
+{
+  "name": "novel-apps",
+  "version": "1.4.2",
+  "private": true,
+  "scripts": {
+    "build": "esbuild index.tsx --bundle --outfile=_site/index.js --jsx=automatic --loader:.ts=tsx",
+    "dev": "esbuild --serve=8000 --servedir=. index.tsx --bundle --outfile=index.js --jsx=automatic --loader:.ts=tsx"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.2"
+  }
+}
