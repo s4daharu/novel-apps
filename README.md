@@ -1,28 +1,29 @@
-# Novel-Apps - Browser Version
+# Novel-Apps - React & TypeScript Version
 
-A comprehensive set of tools for novelists and writers, converted to run entirely in the browser and deployable on GitHub Pages.
+A comprehensive set of tools for novelists and writers, rebuilt with React and TypeScript to run entirely in the browser and deployable on GitHub Pages.
 
 ## Features
 
-- **EPUB Chapter Splitter**: Extract chapters from EPUB files into individual text files
-- **ZIP to EPUB Converter**: Convert ZIP files containing text chapters into EPUB format
-- **EPUB to ZIP Converter**: Extract chapters from EPUB files into a ZIP of text files
-- **Backup File Management**: Create, extend, merge, and manipulate novel backup files
-- **Find & Replace**: Perform search and replace operations within backup files
-- **Augment Backup with ZIP**: Add chapters from ZIP files to existing backups
+- **Novel Splitter**: Advanced tool to split, edit, and package .txt novels into chapters, with export to ZIP or themed EPUB.
+- **EPUB Chapter Splitter**: Extract chapters from EPUB files into individual text files.
+- **ZIP to EPUB Converter**: Convert ZIP files containing text chapters into EPUB format.
+- **EPUB to ZIP Converter**: Extract chapters from EPUB files into a ZIP of text files.
+- **Backup File Management**: Create, extend, merge, and find/replace within novel backup files.
+- **Modern Tech Stack**: Built with React 18, TypeScript, and Tailwind CSS for a maintainable and performant experience.
 
 ## Browser Compatibility
 
 This version is fully compatible with modern browsers and includes:
 - ✅ Standard browser file upload/download APIs
 - ✅ JSZip for file compression/decompression
-- ✅ Modern ES modules
+- ✅ Modern ES modules with React loaded via CDN (no build step needed)
 - ✅ Responsive design for all screen sizes
 - ✅ Touch gesture support for mobile devices
+- ✅ PWA support for offline use
 
 ## Local Development
 
-This is a pure static HTML, CSS, and JavaScript application. There is no build step required.
+This is a pure static application that uses modern browser features. There is no build step required.
 
 1. Clone the repository.
 2. Serve the files locally using any static file server:
@@ -50,32 +51,19 @@ This project is configured for automatic deployment to GitHub Pages using GitHub
 ## File Structure
 
 ```
-├── index.html              # Main HTML file
-├── js/                     # JavaScript modules
-│   ├── index.js           # Entry point
-│   ├── main.js            # Main application logic
-│   └── ...                # Other tool scripts
+├── index.html              # Main HTML shell for the React app
+├── index.tsx               # Entry point for the React application
+├── App.tsx                 # Root React component with routing
+├── components/             # Reusable UI components (Layout, Sidebar, etc.)
+├── contexts/               # React Context providers (AppContext)
+├── hooks/                  # Custom React hooks (useHashRouter)
+├── tools/                  # Main component for each tool
+├── utils/                  # Shared helper functions
+├── types.ts                # TypeScript type definitions
 ├── icons/                  # App icons
-├── jszip.min.js           # JSZip library for file operations
-├── manifest.json          # PWA manifest
-└── service-worker.js      # Service worker for PWA features
+├── manifest.json           # PWA manifest
+└── service-worker.js       # Service worker for PWA features
 ```
-
-## Key Changes from Mobile Version
-
-- **Removed Capacitor dependencies**: Replaced with standard browser APIs
-- **Removed Google GenAI**: Not needed for core functionality
-- **Converted TypeScript to JavaScript**: All `.ts` files converted to `.js`
-- **Updated build process**: Simple static file copying instead of Vite
-- **Browser file operations**: Uses standard File API instead of native file system
-- **Maintained all core functionality**: All tools work identically in browser
-
-## Browser Limitations
-
-- File operations are limited to user-initiated uploads/downloads
-- Large file processing may be slower than native apps
-- Some mobile-specific features (haptics, native file pickers) are not available
-- Service worker functionality may be limited compared to mobile PWA
 
 ## Contributing
 
@@ -87,7 +75,7 @@ This project is configured for automatic deployment to GitHub Pages using GitHub
 
 ## License
 
-This project maintains the same license as the original mobile version.
+This project is available under the Apache 2.0 license.
 
 ## Support
 
