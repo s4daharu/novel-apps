@@ -22,7 +22,7 @@ const CRITICAL_ICONS = [
 ];
 
 const CRITICAL_FONTS = [
-  './fonts/Marmelad-Regular.ttf'
+  './fonts/NotoSansSC-Regular.otf'
 ];
 
 
@@ -123,7 +123,7 @@ async function handleRequest(request) {
     }
 
     // 4. External dependencies (network-first with fallback)
-    if (url.hostname.includes('esm.sh')) {
+    if (url.hostname.includes('esm.sh') || url.hostname.includes('cdn.jsdelivr.net')) {
       return await networkFirstWithFallback(request, RUNTIME_CACHE);
     }
 
