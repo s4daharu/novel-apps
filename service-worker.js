@@ -22,7 +22,8 @@ const CRITICAL_ICONS = [
 ];
 
 const CRITICAL_FONTS = [
-  './fonts/NotoSansSC-Regular.otf'
+  './fonts/NotoSansSC-Regular.otf',
+  './fonts/Marmelad-Regular.ttf'
 ];
 
 

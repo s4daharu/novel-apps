@@ -4,7 +4,7 @@
 
 import { triggerDownload, getJSZip } from './browser-helpers.js';
 import { updateStatus, setupFileInput } from './tool-helpers.js';
-import { PDFDocument, rgb, PageSizes } from "pdf-lib";
+import { PDFDocument, rgb, PageSizes, PDFString, PDFName, PDFArray } from "pdf-lib";
 import * as fontkit from "fontkit";
 
 let FONT_CACHE = null;
@@ -19,17 +19,26 @@ function readFileAsArrayBuffer(file) {
     });
 }
 
-async function getFont(updateStatusCallback) {
+async function getFonts(updateStatusCallback) {
     if (FONT_CACHE) return FONT_CACHE;
     try {
-        updateStatusCallback('Loading font for PDF generation...', 'info');
-        const fontUrl = './fonts/NotoSansSC-Regular.otf';
-        const fontBytes = await fetch(fontUrl).then(res => {
-            if (!res.ok) throw new Error(`Font load failed: ${res.statusText}. Make sure 'NotoSansSC-Regular.otf' is in the '/fonts' folder.`);
-            return res.arrayBuffer();
-        });
-        FONT_CACHE = fontBytes;
-        return fontBytes;
+        updateStatusCallback('Loading fonts for PDF generation...', 'info');
+        const notoFontUrl = './fonts/NotoSansSC-Regular.otf';
+        const marmeladFontUrl = './fonts/Marmelad-Regular.ttf'; // Use local Marmelad font
+
+        const [notoFontBytes, marmeladFontBytes] = await Promise.all([
+            fetch(notoFontUrl).then(res => {
+                if (!res.ok) throw new Error(`Font load failed: ${res.statusText}. Make sure 'NotoSansSC-Regular.otf' is in the '/fonts' folder.`);
+                return res.arrayBuffer();
+            }),
+            fetch(marmeladFontUrl).then(res => {
+                if (!res.ok) throw new Error(`Failed to load Marmelad font locally: ${res.statusText}. Make sure 'Marmelad-Regular.ttf' is in the '/fonts' folder.`);
+                return res.arrayBuffer();
+            })
+        ]);
+        
+        FONT_CACHE = { notoFontBytes, marmeladFontBytes };
+        return FONT_CACHE;
     } catch (error) {
         console.error("Font load failed:", error);
         updateStatusCallback(`Failed to load required font for PDF generation. ${error.message}`, 'error');
@@ -299,7 +308,8 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
     async function createPdfFromChapters(chaptersData, fontBytes) {
         const pdfDoc = await PDFDocument.create();
         pdfDoc.registerFontkit(fontkit);
-        const font = await pdfDoc.embedFont(fontBytes);
+        const chineseFont = await pdfDoc.embedFont(fontBytes.notoFontBytes);
+        const englishFont = await pdfDoc.embedFont(fontBytes.marmeladFontBytes);
     
         // TOC setup
         const tocPage = pdfDoc.addPage(PageSizes.A4);
@@ -311,14 +321,56 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
         const LINE_HEIGHT = FONT_SIZE * 1.5;
         const TITLE_LINE_HEIGHT = TITLE_FONT_SIZE * 1.5;
         const PARAGRAPH_SPACING = LINE_HEIGHT * 0.5;
-    
+        const margin = 72; // 1 inch on all sides
+
+        // Array for PDF Outline (Bookmark) refs
+        const outlineItemRefs = [];
+
+        // --- Dual Font Rendering Helpers ---
+        const CJK_REGEX = /[\u4e00-\u9fa5\u3000-\u303F\uff00-\uffef]/;
+        const SPLIT_REGEX = /([\u4e00-\u9fa5\u3000-\u303F\uff00-\uffef]+|[^\u4e00-\u9fa5\u3000-\u303F\uff00-\uffef]+)/g;
+        const WRAP_REGEX = /([^\u4e00-\u9fa5\s]+|\s+|[\u4e00-\u9fa5])/g;
+
+        const measureMixedTextWidth = (text, size) => {
+            let totalWidth = 0;
+            const segments = text.match(SPLIT_REGEX) || [text];
+            for (const segment of segments) {
+                const font = CJK_REGEX.test(segment) ? chineseFont : englishFont;
+                totalWidth += font.widthOfTextAtSize(segment, size, { enableLigatures: false });
+            }
+            return totalWidth;
+        };
+
+        const drawMixedTextLine = (page, text, options) => {
+            const { x, y, size } = options;
+            let currentX = x;
+            const segments = text.match(SPLIT_REGEX) || [text];
+            
+            for (const segment of segments) {
+                const font = CJK_REGEX.test(segment) ? chineseFont : englishFont;
+                page.drawText(segment, {
+                    x: currentX,
+                    y,
+                    font,
+                    size,
+                    color: rgb(0, 0, 0),
+                    enableLigatures: false
+                });
+                currentX += font.widthOfTextAtSize(segment, size, { enableLigatures: false });
+            }
+        };
+
         for (const chapter of chaptersData) {
             let page = pdfDoc.addPage(PageSizes.A4);
-            // Store the starting page for the TOC
-            tocEntries.push({ title: chapter.title, page });
-    
             const { width, height } = page.getSize();
-            const margin = 72; // 1 inch on all sides
+            tocEntries.push({ title: chapter.title, page });
+
+            const outlineItemDict = pdfDoc.context.obj({
+                Title: PDFString.of(chapter.title),
+                Dest: [page.ref, PDFName.of('XYZ'), null, height, null],
+            });
+            outlineItemRefs.push(pdfDoc.context.register(outlineItemDict));
+    
             const usableWidth = width - 2 * margin;
             let y = height - margin;
     
@@ -331,7 +383,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
     
             // Chapter Title
             checkAndAddNewPage();
-            page.drawText(chapter.title, { x: margin, y, font, size: TITLE_FONT_SIZE, color: rgb(0, 0, 0), enableLigatures: false });
+            drawMixedTextLine(page, chapter.title, { x: margin, y, size: TITLE_FONT_SIZE });
             y -= TITLE_LINE_HEIGHT * 1.5;
     
             const paragraphs = chapter.text.split('\n\n');
@@ -339,80 +391,109 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
                 checkAndAddNewPage();
                 
                 const trimmedPara = para.trim();
-                if (!trimmedPara) continue; // skip empty paragraphs
+                if (!trimmedPara) continue;
     
-                let words = trimmedPara.split(' ');
+                const words = trimmedPara.match(WRAP_REGEX) || [];
                 let line = '';
-                for (let n = 0; n < words.length; n++) {
-                    let testLine = line + words[n] + ' ';
-                    let testWidth = font.widthOfTextAtSize(testLine, FONT_SIZE, { enableLigatures: false });
-                    if (testWidth > usableWidth && n > 0) {
-                        page.drawText(line, { x: margin, y, font, size: FONT_SIZE, color: rgb(0, 0, 0), lineHeight: LINE_HEIGHT, enableLigatures: false });
+
+                for (const word of words) {
+                    let testLine = line + word;
+                    let testWidth = measureMixedTextWidth(testLine, FONT_SIZE);
+                    
+                    if (testWidth > usableWidth && line.length > 0) {
+                        drawMixedTextLine(page, line, { x: margin, y, size: FONT_SIZE });
                         y -= LINE_HEIGHT;
-                        line = words[n] + ' ';
+                        line = word.trimStart();
                         checkAndAddNewPage();
                     } else {
                         line = testLine;
                     }
                 }
-                page.drawText(line, { x: margin, y, font, size: FONT_SIZE, color: rgb(0, 0, 0), lineHeight: LINE_HEIGHT, enableLigatures: false });
+                
+                if (line.length > 0) {
+                    drawMixedTextLine(page, line, { x: margin, y, size: FONT_SIZE });
+                }
                 y -= (LINE_HEIGHT + PARAGRAPH_SPACING);
             }
         }
+
+        // Create PDF Outlines (Bookmarks)
+        if (outlineItemRefs.length > 0) {
+            const outlineRootRef = pdfDoc.context.nextRef();
     
-        // --- Draw Table of Contents on the first page ---
+            for (let i = 0; i < outlineItemRefs.length; i++) {
+                const itemRef = outlineItemRefs[i];
+                const item = pdfDoc.context.lookup(itemRef);
+    
+                item.set(PDFName.of('Parent'), outlineRootRef);
+                if (i > 0) item.set(PDFName.of('Prev'), outlineItemRefs[i - 1]);
+                if (i < outlineItemRefs.length - 1) item.set(PDFName.of('Next'), outlineItemRefs[i + 1]);
+            }
+    
+            const outlineRoot = pdfDoc.context.obj({
+                Type: 'Outlines',
+                First: outlineItemRefs[0],
+                Last: outlineItemRefs[outlineItemRefs.length - 1],
+                Count: outlineItemRefs.length,
+            });
+    
+            pdfDoc.context.assign(outlineRootRef, outlineRoot);
+            pdfDoc.catalog.set(PDFName.of('Outlines'), outlineRootRef);
+        }
+    
+        // --- Draw Clickable Table of Contents on the first page ---
         const pages = pdfDoc.getPages();
-        const tocFont = font;
         const tocTitleSize = 22;
         const tocEntrySize = 14;
         const tocLineHeight = tocEntrySize * 1.8;
         const { width: tocWidth, height: tocHeight } = tocPage.getSize();
         const tocMargin = 72;
         let tocY = tocHeight - tocMargin;
+
+        let tocPageAnnots = tocPage.node.get(PDFName.of('Annots'));
+        if (!tocPageAnnots || !(tocPageAnnots instanceof PDFArray)) {
+            tocPageAnnots = pdfDoc.context.obj([]);
+            tocPage.node.set(PDFName.of('Annots'), tocPageAnnots);
+        }
     
-        tocPage.drawText('Table of Contents', {
-            x: tocMargin,
-            y: tocY,
-            font: tocFont,
-            size: tocTitleSize,
-            color: rgb(0, 0, 0)
-        });
+        drawMixedTextLine(tocPage, 'Table of Contents', { x: tocMargin, y: tocY, size: tocTitleSize });
         tocY -= tocTitleSize * 2.5;
     
         const tocUsableWidth = tocWidth - (2 * tocMargin);
     
         for (const entry of tocEntries) {
-            if (tocY < tocMargin) {
-                break; // Stop if we run out of space on the TOC page
-            }
+            if (tocY < tocMargin) break;
     
             const pageNumber = pages.indexOf(entry.page) + 1;
             const pageNumText = String(pageNumber);
             let titleText = entry.title;
-            const pageNumWidth = tocFont.widthOfTextAtSize(pageNumText, tocEntrySize);
+            const pageNumWidth = englishFont.widthOfTextAtSize(pageNumText, tocEntrySize);
     
-            let titleWidth = tocFont.widthOfTextAtSize(titleText, tocEntrySize);
+            let titleWidth = measureMixedTextWidth(titleText, tocEntrySize);
             while (titleWidth > tocUsableWidth - pageNumWidth - 20) { // 20 for padding
                 titleText = titleText.slice(0, -4) + '...';
-                titleWidth = tocFont.widthOfTextAtSize(titleText, tocEntrySize);
+                titleWidth = measureMixedTextWidth(titleText, tocEntrySize);
             }
     
-            tocPage.drawText(titleText, {
-                x: tocMargin,
-                y: tocY,
-                font: tocFont,
-                size: tocEntrySize,
-                color: rgb(0, 0, 0),
-            });
+            drawMixedTextLine(tocPage, titleText, { x: tocMargin, y: tocY, size: tocEntrySize });
+            tocPage.drawText(pageNumText, { x: tocWidth - tocMargin - pageNumWidth, y: tocY, font: englishFont, size: tocEntrySize, color: rgb(0, 0, 0) });
     
-            tocPage.drawText(pageNumText, {
-                x: tocWidth - tocMargin - pageNumWidth,
-                y: tocY,
-                font: tocFont,
-                size: tocEntrySize,
-                color: rgb(0, 0, 0),
+            const { height: pageHeight } = entry.page.getSize();
+            const linkAnnotation = pdfDoc.context.obj({
+                Type: 'Annot',
+                Subtype: 'Link',
+                Rect: [
+                    tocMargin,              // left
+                    tocY - 4,               // bottom
+                    tocWidth - tocMargin,   // right
+                    tocY + tocEntrySize,    // top
+                ],
+                Border: [0, 0, 0], // No visible border
+                Dest: [entry.page.ref, PDFName.of('XYZ'), null, pageHeight, null],
             });
-    
+            const linkAnnotationRef = pdfDoc.context.register(linkAnnotation);
+            tocPageAnnots.push(linkAnnotationRef);
+
             tocY -= tocLineHeight;
         }
     
@@ -422,7 +503,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
     async function generatePdfZip({ usableChaps, pattern, startNumber, mode, groupSize }) {
         updateStatus(statusEl, 'Preparing PDF generation...', 'info');
         
-        const fontBytes = await getFont((msg, type) => updateStatus(statusEl, msg, type));
+        const fontBytes = await getFonts((msg, type) => updateStatus(statusEl, msg, type));
         
         const JSZip = await getJSZip();
         const zip = new JSZip();
