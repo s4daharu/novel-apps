@@ -5,7 +5,7 @@
 import { triggerDownload, getJSZip } from './browser-helpers.js';
 import { updateStatus, setupFileInput } from './tool-helpers.js';
 import { PDFDocument, rgb, PageSizes } from "pdf-lib";
-import fontkit from "fontkit";
+import * as fontkit from "fontkit";
 
 let FONT_CACHE = null;
 
