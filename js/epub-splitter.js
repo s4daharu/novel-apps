@@ -23,7 +23,7 @@ async function getFont(updateStatusCallback) {
     if (FONT_CACHE) return FONT_CACHE;
     try {
         updateStatusCallback('Downloading font for PDF generation (first time only)...', 'info');
-        const fontUrl = 'https://cdn.jsdelivr.net/npm/noto-sans-sc@1.0.0/NotoSansSC-Regular.otf';
+        const fontUrl = 'https://cdn.jsdelivr.net/npm/noto-sans-sc@2.0.1/NotoSansSC-Regular.otf';
         const fontBytes = await fetch(fontUrl).then(res => {
             if (!res.ok) throw new Error(`Font download failed: ${res.statusText}`);
             return res.arrayBuffer();
