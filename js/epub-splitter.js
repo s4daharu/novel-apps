@@ -4,6 +4,10 @@
 
 import { triggerDownload, getJSZip } from './browser-helpers.js';
 import { updateStatus, setupFileInput } from './tool-helpers.js';
+import { PDFDocument, rgb } from "https://esm.sh/pdf-lib@1.17.1?bundle";
+import fontkit from "https://esm.sh/fontkit@2.0.2?bundle";
+
+let FONT_CACHE = null;
 
 // Helper function
 function readFileAsArrayBuffer(file) {
@@ -15,11 +19,31 @@ function readFileAsArrayBuffer(file) {
     });
 }
 
+async function getFont(updateStatusCallback) {
+    if (FONT_CACHE) return FONT_CACHE;
+    try {
+        updateStatusCallback('Downloading font for PDF generation (first time only)...', 'info');
+        const fontUrl = 'https://cdn.jsdelivr.net/npm/noto-sans-sc@1.0.0/NotoSansSC-Regular.otf';
+        const fontBytes = await fetch(fontUrl).then(res => {
+            if (!res.ok) throw new Error(`Font download failed: ${res.statusText}`);
+            return res.arrayBuffer();
+        });
+        FONT_CACHE = fontBytes;
+        return fontBytes;
+    } catch (error) {
+        console.error("Font download failed:", error);
+        updateStatusCallback('Failed to download required font for PDF. Please check your internet connection.', 'error');
+        throw new Error('Font download failed');
+    }
+}
+
 export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
     const uploadInput = document.getElementById('epubUpload');
     const fileNameEl = document.getElementById('epubFileName');
     const clearFileBtn = document.getElementById('clearEpubUpload');
     const splitBtn = document.getElementById('splitBtn');
+    const outputFormatEl = document.getElementById('outputFormat');
+    const modeSelectContainer = document.getElementById('modeSelectContainer');
     const modeSelect = document.getElementById('modeSelect');
     const groupSizeGrp = document.getElementById('groupSizeGroup');
     const statusEl = document.getElementById('statusMessage');
@@ -37,12 +61,18 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
     let parsedChaptersForSelection = [];
 
     if (!uploadInput || !splitBtn || !modeSelect || !fileNameEl || !clearFileBtn || !groupSizeGrp ||
-        !statusEl || !downloadSec || !chapterPatternEl ||
+        !statusEl || !downloadSec || !chapterPatternEl || !outputFormatEl || !modeSelectContainer ||
         !startNumberEl || !offsetNumberEl || !groupSizeEl ||
         !chapterSelectionArea || !chapterListUl || !selectAllChaptersBtn || !deselectAllChaptersBtn || !chapterCountEl) {
         console.error("EPUB Splitter UI elements not found. Initialization failed.");
         return;
     }
+
+    outputFormatEl.addEventListener('change', () => {
+        const isPdf = outputFormatEl.value === 'pdf';
+        modeSelectContainer.style.display = isPdf ? 'none' : 'block';
+        groupSizeGrp.style.display = (isPdf || modeSelect.value !== 'grouped') ? 'none' : 'block';
+    });
 
     function resetChapterSelectionUI() {
         chapterListUl.innerHTML = '';
@@ -238,8 +268,95 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
     });
 
     modeSelect.addEventListener('change', () => {
-        groupSizeGrp.classList.toggle('hidden', modeSelect.value !== 'grouped');
+        groupSizeGrp.classList.toggle('hidden', modeSelect.value !== 'grouped' || outputFormatEl.value === 'pdf');
     });
+
+    async function generateZip({ usableChaps, pattern, startNumber, mode, groupSize }) {
+        const JSZip = await getJSZip();
+        const zip = new JSZip();
+        const BOM = "\uFEFF"; // UTF-8 Byte Order Mark
+
+        if (mode === 'single') {
+            usableChaps.forEach((text, i) => {
+                const chapNum = String(startNumber + i).padStart(2, '0');
+                zip.file(`${pattern}${chapNum}.txt`, BOM + text);
+            });
+        } else { // grouped
+            for (let i = 0; i < usableChaps.length; i += groupSize) {
+                const groupStartNum = startNumber + i;
+                const groupEndNum = Math.min(startNumber + i + groupSize - 1, startNumber + usableChaps.length - 1);
+                const name = groupStartNum === groupEndNum
+                    ? `${pattern}${String(groupStartNum).padStart(2, '0')}.txt`
+                    : `${pattern}${String(groupStartNum).padStart(2, '0')}-${String(groupEndNum).padStart(2, '0')}.txt`;
+
+                const content = usableChaps.slice(i, i + groupSize).join('\n\n\n---------------- END ----------------\n\n\n');
+                zip.file(name, BOM + content);
+            }
+        }
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const downloadFilename = `${pattern}_chapters.zip`;
+        await triggerDownload(blob, downloadFilename, 'application/zip', showAppToast);
+    }
+    
+    async function generatePdf({ chapters, pattern, startNumber }) {
+        const fontBytes = await getFont((msg, type) => updateStatus(statusEl, msg, type));
+
+        updateStatus(statusEl, 'Generating PDF...', 'info');
+        
+        const pdfDoc = await PDFDocument.create();
+        pdfDoc.registerFontkit(fontkit);
+        const customFont = await pdfDoc.embedFont(fontBytes);
+
+        const FONT_SIZE = 10;
+        const TITLE_FONT_SIZE = 14;
+        const LINE_HEIGHT = 12;
+        const TITLE_LINE_HEIGHT = 18;
+    
+        for (const [index, text] of chapters.entries()) {
+            const page = pdfDoc.addPage();
+            const { width, height } = page.getSize();
+            const margin = 50;
+            const usableWidth = width - 2 * margin;
+            let y = height - margin;
+            
+            const chapterTitle = parsedChaptersForSelection.find(c => c.text === text)?.title || `${pattern} ${startNumber + index}`;
+            page.drawText(chapterTitle, { x: margin, y, font: customFont, size: TITLE_FONT_SIZE, color: rgb(0, 0, 0) });
+            y -= TITLE_LINE_HEIGHT * 2;
+    
+            const paragraphs = text.split('\n\n');
+            for (const para of paragraphs) {
+                if (y < margin + LINE_HEIGHT) { // Check if new paragraph fits
+                    page = pdfDoc.addPage();
+                    y = height - margin;
+                }
+
+                let words = para.split(' ');
+                let line = '';
+                for(let n = 0; n < words.length; n++) {
+                    let testLine = line + words[n] + ' ';
+                    let testWidth = customFont.widthOfTextAtSize(testLine, FONT_SIZE);
+                    if (testWidth > usableWidth && n > 0) {
+                        page.drawText(line, { x: margin, y, font: customFont, size: FONT_SIZE, color: rgb(0, 0, 0) });
+                        y -= LINE_HEIGHT;
+                        line = words[n] + ' ';
+                        if (y < margin) {
+                            page = pdfDoc.addPage();
+                            y = height - margin;
+                        }
+                    } else {
+                        line = testLine;
+                    }
+                }
+                page.drawText(line, { x: margin, y, font: customFont, size: FONT_SIZE, color: rgb(0, 0, 0) });
+                y -= LINE_HEIGHT * 1.5; // Paragraph spacing
+            }
+        }
+    
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const downloadFilename = `${pattern}_chapters.pdf`;
+        await triggerDownload(blob, downloadFilename, 'application/pdf', showAppToast);
+    }
 
     splitBtn.addEventListener('click', async () => {
         statusEl.classList.add('hidden');
@@ -249,8 +366,8 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
                                             .map(cb => parseInt(cb.value, 10));
 
         if (selectedChapterIndices.length === 0) {
-            showAppToast("No chapters selected to split.", true);
-            return updateStatus(statusEl, 'Error: No chapters selected to split.', 'error');
+            showAppToast("No chapters selected to process.", true);
+            return updateStatus(statusEl, 'Error: No chapters selected to process.', 'error');
         }
         
         const chaptersToProcess = parsedChaptersForSelection
@@ -269,6 +386,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
             return updateStatus(statusEl, 'Error: Offset must be 0 or greater.', 'error');
         }
 
+        const format = outputFormatEl.value;
         const mode = modeSelect.value;
         let groupSize = 1;
         if (mode === 'grouped') {
@@ -288,31 +406,11 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
                 throw new Error(`Offset of ${offset} resulted in no chapters to process from your selection.`);
             }
             
-            const JSZip = await getJSZip();
-            const zip = new JSZip();
-            const BOM = "\uFEFF"; // UTF-8 Byte Order Mark
-
-            if (mode === 'single') {
-                usableChaps.forEach((text, i) => {
-                    const chapNum = String(startNumber + i).padStart(2, '0');
-                    zip.file(`${pattern}${chapNum}.txt`, BOM + text);
-                });
-            } else { // grouped
-                for (let i = 0; i < usableChaps.length; i += groupSize) {
-                    const groupStartNum = startNumber + i;
-                    const groupEndNum = Math.min(startNumber + i + groupSize - 1, startNumber + usableChaps.length - 1);
-                    const name = groupStartNum === groupEndNum
-                        ? `${pattern}${String(groupStartNum).padStart(2, '0')}.txt`
-                        : `${pattern}${String(groupStartNum).padStart(2, '0')}-${String(groupEndNum).padStart(2, '0')}.txt`;
-                    
-                    const content = usableChaps.slice(i, i + groupSize).join('\n\n\n---------------- END ----------------\n\n\n');
-                    zip.file(name, BOM + content);
-                }
+            if (format === 'pdf') {
+                await generatePdf({ chapters: usableChaps, pattern, startNumber });
+            } else {
+                await generateZip({ usableChaps, pattern, startNumber, mode, groupSize });
             }
-            const blob = await zip.generateAsync({ type: 'blob' });
-
-            const downloadFilename = `${pattern}_chapters.zip`;
-            await triggerDownload(blob, downloadFilename, 'application/zip', showAppToast);
 
             updateStatus(statusEl, `Extracted ${usableChaps.length} chapter(s). Download started.`, 'success');
             showAppToast(`Extracted ${usableChaps.length} chapter(s).`);
