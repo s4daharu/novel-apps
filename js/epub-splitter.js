@@ -300,40 +300,47 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
         const pdfDoc = await PDFDocument.create();
         pdfDoc.registerFontkit(fontkit);
         const font = await pdfDoc.embedFont(fontBytes);
-
-        // Mobile-friendly formatting
-        const FONT_SIZE = 12;
-        const TITLE_FONT_SIZE = 16;
-        const LINE_HEIGHT = FONT_SIZE * 1.4;
+    
+        // TOC setup
+        const tocPage = pdfDoc.addPage(PageSizes.A4);
+        const tocEntries = [];
+    
+        // Mobile-friendly formatting with increased font size
+        const FONT_SIZE = 14;
+        const TITLE_FONT_SIZE = 18;
+        const LINE_HEIGHT = FONT_SIZE * 1.5;
         const TITLE_LINE_HEIGHT = TITLE_FONT_SIZE * 1.5;
         const PARAGRAPH_SPACING = LINE_HEIGHT * 0.5;
-
+    
         for (const chapter of chaptersData) {
             let page = pdfDoc.addPage(PageSizes.A4);
+            // Store the starting page for the TOC
+            tocEntries.push({ title: chapter.title, page });
+    
             const { width, height } = page.getSize();
             const margin = 72; // 1 inch on all sides
             const usableWidth = width - 2 * margin;
             let y = height - margin;
-
+    
             const checkAndAddNewPage = () => {
                 if (y < margin) {
                     page = pdfDoc.addPage(PageSizes.A4);
                     y = height - margin;
                 }
             };
-
+    
             // Chapter Title
             checkAndAddNewPage();
             page.drawText(chapter.title, { x: margin, y, font, size: TITLE_FONT_SIZE, color: rgb(0, 0, 0), enableLigatures: false });
             y -= TITLE_LINE_HEIGHT * 1.5;
-
+    
             const paragraphs = chapter.text.split('\n\n');
             for (const para of paragraphs) {
                 checkAndAddNewPage();
                 
                 const trimmedPara = para.trim();
                 if (!trimmedPara) continue; // skip empty paragraphs
-
+    
                 let words = trimmedPara.split(' ');
                 let line = '';
                 for (let n = 0; n < words.length; n++) {
@@ -352,6 +359,63 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
                 y -= (LINE_HEIGHT + PARAGRAPH_SPACING);
             }
         }
+    
+        // --- Draw Table of Contents on the first page ---
+        const pages = pdfDoc.getPages();
+        const tocFont = font;
+        const tocTitleSize = 22;
+        const tocEntrySize = 14;
+        const tocLineHeight = tocEntrySize * 1.8;
+        const { width: tocWidth, height: tocHeight } = tocPage.getSize();
+        const tocMargin = 72;
+        let tocY = tocHeight - tocMargin;
+    
+        tocPage.drawText('Table of Contents', {
+            x: tocMargin,
+            y: tocY,
+            font: tocFont,
+            size: tocTitleSize,
+            color: rgb(0, 0, 0)
+        });
+        tocY -= tocTitleSize * 2.5;
+    
+        const tocUsableWidth = tocWidth - (2 * tocMargin);
+    
+        for (const entry of tocEntries) {
+            if (tocY < tocMargin) {
+                break; // Stop if we run out of space on the TOC page
+            }
+    
+            const pageNumber = pages.indexOf(entry.page) + 1;
+            const pageNumText = String(pageNumber);
+            let titleText = entry.title;
+            const pageNumWidth = tocFont.widthOfTextAtSize(pageNumText, tocEntrySize);
+    
+            let titleWidth = tocFont.widthOfTextAtSize(titleText, tocEntrySize);
+            while (titleWidth > tocUsableWidth - pageNumWidth - 20) { // 20 for padding
+                titleText = titleText.slice(0, -4) + '...';
+                titleWidth = tocFont.widthOfTextAtSize(titleText, tocEntrySize);
+            }
+    
+            tocPage.drawText(titleText, {
+                x: tocMargin,
+                y: tocY,
+                font: tocFont,
+                size: tocEntrySize,
+                color: rgb(0, 0, 0),
+            });
+    
+            tocPage.drawText(pageNumText, {
+                x: tocWidth - tocMargin - pageNumWidth,
+                y: tocY,
+                font: tocFont,
+                size: tocEntrySize,
+                color: rgb(0, 0, 0),
+            });
+    
+            tocY -= tocLineHeight;
+        }
+    
         return await pdfDoc.save();
     }
     
