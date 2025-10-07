@@ -290,11 +290,12 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
             
             const JSZip = await getJSZip();
             const zip = new JSZip();
+            const BOM = "\uFEFF"; // UTF-8 Byte Order Mark
 
             if (mode === 'single') {
                 usableChaps.forEach((text, i) => {
                     const chapNum = String(startNumber + i).padStart(2, '0');
-                    zip.file(`${pattern}${chapNum}.txt`, text);
+                    zip.file(`${pattern}${chapNum}.txt`, BOM + text);
                 });
             } else { // grouped
                 for (let i = 0; i < usableChaps.length; i += groupSize) {
@@ -305,7 +306,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
                         : `${pattern}${String(groupStartNum).padStart(2, '0')}-${String(groupEndNum).padStart(2, '0')}.txt`;
                     
                     const content = usableChaps.slice(i, i + groupSize).join('\n\n\n---------------- END ----------------\n\n\n');
-                    zip.file(name, content);
+                    zip.file(name, BOM + content);
                 }
             }
             const blob = await zip.generateAsync({ type: 'blob' });

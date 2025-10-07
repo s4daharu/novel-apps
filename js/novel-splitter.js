@@ -522,6 +522,7 @@ export function initializeNovelSplitter(showAppToast, toggleAppSpinner) {
       showProgress();
       updateProgress(5, 'Preparing ZIP…');
       const zip = new JSZip();
+      const BOM = "\uFEFF"; // UTF-8 Byte Order Mark
       const base = safeFilename((state.fileName || 'novel').replace(/\.txt$/i, ''));
       const total = chaptersToExport.length;
       for(let i=0;i<total;i++){
@@ -529,7 +530,7 @@ export function initializeNovelSplitter(showAppToast, toggleAppSpinner) {
         const namePart = (i === 0 && ch.title.toLowerCase() === 'synopsis') ? 'synopsis' : (ch.title || `chapter${i}`);
         const index = String(i).padStart(3, '0');
         const fname = `${index}_${safeFilename(namePart)}.txt`;
-        zip.file(fname, ch.content || '');
+        zip.file(fname, BOM + (ch.content || ''));
         updateProgress(10 + (i/total)*80, `Adding ${fname}`);
         await new Promise(r => setTimeout(r, 0));
       }

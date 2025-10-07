@@ -299,6 +299,7 @@ export function initializeEpubToZip(showAppToast, toggleAppSpinner) {
         try {
             const JSZip = await getJSZip();
             const outputZip = new JSZip();
+            const BOM = "\uFEFF"; // UTF-8 Byte Order Mark
             let filesAdded = 0;
 
             for (const cb of selectedCheckboxes) {
@@ -316,7 +317,7 @@ export function initializeEpubToZip(showAppToast, toggleAppSpinner) {
 
                 if (chapterText.trim()) {
                     const filename = `${String(filesAdded + 1).padStart(4, '0')}_${sanitizeFilenameForZip(entry.title)}.txt`;
-                    outputZip.file(filename, chapterText);
+                    outputZip.file(filename, BOM + chapterText);
                     filesAdded++;
                 }
             }
