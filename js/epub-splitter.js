@@ -4,8 +4,8 @@
 
 import { triggerDownload, getJSZip } from './browser-helpers.js';
 import { updateStatus, setupFileInput } from './tool-helpers.js';
-import { PDFDocument, rgb, PageSizes } from "https/esm.sh/pdf-lib@1.17.1?bundle";
-import fontkit from "https/esm.sh/fontkit@2.0.2?bundle";
+import { PDFDocument, rgb, PageSizes } from "pdf-lib";
+import fontkit from "fontkit";
 
 let FONT_CACHE = null;
 
