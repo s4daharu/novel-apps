@@ -4,8 +4,8 @@
 
 import { triggerDownload, getJSZip } from './browser-helpers.js';
 import { updateStatus, setupFileInput } from './tool-helpers.js';
-import { PDFDocument, rgb } from "https://esm.sh/pdf-lib@1.17.1?bundle";
-import fontkit from "https://esm.sh/fontkit@2.0.2?bundle";
+import { PDFDocument, rgb, PageSizes } from "https/esm.sh/pdf-lib@1.17.1?bundle";
+import fontkit from "https/esm.sh/fontkit@2.0.2?bundle";
 
 let FONT_CACHE = null;
 
@@ -68,11 +68,13 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
         return;
     }
 
-    outputFormatEl.addEventListener('change', () => {
-        const isPdf = outputFormatEl.value === 'pdf';
-        modeSelectContainer.style.display = isPdf ? 'none' : 'block';
-        groupSizeGrp.style.display = (isPdf || modeSelect.value !== 'grouped') ? 'none' : 'block';
-    });
+    function updateSplitterControls() {
+        modeSelectContainer.style.display = 'block';
+        groupSizeGrp.classList.toggle('hidden', modeSelect.value !== 'grouped');
+    }
+    
+    outputFormatEl.addEventListener('change', updateSplitterControls);
+    modeSelect.addEventListener('change', updateSplitterControls);
 
     function resetChapterSelectionUI() {
         chapterListUl.innerHTML = '';
@@ -267,11 +269,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
         }
     });
 
-    modeSelect.addEventListener('change', () => {
-        groupSizeGrp.classList.toggle('hidden', modeSelect.value !== 'grouped' || outputFormatEl.value === 'pdf');
-    });
-
-    async function generateZip({ usableChaps, pattern, startNumber, mode, groupSize }) {
+    async function generateTxtZip({ usableChaps, pattern, startNumber, mode, groupSize }) {
         const JSZip = await getJSZip();
         const zip = new JSZip();
         const BOM = "\uFEFF"; // UTF-8 Byte Order Mark
@@ -298,64 +296,110 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
         await triggerDownload(blob, downloadFilename, 'application/zip', showAppToast);
     }
     
-    async function generatePdf({ chapters, pattern, startNumber }) {
-        const fontBytes = await getFont((msg, type) => updateStatus(statusEl, msg, type));
-
-        updateStatus(statusEl, 'Generating PDF...', 'info');
-        
+    async function createPdfFromChapters(chaptersData, font) {
         const pdfDoc = await PDFDocument.create();
-        pdfDoc.registerFontkit(fontkit);
-        const customFont = await pdfDoc.embedFont(fontBytes);
 
-        const FONT_SIZE = 10;
-        const TITLE_FONT_SIZE = 14;
-        const LINE_HEIGHT = 12;
-        const TITLE_LINE_HEIGHT = 18;
-    
-        for (const [index, text] of chapters.entries()) {
-            const page = pdfDoc.addPage();
+        // Mobile-friendly formatting
+        const FONT_SIZE = 12;
+        const TITLE_FONT_SIZE = 16;
+        const LINE_HEIGHT = FONT_SIZE * 1.4;
+        const TITLE_LINE_HEIGHT = TITLE_FONT_SIZE * 1.5;
+        const PARAGRAPH_SPACING = LINE_HEIGHT * 0.5;
+
+        for (const chapter of chaptersData) {
+            let page = pdfDoc.addPage(PageSizes.A4);
             const { width, height } = page.getSize();
-            const margin = 50;
+            const margin = 72; // 1 inch on all sides
             const usableWidth = width - 2 * margin;
             let y = height - margin;
-            
-            const chapterTitle = parsedChaptersForSelection.find(c => c.text === text)?.title || `${pattern} ${startNumber + index}`;
-            page.drawText(chapterTitle, { x: margin, y, font: customFont, size: TITLE_FONT_SIZE, color: rgb(0, 0, 0) });
-            y -= TITLE_LINE_HEIGHT * 2;
-    
-            const paragraphs = text.split('\n\n');
-            for (const para of paragraphs) {
-                if (y < margin + LINE_HEIGHT) { // Check if new paragraph fits
-                    page = pdfDoc.addPage();
+
+            const checkAndAddNewPage = () => {
+                if (y < margin) {
+                    page = pdfDoc.addPage(PageSizes.A4);
                     y = height - margin;
                 }
+            };
 
-                let words = para.split(' ');
+            // Chapter Title
+            checkAndAddNewPage();
+            page.drawText(chapter.title, { x: margin, y, font, size: TITLE_FONT_SIZE, color: rgb(0, 0, 0) });
+            y -= TITLE_LINE_HEIGHT * 1.5;
+
+            const paragraphs = chapter.text.split('\n\n');
+            for (const para of paragraphs) {
+                checkAndAddNewPage();
+                
+                const trimmedPara = para.trim();
+                if (!trimmedPara) continue; // skip empty paragraphs
+
+                let words = trimmedPara.split(' ');
                 let line = '';
-                for(let n = 0; n < words.length; n++) {
+                for (let n = 0; n < words.length; n++) {
                     let testLine = line + words[n] + ' ';
-                    let testWidth = customFont.widthOfTextAtSize(testLine, FONT_SIZE);
+                    let testWidth = font.widthOfTextAtSize(testLine, FONT_SIZE);
                     if (testWidth > usableWidth && n > 0) {
-                        page.drawText(line, { x: margin, y, font: customFont, size: FONT_SIZE, color: rgb(0, 0, 0) });
+                        page.drawText(line, { x: margin, y, font, size: FONT_SIZE, color: rgb(0, 0, 0), lineHeight: LINE_HEIGHT });
                         y -= LINE_HEIGHT;
                         line = words[n] + ' ';
-                        if (y < margin) {
-                            page = pdfDoc.addPage();
-                            y = height - margin;
-                        }
+                        checkAndAddNewPage();
                     } else {
                         line = testLine;
                     }
                 }
-                page.drawText(line, { x: margin, y, font: customFont, size: FONT_SIZE, color: rgb(0, 0, 0) });
-                y -= LINE_HEIGHT * 1.5; // Paragraph spacing
+                page.drawText(line, { x: margin, y, font, size: FONT_SIZE, color: rgb(0, 0, 0), lineHeight: LINE_HEIGHT });
+                y -= (LINE_HEIGHT + PARAGRAPH_SPACING);
             }
         }
+        return await pdfDoc.save();
+    }
     
-        const pdfBytes = await pdfDoc.save();
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-        const downloadFilename = `${pattern}_chapters.pdf`;
-        await triggerDownload(blob, downloadFilename, 'application/pdf', showAppToast);
+    async function generatePdfZip({ usableChaps, pattern, startNumber, mode, groupSize }) {
+        updateStatus(statusEl, 'Preparing PDF generation...', 'info');
+        
+        const fontBytes = await getFont((msg, type) => updateStatus(statusEl, msg, type));
+        const pdfDocForFont = await PDFDocument.create();
+        pdfDocForFont.registerFontkit(fontkit);
+        const customFont = await pdfDocForFont.embedFont(fontBytes);
+        
+        const JSZip = await getJSZip();
+        const zip = new JSZip();
+
+        if (mode === 'single') {
+            for (let i = 0; i < usableChaps.length; i++) {
+                const chapNum = String(startNumber + i).padStart(2, '0');
+                const title = parsedChaptersForSelection.find(c => c.text === usableChaps[i])?.title || `${pattern} ${chapNum}`;
+                const chaptersData = [{ title, text: usableChaps[i] }];
+                
+                const pdfBytes = await createPdfFromChapters(chaptersData, customFont);
+                zip.file(`${pattern}${chapNum}.pdf`, pdfBytes);
+            }
+        } else { // grouped
+            for (let i = 0; i < usableChaps.length; i += groupSize) {
+                const groupStartNum = startNumber + i;
+                const groupEndNum = Math.min(startNumber + i + groupSize - 1, startNumber + usableChaps.length - 1);
+                
+                const name = groupStartNum === groupEndNum
+                    ? `${pattern}${String(groupStartNum).padStart(2, '0')}.pdf`
+                    : `${pattern}${String(groupStartNum).padStart(2, '0')}-${String(groupEndNum).padStart(2, '0')}.pdf`;
+                
+                const chapterGroup = usableChaps.slice(i, i + groupSize);
+                const chaptersData = chapterGroup.map((text, index) => {
+                    const originalChapNum = startNumber + i + index;
+                    const chapInfo = parsedChaptersForSelection.find(c => c.text === text);
+                    return {
+                        title: chapInfo?.title || `${pattern} ${originalChapNum}`,
+                        text: text
+                    };
+                });
+                
+                const pdfBytes = await createPdfFromChapters(chaptersData, customFont);
+                zip.file(name, pdfBytes);
+            }
+        }
+        
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const downloadFilename = `${pattern}_chapters_pdf.zip`;
+        await triggerDownload(blob, downloadFilename, 'application/zip', showAppToast);
     }
 
     splitBtn.addEventListener('click', async () => {
@@ -407,12 +451,13 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
             }
             
             if (format === 'pdf') {
-                await generatePdf({ chapters: usableChaps, pattern, startNumber });
+                await generatePdfZip({ usableChaps, pattern, startNumber, mode, groupSize });
             } else {
-                await generateZip({ usableChaps, pattern, startNumber, mode, groupSize });
+                await generateTxtZip({ usableChaps, pattern, startNumber, mode, groupSize });
             }
-
-            updateStatus(statusEl, `Extracted ${usableChaps.length} chapter(s). Download started.`, 'success');
+            
+            const outputType = format === 'pdf' ? 'PDFs in a ZIP file' : '.txt files in a ZIP file';
+            updateStatus(statusEl, `Extracted ${usableChaps.length} chapter(s) as ${outputType}. Download started.`, 'success');
             showAppToast(`Extracted ${usableChaps.length} chapter(s).`);
 
         } catch (err) {
@@ -424,4 +469,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
             splitBtn.disabled = false;
         }
     });
+    
+    // Set initial control visibility on load
+    updateSplitterControls();
 }
