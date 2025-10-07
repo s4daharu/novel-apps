@@ -23,7 +23,7 @@ async function getFont(updateStatusCallback) {
     if (FONT_CACHE) return FONT_CACHE;
     try {
         updateStatusCallback('Loading font for PDF generation (first time only)...', 'info');
-        const fontUrl = './fonts/lato-latin-400-normal.ttf';
+        const fontUrl = './fonts/Marmelad-Regular.ttf';
         const fontBytes = await fetch(fontUrl).then(res => {
             if (!res.ok) throw new Error(`Font load failed: ${res.statusText}`);
             return res.arrayBuffer();
@@ -32,7 +32,7 @@ async function getFont(updateStatusCallback) {
         return fontBytes;
     } catch (error) {
         console.error("Font load failed:", error);
-        updateStatusCallback('Failed to load required font for PDF. Ensure a "fonts" folder exists with "lato-latin-400-normal.ttf" inside.', 'error');
+        updateStatusCallback('Failed to load required font for PDF. Ensure a "fonts" folder exists with "Marmelad-Regular.ttf" inside.', 'error');
         throw new Error('Font load failed');
     }
 }

@@ -22,7 +22,7 @@ const CRITICAL_ICONS = [
 ];
 
 const CRITICAL_FONTS = [
-  './fonts/lato-latin-400-normal.ttf'
+  './fonts/Marmelad-Regular.ttf'
 ];
 
 
