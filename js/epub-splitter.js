@@ -23,7 +23,7 @@ async function getFont(updateStatusCallback) {
     if (FONT_CACHE) return FONT_CACHE;
     try {
         updateStatusCallback('Downloading font for PDF generation (first time only)...', 'info');
-        const fontUrl = 'https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37/ttf/DejaVuSans.ttf';
+        const fontUrl = 'https://cdn.jsdelivr.net/npm/@fontsource/lato@5.0.21/files/lato-latin-400-normal.ttf';
         const fontBytes = await fetch(fontUrl).then(res => {
             if (!res.ok) throw new Error(`Font download failed: ${res.statusText}`);
             return res.arrayBuffer();
@@ -296,8 +296,10 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
         await triggerDownload(blob, downloadFilename, 'application/zip', showAppToast);
     }
     
-    async function createPdfFromChapters(chaptersData, font) {
+    async function createPdfFromChapters(chaptersData, fontBytes) {
         const pdfDoc = await PDFDocument.create();
+        pdfDoc.registerFontkit(fontkit);
+        const font = await pdfDoc.embedFont(fontBytes);
 
         // Mobile-friendly formatting
         const FONT_SIZE = 12;
@@ -322,7 +324,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
 
             // Chapter Title
             checkAndAddNewPage();
-            page.drawText(chapter.title, { x: margin, y, font, size: TITLE_FONT_SIZE, color: rgb(0, 0, 0) });
+            page.drawText(chapter.title, { x: margin, y, font, size: TITLE_FONT_SIZE, color: rgb(0, 0, 0), enableLigatures: false });
             y -= TITLE_LINE_HEIGHT * 1.5;
 
             const paragraphs = chapter.text.split('\n\n');
@@ -336,9 +338,9 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
                 let line = '';
                 for (let n = 0; n < words.length; n++) {
                     let testLine = line + words[n] + ' ';
-                    let testWidth = font.widthOfTextAtSize(testLine, FONT_SIZE);
+                    let testWidth = font.widthOfTextAtSize(testLine, FONT_SIZE, { enableLigatures: false });
                     if (testWidth > usableWidth && n > 0) {
-                        page.drawText(line, { x: margin, y, font, size: FONT_SIZE, color: rgb(0, 0, 0), lineHeight: LINE_HEIGHT });
+                        page.drawText(line, { x: margin, y, font, size: FONT_SIZE, color: rgb(0, 0, 0), lineHeight: LINE_HEIGHT, enableLigatures: false });
                         y -= LINE_HEIGHT;
                         line = words[n] + ' ';
                         checkAndAddNewPage();
@@ -346,7 +348,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
                         line = testLine;
                     }
                 }
-                page.drawText(line, { x: margin, y, font, size: FONT_SIZE, color: rgb(0, 0, 0), lineHeight: LINE_HEIGHT });
+                page.drawText(line, { x: margin, y, font, size: FONT_SIZE, color: rgb(0, 0, 0), lineHeight: LINE_HEIGHT, enableLigatures: false });
                 y -= (LINE_HEIGHT + PARAGRAPH_SPACING);
             }
         }
@@ -357,9 +359,6 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
         updateStatus(statusEl, 'Preparing PDF generation...', 'info');
         
         const fontBytes = await getFont((msg, type) => updateStatus(statusEl, msg, type));
-        const pdfDocForFont = await PDFDocument.create();
-        pdfDocForFont.registerFontkit(fontkit);
-        const customFont = await pdfDocForFont.embedFont(fontBytes);
         
         const JSZip = await getJSZip();
         const zip = new JSZip();
@@ -370,7 +369,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
                 const title = parsedChaptersForSelection.find(c => c.text === usableChaps[i])?.title || `${pattern} ${chapNum}`;
                 const chaptersData = [{ title, text: usableChaps[i] }];
                 
-                const pdfBytes = await createPdfFromChapters(chaptersData, customFont);
+                const pdfBytes = await createPdfFromChapters(chaptersData, fontBytes);
                 zip.file(`${pattern}${chapNum}.pdf`, pdfBytes);
             }
         } else { // grouped
@@ -392,7 +391,7 @@ export function initializeEpubSplitter(showAppToast, toggleAppSpinner) {
                     };
                 });
                 
-                const pdfBytes = await createPdfFromChapters(chaptersData, customFont);
+                const pdfBytes = await createPdfFromChapters(chaptersData, fontBytes);
                 zip.file(name, pdfBytes);
             }
         }
