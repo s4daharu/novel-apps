@@ -21,6 +21,9 @@ const CRITICAL_ICONS = [
   './icons/icon-512x512.png'
 ];
 
+const CRITICAL_FONTS = [
+  './fonts/lato-latin-400-normal.ttf'
+];
 
 
 // Install event - cache critical assets immediately
@@ -38,6 +41,11 @@ self.addEventListener('install', event => {
       caches.open(STATIC_CACHE).then(cache => {
         console.log('[SW] Caching critical icons');
         return cache.addAll(CRITICAL_ICONS);
+      }),
+      // Cache critical fonts
+      caches.open(STATIC_CACHE).then(cache => {
+        console.log('[SW] Caching critical fonts');
+        return cache.addAll(CRITICAL_FONTS);
       })
     ]).then(() => {
       console.log('[SW] Installation complete, skipping wait');
@@ -102,6 +110,11 @@ async function handleRequest(request) {
     // 2. Icons (cache-first, mobile critical)
     if (url.pathname.includes('/icons/')) {
       return await cacheFirst(request, STATIC_CACHE);
+    }
+
+    // 2.5. Fonts (cache-first, critical for PDF)
+    if (url.pathname.includes('/fonts/')) {
+        return await cacheFirst(request, STATIC_CACHE);
     }
 
     // 3. JavaScript modules (stale-while-revalidate)

@@ -22,18 +22,18 @@ function readFileAsArrayBuffer(file) {
 async function getFont(updateStatusCallback) {
     if (FONT_CACHE) return FONT_CACHE;
     try {
-        updateStatusCallback('Downloading font for PDF generation (first time only)...', 'info');
-        const fontUrl = 'https://cdn.jsdelivr.net/npm/@fontsource/lato@5.0.21/files/lato-latin-400-normal.ttf';
+        updateStatusCallback('Loading font for PDF generation (first time only)...', 'info');
+        const fontUrl = './fonts/lato-latin-400-normal.ttf';
         const fontBytes = await fetch(fontUrl).then(res => {
-            if (!res.ok) throw new Error(`Font download failed: ${res.statusText}`);
+            if (!res.ok) throw new Error(`Font load failed: ${res.statusText}`);
             return res.arrayBuffer();
         });
         FONT_CACHE = fontBytes;
         return fontBytes;
     } catch (error) {
-        console.error("Font download failed:", error);
-        updateStatusCallback('Failed to download required font for PDF. Please check your internet connection.', 'error');
-        throw new Error('Font download failed');
+        console.error("Font load failed:", error);
+        updateStatusCallback('Failed to load required font for PDF. Ensure a "fonts" folder exists with "lato-latin-400-normal.ttf" inside.', 'error');
+        throw new Error('Font load failed');
     }
 }
 
