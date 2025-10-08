@@ -1,4 +1,3 @@
-
 declare global {
     interface Window {
         JSZip: any;
@@ -44,16 +43,16 @@ let FONT_CACHE: { notoFontBytes: ArrayBuffer; marmeladFontBytes: ArrayBuffer; } 
 export async function getFonts() {
     if (FONT_CACHE) return FONT_CACHE;
     try {
-        const notoFontUrl = './fonts/NotoSansSC-Regular.otf';
-        const marmeladFontUrl = './fonts/Marmelad-Regular.ttf';
+        const notoFontUrl = '/fonts/NotoSansSC-Regular.otf';
+        const marmeladFontUrl = '/fonts/Marmelad-Regular.ttf';
 
         const [notoFontBytes, marmeladFontBytes] = await Promise.all([
             fetch(notoFontUrl).then(res => {
-                if (!res.ok) throw new Error(`Font load failed: ${res.statusText}. Make sure 'NotoSansSC-Regular.otf' is in the '/fonts' folder.`);
+                if (!res.ok) throw new Error(`Font load failed: ${res.status}. Could not fetch NotoSansSC font from '${notoFontUrl}'. Make sure the file exists in 'public/fonts/'.`);
                 return res.arrayBuffer();
             }),
             fetch(marmeladFontUrl).then(res => {
-                if (!res.ok) throw new Error(`Failed to load Marmelad font locally: ${res.statusText}. Make sure 'Marmelad-Regular.ttf' is in the '/fonts' folder.`);
+                if (!res.ok) throw new Error(`Failed to load Marmelad font from '${marmeladFontUrl}': ${res.status}. Make sure the file exists in 'public/fonts/'.`);
                 return res.arrayBuffer();
             })
         ]);

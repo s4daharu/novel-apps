@@ -119,7 +119,7 @@ async function handleRequest(request) {
     }
 
     // 4. External dependencies (network-first with fallback for freshness)
-    if (url.hostname.includes('esm.sh') || url.hostname.includes('cdn.jsdelivr.net')) {
+    if (url.hostname.includes('esm.sh') || url.hostname.includes('cdn.jsdelivr.net') || url.hostname.includes('cdn.staticaly.com')) {
       return await networkFirstWithFallback(request, RUNTIME_CACHE);
     }
 
