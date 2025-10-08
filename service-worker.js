@@ -15,10 +15,10 @@ const STATIC_PATHS = new Set([
 ]);
 
 const CRITICAL_ICONS = [
-  './icons/icon-72x72.png',
-  './icons/icon-96x96.png',
-  './icons/icon-192x192.png',
-  './icons/icon-512x512.png'
+  './icons/icon-72x72.svg',
+  './icons/icon-96x96.svg',
+  './icons/icon-192x192.svg',
+  './icons/icon-512x512.svg'
 ];
 
 const CRITICAL_FONTS = [
@@ -225,15 +225,15 @@ self.addEventListener('push', event => {
     const data = event.data.json();
     const options = {
       body: data.body,
-      icon: './icons/icon-192x192.png',
-      badge: './icons/icon-72x72.png',
+      icon: './icons/icon-192x192.svg',
+      badge: './icons/icon-72x72.svg',
       vibrate: [200, 100, 200],
       data: data.url,
       actions: [
         {
           action: 'open',
           title: 'Open App',
-          icon: './icons/icon-96x96.png'
+          icon: './icons/icon-96x96.svg'
         },
         {
           action: 'close',
