@@ -1,11 +1,32 @@
 {
   "name": "novel-apps",
-  "version": "1.4.0",
+  "version": "1.7.0",
   "private": true,
   "description": "A mobile-first suite of tools for novelists, including EPUB utilities and backup management with offline support.",
-  "main": "js/index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "fontkit": "^2.0.2",
+    "jszip": "^3.10.1",
+    "pdf-lib": "^1.17.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^6.23.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.4.5",
+    "vite": "^5.3.1",
+    "vite-plugin-pwa": "^0.20.0"
   },
   "keywords": [
     "novel",
