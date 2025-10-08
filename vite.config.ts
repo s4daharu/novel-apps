@@ -2,29 +2,10 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// Custom plugin to remove development-only scripts during build
-const removeDevScriptsPlugin = () => {
-  let command: string;
-  return {
-    name: 'html-transform-remove-cdn',
-    configResolved(resolvedConfig: any) {
-      command = resolvedConfig.command;
-    },
-    transformIndexHtml(html: string) {
-      if (command === 'build') {
-        // Removes the script tag with the specified ID
-        return html.replace(/<script id="tailwind-cdn-script".*?<\/script>\s*/, '');
-      }
-      return html;
-    }
-  }
-}
-
 export default defineConfig({
   base: './',
   plugins: [
     react(),
-    removeDevScriptsPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
       // Use the existing manifest.json from the public folder

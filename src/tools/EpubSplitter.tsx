@@ -141,7 +141,7 @@ export const EpubSplitter: React.FC = () => {
 
                 const chapterSections = doc.querySelectorAll('section[epub\\:type="chapter"], section[*|type="chapter"]');
                 if (chapterSections.length > 0) {
-                    chapterSections.forEach((section) => {
+                    chapterSections.forEach((section: Element) => {
                         const titleEl = section.querySelector('h1, h2, h3');
                         const title = titleEl ? titleEl.textContent?.trim() : `Chapter ${tempChapters.length + 1}`;
                         const text = extractChapterContent(section);
