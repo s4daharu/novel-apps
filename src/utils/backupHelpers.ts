@@ -1,55 +1,29 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
 
-/**
- * Helper functions for creating and manipulating novel backup file structures.
- */
+import { BackupScene, BackupData } from './types';
 
-/**
- * Parses raw text into the structured block format used in backup files.
- * Handles paragraphs separated by one or more blank lines.
- * @param {string} rawText The raw text content of a chapter.
- * @returns {{blocks: Array<{type: string, align: string, text?: string}>}}
- */
-export function parseTextToBlocks(rawText) {
+export const parseTextToBlocks = (rawText: string): { blocks: Array<{ type: string; align: string; text?: string }> } => {
     const normalizedText = rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    // Split by two or more newlines to identify paragraphs
-    const contentSegments = normalizedText.split(/\n{2,}/)
-                                    .map(s => s.trim())
-                                    .filter(s => s !== '');
-    const blocks = [];
+    const contentSegments = normalizedText.split(/\n{2,}/).map(s => s.trim()).filter(s => s !== '');
+    const blocks: Array<{ type: string; align: string; text?: string }> = [];
 
-    // This logic ensures that paragraphs are preserved, and empty lines between them are represented correctly.
     for (let i = 0; i < contentSegments.length; i++) {
         blocks.push({ type: 'text', align: 'left', text: contentSegments[i] });
-        // Add an empty block for spacing, but not after the last paragraph
         if (i < contentSegments.length - 1) {
            blocks.push({ type: 'text', align: 'left' });
         }
     }
 
-    // Handle edge cases for empty or whitespace-only content
     if (contentSegments.length === 0) {
         if (rawText.trim() === '' && rawText.length > 0) {
-            // Content is just whitespace (e.g., a few newlines)
             blocks.push({ type: 'text', align: 'left' });
         } else {
-            // Content is truly empty
             blocks.push({ type: 'text', align: 'left', text: '' });
         }
     }
-
     return { blocks };
 }
 
-/**
- * Calculates the total word count from an array of scenes.
- * @param {Array<{text: string}>} scenes Array of scene objects from a backup file.
- * @returns {number} The total word count.
- */
-export function calculateWordCount(scenes) {
+export const calculateWordCount = (scenes: BackupScene[]): number => {
     if (!scenes || !Array.isArray(scenes)) return 0;
     
     return scenes.reduce((totalWordCount, scene) => {
@@ -69,15 +43,7 @@ export function calculateWordCount(scenes) {
     }, 0);
 }
 
-
-/**
- * Creates a new, empty backup file structure.
- * @param {string} title The project title.
- * @param {string} description The project description.
- * @param {string} [uniqueCode] A unique code for the project. If not provided, one is generated.
- * @returns {object} A complete, valid backup file object.
- */
-export function createNewBackupStructure(title, description, uniqueCode) {
+export const createNewBackupStructure = (title: string, description: string, uniqueCode?: string): BackupData => {
     const now = Date.now();
     const code = uniqueCode || Math.floor(Math.random() * 0xFFFFFFFF).toString(16).padStart(8, '0');
     return {
@@ -103,4 +69,4 @@ export function createNewBackupStructure(title, description, uniqueCode) {
             sections: []
         }]
     };
-}
+};

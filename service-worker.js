@@ -103,41 +103,36 @@ async function handleRequest(request) {
   const url = new URL(request.url);
 
   try {
-    // 1. Static assets (cache-first for performance)
+    // 1. Static app shell (cache-first for performance)
     if (STATIC_PATHS.has(url.pathname) || STATIC_PATHS.has('./' + url.pathname.split('/').pop())) {
       return await cacheFirst(request, STATIC_CACHE);
     }
 
-    // 2. Icons (cache-first, mobile critical)
-    if (url.pathname.includes('/icons/')) {
-      return await cacheFirst(request, STATIC_CACHE);
-    }
-
-    // 2.5. Fonts (cache-first, critical for PDF)
-    if (url.pathname.includes('/fonts/')) {
+    // 2. Icons & Fonts (cache-first, critical for UI)
+    if (url.pathname.includes('/icons/') || url.pathname.includes('/fonts/')) {
         return await cacheFirst(request, STATIC_CACHE);
     }
-
-    // 3. JavaScript modules (stale-while-revalidate)
-    if (url.pathname.startsWith('/js/') && url.pathname.endsWith('.js')) {
-      return await staleWhileRevalidate(request, DYNAMIC_CACHE);
+    
+    // 3. Application script (stale-while-revalidate for fast non-blocking updates)
+    if (url.pathname.endsWith('.tsx')) {
+        return await staleWhileRevalidate(request, DYNAMIC_CACHE);
     }
 
-    // 4. External dependencies (network-first with fallback)
+    // 4. External dependencies (network-first with fallback for freshness)
     if (url.hostname.includes('esm.sh') || url.hostname.includes('cdn.jsdelivr.net')) {
       return await networkFirstWithFallback(request, RUNTIME_CACHE);
     }
 
     // 5. HTML pages (network-first for fresh content)
     if (request.mode === 'navigate') {
-      return await networkFirstWithFallback(request, RUNTIME_CACHE);
+      return await networkFirstWithFallback(request, DYNAMIC_CACHE);
     }
 
-    // 6. Everything else (cache-first with network fallback)
-    return await cacheFirstWithFallback(request, DYNAMIC_CACHE);
+    // 6. Everything else (cache-first is a safe default)
+    return await cacheFirst(request, DYNAMIC_CACHE);
 
   } catch (error) {
-    console.error('[SW] Request failed:', error);
+    console.error(`[SW] Fetch failed for ${request.url}:`, error);
 
     // Return offline fallback for navigation requests
     if (request.mode === 'navigate') {
@@ -147,34 +142,31 @@ async function handleRequest(request) {
       }
     }
 
+    // For other failed requests, the browser will handle the error.
     throw error;
   }
 }
 
-// Cache-first strategy (for static assets)
+// Cache-first strategy: serve from cache, fall back to network and cache the response.
 async function cacheFirst(request, cacheName) {
   const cached = await caches.match(request);
   if (cached) {
     return cached;
   }
 
-  try {
-    const response = await fetch(request);
-    if (response.status === 200) {
-      const cache = await caches.open(cacheName);
-      cache.put(request, response.clone());
-    }
-    return response;
-  } catch (error) {
-    throw error;
+  const response = await fetch(request);
+  if (response.ok) {
+    const cache = await caches.open(cacheName);
+    cache.put(request, response.clone());
   }
+  return response;
 }
 
-// Network-first strategy (for dynamic content)
+// Network-first strategy: try network, fall back to cache if network fails.
 async function networkFirstWithFallback(request, cacheName) {
   try {
     const response = await fetch(request);
-    if (response.status === 200) {
+    if (response.ok) {
       const cache = await caches.open(cacheName);
       cache.put(request, response.clone());
     }
@@ -188,13 +180,12 @@ async function networkFirstWithFallback(request, cacheName) {
   }
 }
 
-// Stale-while-revalidate (for JS modules)
+// Stale-while-revalidate: serve from cache immediately, then update cache from network.
 async function staleWhileRevalidate(request, cacheName) {
   const cached = await caches.match(request);
-
-  // Start network request (don't await)
+  
   const networkPromise = fetch(request).then(response => {
-    if (response.status === 200) {
+    if (response.ok) {
       caches.open(cacheName).then(cache => {
         cache.put(request, response.clone());
       });
@@ -202,40 +193,17 @@ async function staleWhileRevalidate(request, cacheName) {
     return response;
   }).catch(() => null);
 
-  // Return cached version immediately if available
   if (cached) {
     return cached;
   }
 
-  // Wait for network response, throw if null
   const networkResponse = await networkPromise;
   if (networkResponse) {
     return networkResponse;
   }
-  throw new Error('Network request failed for JS module');
-}
-
-// Cache-first with network fallback
-async function cacheFirstWithFallback(request, cacheName) {
-  const cached = await caches.match(request);
-  if (cached) {
-    return cached;
-  }
-
-  try {
-    const response = await fetch(request);
-    if (response.status === 200) {
-      const cache = await caches.open(cacheName);
-      cache.put(request, response.clone());
-    }
-    return response;
-  } catch (error) {
-    // For images, return a placeholder or throw
-    if (request.destination === 'image') {
-      throw error;
-    }
-    throw error;
-  }
+  
+  // Throw if both cache and network fail to trigger the catch block in handleRequest
+  throw new Error(`Request failed for ${request.url}`);
 }
 
 // Background sync for offline actions
@@ -334,7 +302,7 @@ async function handleClearCache(cacheName) {
 async function cacheJSModule(url) {
   try {
     const response = await fetch(url);
-    if (response.status === 200) {
+    if (response.ok) {
       const cache = await caches.open(DYNAMIC_CACHE);
       await cache.put(url, response.clone());
       console.log(`[SW] Cached JS module: ${url}`);
