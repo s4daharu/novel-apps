@@ -30,7 +30,7 @@ export const calculateWordCount = (scenes: BackupScene[]): number => {
         try {
             const sceneContent = JSON.parse(scene.text);
             if (sceneContent.blocks && Array.isArray(sceneContent.blocks)) {
-                sceneContent.blocks.forEach(block => {
+                sceneContent.blocks.forEach((block: { type: string; text?: string }) => {
                     if (block.type === 'text' && typeof block.text === 'string' && block.text.trim()) {
                         totalWordCount += block.text.trim().split(/\s+/).length;
                     }
