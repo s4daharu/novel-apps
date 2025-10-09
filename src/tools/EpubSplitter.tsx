@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 // @ts-ignore
 import { PDFDocument, rgb, PageSizes, PDFString, PDFName, PDFArray, PDFDict } from 'pdf-lib';
@@ -26,7 +25,9 @@ export const EpubSplitter: React.FC = () => {
     const [chapterPattern, setChapterPattern] = useState('Chapter ');
     const [startNumber, setStartNumber] = useState(1);
     const [offsetNumber, setOffsetNumber] = useState(0);
+    const [skipLast, setSkipLast] = useState(0);
     const [groupSize, setGroupSize] = useState(4);
+    const [pdfFontSize, setPdfFontSize] = useState(14);
     
     // Handlers for chapter selection
     const handleSelectAll = () => {
@@ -191,6 +192,10 @@ export const EpubSplitter: React.FC = () => {
             setStatus({ message: 'Error: Offset must be 0 or greater.', type: 'error' });
             return;
         }
+        if (isNaN(skipLast) || skipLast < 0) {
+            setStatus({ message: 'Error: Skip Last must be 0 or greater.', type: 'error' });
+            return;
+        }
         if (mode === 'grouped' && (isNaN(groupSize) || groupSize < 1)) {
             setStatus({ message: 'Error: Chapters per File must be 1 or greater.', type: 'error' });
             return;
@@ -199,16 +204,18 @@ export const EpubSplitter: React.FC = () => {
         showSpinner();
 
         try {
-            const chaptersToProcess = parsedChapters
-                .filter(chap => selectedIndices.has(chap.index))
-                .slice(offsetNumber);
+            const selectedAndSortedChapters = parsedChapters
+                .filter(chap => selectedIndices.has(chap.index));
+            
+            const endSlice = selectedAndSortedChapters.length - skipLast;
+            const chaptersToProcess = selectedAndSortedChapters.slice(offsetNumber, endSlice > 0 ? endSlice : 0);
 
             if (chaptersToProcess.length === 0) {
-                throw new Error(`Offset of ${offsetNumber} resulted in no chapters to process from your selection.`);
+                throw new Error(`Offset/skip settings resulted in no chapters to process from your selection.`);
             }
 
             if (outputFormat === 'pdf') {
-                await generatePdfZip(chaptersToProcess);
+                await generatePdfZip(chaptersToProcess, pdfFontSize);
             } else {
                 await generateTxtZip(chaptersToProcess);
             }
@@ -253,7 +260,7 @@ export const EpubSplitter: React.FC = () => {
         triggerDownload(blob, `${chapterPattern.trim()}_chapters.zip`);
     };
     
-    const generatePdfZip = async (chaptersToProcess: typeof parsedChapters) => {
+    const generatePdfZip = async (chaptersToProcess: typeof parsedChapters, fontSize: number) => {
         setStatus({ message: 'Preparing PDF generation...', type: 'info' });
         const fontBytes = await getFonts();
         const JSZip = await getJSZip();
@@ -263,7 +270,7 @@ export const EpubSplitter: React.FC = () => {
             for (let i = 0; i < chaptersToProcess.length; i++) {
                 const chapter = chaptersToProcess[i];
                 const chapNum = String(startNumber + i).padStart(2, '0');
-                const pdfBytes = await createPdfFromChapters([chapter], fontBytes);
+                const pdfBytes = await createPdfFromChapters([chapter], fontBytes, fontSize);
                 zip.file(`${chapterPattern}${chapNum}.pdf`, pdfBytes);
             }
         } else { // grouped
@@ -276,7 +283,7 @@ export const EpubSplitter: React.FC = () => {
                     ? `${chapterPattern}${String(groupStartNum).padStart(2, '0')}.pdf`
                     : `${chapterPattern}${String(groupStartNum).padStart(2, '0')}-${String(groupEndNum).padStart(2, '0')}.pdf`;
 
-                const pdfBytes = await createPdfFromChapters(group, fontBytes);
+                const pdfBytes = await createPdfFromChapters(group, fontBytes, fontSize);
                 zip.file(name, pdfBytes);
             }
         }
@@ -284,7 +291,7 @@ export const EpubSplitter: React.FC = () => {
         triggerDownload(blob, `${chapterPattern.trim()}_chapters_pdf.zip`);
     };
 
-    const createPdfFromChapters = async (chaptersData: typeof parsedChapters, fontBytes: { notoFontBytes: ArrayBuffer, marmeladFontBytes: ArrayBuffer }) => {
+    const createPdfFromChapters = async (chaptersData: typeof parsedChapters, fontBytes: { notoFontBytes: ArrayBuffer, marmeladFontBytes: ArrayBuffer }, baseFontSize: number) => {
         const pdfDoc = await PDFDocument.create();
         pdfDoc.registerFontkit(fontkit as any);
         const chineseFont = await pdfDoc.embedFont(fontBytes.notoFontBytes);
@@ -293,8 +300,11 @@ export const EpubSplitter: React.FC = () => {
         const tocPage = pdfDoc.addPage(PageSizes.A4);
         const tocEntries: { title: string, page: any }[] = [];
 
-        const FONT_SIZE = 14, TITLE_FONT_SIZE = 18, LINE_HEIGHT = FONT_SIZE * 1.5;
-        const TITLE_LINE_HEIGHT = TITLE_FONT_SIZE * 1.5, PARAGRAPH_SPACING = LINE_HEIGHT * 0.5;
+        const FONT_SIZE = baseFontSize;
+        const TITLE_FONT_SIZE = Math.round(baseFontSize * 1.25);
+        const LINE_HEIGHT = FONT_SIZE * 1.5;
+        const TITLE_LINE_HEIGHT = TITLE_FONT_SIZE * 1.5;
+        const PARAGRAPH_SPACING = LINE_HEIGHT * 0.5;
         const margin = 72;
         const outlineItemRefs: any[] = [];
         
@@ -472,8 +482,12 @@ export const EpubSplitter: React.FC = () => {
                         <input type="number" id="startNumber" min="1" value={startNumber} onChange={e => setStartNumber(parseInt(e.target.value, 10))} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
                     </div>
                     <div>
-                        <label htmlFor="offsetNumber" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Skip First (Offset):</label>
+                        <label htmlFor="offsetNumber" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Skip First:</label>
                         <input type="number" id="offsetNumber" min="0" value={offsetNumber} onChange={e => setOffsetNumber(parseInt(e.target.value, 10))} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
+                    </div>
+                    <div>
+                        <label htmlFor="skipLast" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Skip Last:</label>
+                        <input type="number" id="skipLast" min="0" value={skipLast} onChange={e => setSkipLast(parseInt(e.target.value, 10))} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
                     </div>
                 </div>
                  {mode === 'grouped' && (
@@ -481,6 +495,15 @@ export const EpubSplitter: React.FC = () => {
                         <label htmlFor="groupSize" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Chapters per File:</label>
                         <input type="number" id="groupSize" min="1" value={groupSize} onChange={e => setGroupSize(parseInt(e.target.value, 10))} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">When using grouped mode, how many chapters to include in each output file</p>
+                    </div>
+                )}
+                 {outputFormat === 'pdf' && (
+                    <div className="mt-4 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
+                        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-2 text-center">PDF Options</h3>
+                        <div className="max-w-xs mx-auto">
+                            <label htmlFor="pdfFontSize" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Font Size:</label>
+                            <input type="number" id="pdfFontSize" min="8" max="32" value={pdfFontSize} onChange={e => setPdfFontSize(parseInt(e.target.value, 10))} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
+                        </div>
                     </div>
                 )}
             </div>
