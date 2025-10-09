@@ -40,21 +40,34 @@ export const getJSZip = async (): Promise<any> => {
 };
 
 let FONT_CACHE: { notoFontBytes: ArrayBuffer; marmeladFontBytes: ArrayBuffer; } | null = null;
+
+async function fetchFontFromGoogleAPI(fontFamily: string): Promise<ArrayBuffer> {
+    // Step 1: Fetch CSS from Google Fonts API
+    const cssUrl = `https://fonts.googleapis.com/css2?family=${fontFamily}&display=swap`;
+    const cssResponse = await fetch(cssUrl);
+    if (!cssResponse.ok) {
+        throw new Error(`Failed to fetch CSS for ${fontFamily} from Google Fonts API: ${cssResponse.status}`);
+    }
+    const cssText = await cssResponse.text();
+    
+    // Step 2: Extract font URL from CSS
+    const urlMatch = cssText.match(/url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/);
+    if (!urlMatch) throw new Error(`Could not extract font URL for ${fontFamily}`);
+    
+    // Step 3: Fetch the actual font file
+    const fontUrl = urlMatch[1];
+    const fontResponse = await fetch(fontUrl);
+    if (!fontResponse.ok) throw new Error(`Failed to fetch font: ${fontResponse.status}`);
+    
+    return await fontResponse.arrayBuffer();
+}
+
 export async function getFonts() {
     if (FONT_CACHE) return FONT_CACHE;
     try {
-        const marmeladFontUrl = 'https://fonts.gstatic.com/s/marmelad/v20/Qw3eZQdSHj_V_e_ha2t2-A.woff2';
-        const notoFontUrl = 'https://fonts.gstatic.com/s/notosanssc/v36/k3kJo84MPvpLmixcA63oeALZTYKL2g.woff2';
-
         const [marmeladFontBytes, notoFontBytes] = await Promise.all([
-            fetch(marmeladFontUrl).then(res => {
-                if (!res.ok) throw new Error(`Failed to fetch Marmelad font from CDN: ${res.status}`);
-                return res.arrayBuffer();
-            }),
-            fetch(notoFontUrl).then(res => {
-                if (!res.ok) throw new Error(`Failed to fetch Noto Sans SC font from CDN: ${res.status}`);
-                return res.arrayBuffer();
-            })
+            fetchFontFromGoogleAPI('Marmelad'),
+            fetchFontFromGoogleAPI('Noto+Sans+SC')
         ]);
         
         FONT_CACHE = { notoFontBytes, marmeladFontBytes };
