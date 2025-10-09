@@ -55,15 +55,15 @@ export async function getFonts() {
         // Use the local Marmelad font, served from the public directory.
         const marmeladFontUrl = '/fonts/Marmelad-Regular.ttf';
         
-        // Use a stable WOFF2 version of Noto Sans SC from the Fontsource CDN.
-        const notoFontUrl = 'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc/files/noto-sans-sc-chinese-simplified-400-normal.woff2';
+        // Use the local Alibaba PuHuiTi font for Chinese characters.
+        const chineseFontUrl = '/fonts/Alibaba-PuHuiTi-Heavy.otf';
 
-        const [marmeladFontBytes, notoFontBytes] = await Promise.all([
+        const [marmeladFontBytes, chineseFontBytes] = await Promise.all([
             fetchFont(marmeladFontUrl, 'Marmelad'),
-            fetchFont(notoFontUrl, 'Noto Sans SC')
+            fetchFont(chineseFontUrl, 'Alibaba PuHuiTi')
         ]);
         
-        FONT_CACHE = { notoFontBytes, marmeladFontBytes };
+        FONT_CACHE = { notoFontBytes: chineseFontBytes, marmeladFontBytes };
         return FONT_CACHE;
     } catch (error: any) {
         console.error("Font load for PDF failed:", error);

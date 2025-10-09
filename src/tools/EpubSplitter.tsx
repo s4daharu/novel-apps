@@ -20,7 +20,7 @@ export const EpubSplitter: React.FC = () => {
     const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
     // Form Inputs State
-    const [outputFormat, setOutputFormat] = useState<'zip-txt' | 'zip-pdf' | 'single-txt' | 'single-docx' | 'zip-docx'>('zip-txt');
+    const [outputFormat, setOutputFormat] = useState<'zip-txt' | 'zip-pdf' | 'single-txt' | 'single-docx' | 'zip-docx' | 'single-pdf'>('zip-txt');
     const [mode, setMode] = useState<'single' | 'grouped'>('single');
     const [chapterPattern, setChapterPattern] = useState('Chapter ');
     const [startNumber, setStartNumber] = useState(1);
@@ -218,6 +218,9 @@ export const EpubSplitter: React.FC = () => {
                 case 'zip-pdf':
                     await generatePdfZip(chaptersToProcess, pdfFontSize);
                     break;
+                case 'single-pdf':
+                    await generateSinglePdf(chaptersToProcess, pdfFontSize);
+                    break;
                 case 'single-txt':
                     await generateSingleTxt(chaptersToProcess);
                     break;
@@ -238,7 +241,8 @@ export const EpubSplitter: React.FC = () => {
                 'zip-pdf': 'PDFs in a ZIP file',
                 'zip-docx': '.docx files in a ZIP file',
                 'single-txt': 'a single .txt file',
-                'single-docx': 'a single .docx file'
+                'single-docx': 'a single .docx file',
+                'single-pdf': 'a single .pdf file'
             };
 
             setStatus({ message: `Extracted ${chaptersToProcess.length} chapter(s) as ${outputDescriptions[outputFormat]}. Download started.`, type: 'success' });
@@ -309,6 +313,14 @@ export const EpubSplitter: React.FC = () => {
         }
         const blob = await zip.generateAsync({ type: 'blob' });
         triggerDownload(blob, `${chapterPattern.trim()}_chapters_pdf.zip`);
+    };
+
+    const generateSinglePdf = async (chaptersToProcess: typeof parsedChapters, fontSize: number) => {
+        setStatus({ message: 'Generating single PDF...', type: 'info' });
+        const fontBytes = await getFonts();
+        const pdfBytes = await createPdfFromChapters(chaptersToProcess, fontBytes, fontSize);
+        const fileNameBase = epubFile?.name.replace(/\.epub$/i, '') || 'novel';
+        triggerDownload(new Blob([pdfBytes], { type: 'application/pdf' }), `${fileNameBase}_combined.pdf`);
     };
 
     const generateSingleTxt = async (chaptersToProcess: typeof parsedChapters) => {
@@ -621,6 +633,7 @@ export const EpubSplitter: React.FC = () => {
                             <option value="zip-docx">ZIP (.docx files)</option>
                             <option value="single-txt">Single .txt file</option>
                             <option value="single-docx">Single .docx file</option>
+                            <option value="single-pdf">Single .pdf file</option>
                         </select>
                     </div>
 
@@ -667,7 +680,7 @@ export const EpubSplitter: React.FC = () => {
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">When using grouped mode, how many chapters to include in each output file</p>
                     </div>
                 )}
-                 {outputFormat === 'zip-pdf' && (
+                 {(outputFormat === 'zip-pdf' || outputFormat === 'single-pdf') && (
                     <div className="mt-4 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
                         <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-2 text-center">PDF Options</h3>
                         <div className="max-w-xs mx-auto">
