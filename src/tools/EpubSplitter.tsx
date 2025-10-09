@@ -320,7 +320,7 @@ export const EpubSplitter: React.FC = () => {
         const fontBytes = await getFonts();
         const pdfBytes = await createPdfFromChapters(chaptersToProcess, fontBytes, fontSize);
         const fileNameBase = epubFile?.name.replace(/\.epub$/i, '') || 'novel';
-        triggerDownload(new Blob([pdfBytes], { type: 'application/pdf' }), `${fileNameBase}_combined.pdf`);
+       triggerDownload(new Blob([pdfBytes as BlobPart], { type: 'application/pdf' }), `${fileNameBase}_combined.pdf`);
 
     };
 
