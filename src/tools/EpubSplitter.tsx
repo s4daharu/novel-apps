@@ -328,11 +328,23 @@ export const EpubSplitter: React.FC = () => {
         const zip = new JSZip();
     
         let bodyContent = '';
-        chaptersData.forEach(chapter => {
-            bodyContent += `<w:p><w:r><w:rPr><w:b/></w:rPr><w:t>${escapeHTML(chapter.title)}</w:t></w:r></w:p>`;
-            chapter.text.split('\n\n').filter(p => p.trim()).forEach(paragraph => {
+        chaptersData.forEach((chapter, chapterIndex) => {
+            // Chapter Title as Heading 1 for navigation
+            bodyContent += `<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>${escapeHTML(chapter.title)}</w:t></w:r></w:p>`;
+            // Empty paragraph for spacing after title
+            bodyContent += `<w:p/>`;
+
+            const paragraphs = chapter.text.split('\n\n').filter(p => p.trim());
+            paragraphs.forEach(paragraph => {
                 bodyContent += `<w:p><w:r><w:t>${escapeHTML(paragraph.trim())}</w:t></w:r></w:p>`;
+                // Empty paragraph for spacing after each content paragraph
+                bodyContent += `<w:p/>`;
             });
+
+            // Page break between chapters
+            if (chapterIndex < chaptersData.length - 1) {
+                bodyContent += `<w:p><w:r><w:br w:type="page"/></w:r></w:p>`;
+            }
         });
     
         const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${bodyContent}</w:body></w:document>`;
