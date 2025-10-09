@@ -325,7 +325,7 @@ export const EpubSplitter: React.FC = () => {
         let bodyContent = '';
         chaptersToProcess.forEach(chapter => {
             bodyContent += `<w:p><w:r><w:rPr><w:b/></w:rPr><w:t>${escapeHTML(chapter.title)}</w:t></w:r></w:p>`;
-            chapter.text.split('\n').filter(p => p.trim()).forEach(paragraph => {
+            chapter.text.split('\n\n').filter(p => p.trim()).forEach(paragraph => {
                 bodyContent += `<w:p><w:r><w:t>${escapeHTML(paragraph.trim())}</w:t></w:r></w:p>`;
             });
         });
