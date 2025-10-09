@@ -102,7 +102,7 @@ async function handleRequest(request) {
     }
     
     // 3. CDN Fonts (cache-first for performance and offline)
-    if (url.hostname === 'fonts.gstatic.com') {
+    if (url.hostname === 'fonts.gstatic.com' || url.hostname === 'cdn.jsdelivr.net') {
         return await cacheFirst(request, RUNTIME_CACHE);
     }
     
@@ -112,7 +112,7 @@ async function handleRequest(request) {
     }
 
     // 5. External dependencies (network-first with fallback for freshness)
-    if (url.hostname.includes('esm.sh') || url.hostname.includes('cdn.jsdelivr.net') || url.hostname.includes('cdn.staticaly.com') || url.hostname.includes('aistudiocdn.com')) {
+    if (url.hostname.includes('esm.sh') || url.hostname.includes('cdn.staticaly.com') || url.hostname.includes('aistudiocdn.com')) {
       return await networkFirstWithFallback(request, RUNTIME_CACHE);
     }
 
