@@ -6,7 +6,7 @@ import * as fontkit from 'fontkit';
 import { useAppContext } from '../contexts/AppContext';
 import { FileInput } from '../components/FileInput';
 import { StatusMessage } from '../components/StatusMessage';
-import { triggerDownload, getJSZip, getFonts } from '../utils/helpers';
+import { triggerDownload, getJSZip, getFonts, escapeHTML } from '../utils/helpers';
 import { Status } from '../utils/types';
 
 export const EpubSplitter: React.FC = () => {
@@ -20,7 +20,7 @@ export const EpubSplitter: React.FC = () => {
     const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
     // Form Inputs State
-    const [outputFormat, setOutputFormat] = useState<'zip' | 'pdf'>('zip');
+    const [outputFormat, setOutputFormat] = useState<'zip-txt' | 'zip-pdf' | 'single-txt' | 'single-docx'>('zip-txt');
     const [mode, setMode] = useState<'single' | 'grouped'>('single');
     const [chapterPattern, setChapterPattern] = useState('Chapter ');
     const [startNumber, setStartNumber] = useState(1);
@@ -214,14 +214,30 @@ export const EpubSplitter: React.FC = () => {
                 throw new Error(`Offset/skip settings resulted in no chapters to process from your selection.`);
             }
 
-            if (outputFormat === 'pdf') {
-                await generatePdfZip(chaptersToProcess, pdfFontSize);
-            } else {
-                await generateTxtZip(chaptersToProcess);
+            switch (outputFormat) {
+                case 'zip-pdf':
+                    await generatePdfZip(chaptersToProcess, pdfFontSize);
+                    break;
+                case 'single-txt':
+                    await generateSingleTxt(chaptersToProcess);
+                    break;
+                case 'single-docx':
+                    await generateSingleDocx(chaptersToProcess);
+                    break;
+                case 'zip-txt':
+                default:
+                    await generateTxtZip(chaptersToProcess);
+                    break;
             }
 
-            const outputType = outputFormat === 'pdf' ? 'PDFs in a ZIP file' : '.txt files in a ZIP file';
-            setStatus({ message: `Extracted ${chaptersToProcess.length} chapter(s) as ${outputType}. Download started.`, type: 'success' });
+            const outputDescriptions: Record<typeof outputFormat, string> = {
+                'zip-txt': '.txt files in a ZIP archive',
+                'zip-pdf': 'PDFs in a ZIP file',
+                'single-txt': 'a single .txt file',
+                'single-docx': 'a single .docx file'
+            };
+
+            setStatus({ message: `Extracted ${chaptersToProcess.length} chapter(s) as ${outputDescriptions[outputFormat]}. Download started.`, type: 'success' });
             showToast(`Extracted ${chaptersToProcess.length} chapter(s).`);
 
         } catch (err: any) {
@@ -289,6 +305,45 @@ export const EpubSplitter: React.FC = () => {
         }
         const blob = await zip.generateAsync({ type: 'blob' });
         triggerDownload(blob, `${chapterPattern.trim()}_chapters_pdf.zip`);
+    };
+
+    const generateSingleTxt = async (chaptersToProcess: typeof parsedChapters) => {
+        const BOM = "\uFEFF";
+        const content = chaptersToProcess.map(chapter => {
+            return `${chapter.title}\n\n${chapter.text}`;
+        }).join('\n\n\n----------------\n\n\n');
+
+        const blob = new Blob([BOM + content], { type: 'text/plain;charset=utf-8' });
+        const fileNameBase = epubFile?.name.replace(/\.epub$/i, '') || 'novel';
+        triggerDownload(blob, `${fileNameBase}_combined.txt`);
+    };
+
+    const generateSingleDocx = async (chaptersToProcess: typeof parsedChapters) => {
+        const JSZip = await getJSZip();
+        const zip = new JSZip();
+
+        let bodyContent = '';
+        chaptersToProcess.forEach(chapter => {
+            bodyContent += `<w:p><w:r><w:rPr><w:b/></w:rPr><w:t>${escapeHTML(chapter.title)}</w:t></w:r></w:p>`;
+            chapter.text.split('\n').filter(p => p.trim()).forEach(paragraph => {
+                bodyContent += `<w:p><w:r><w:t>${escapeHTML(paragraph.trim())}</w:t></w:r></w:p>`;
+            });
+        });
+
+        const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${bodyContent}</w:body></w:document>`;
+        const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`;
+        const relsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`;
+        const documentRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>`;
+
+        zip.file("[Content_Types].xml", contentTypesXml);
+        zip.folder("_rels")!.file(".rels", relsXml);
+        const wordFolder = zip.folder("word")!;
+        wordFolder.file("document.xml", documentXml);
+        wordFolder.folder("_rels")!.file("document.xml.rels", documentRelsXml);
+
+        const blob = await zip.generateAsync({ type: "blob", mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        const fileNameBase = epubFile?.name.replace(/\.epub$/i, '') || 'novel';
+        triggerDownload(blob, `${fileNameBase}_combined.docx`);
     };
 
     const createPdfFromChapters = async (chaptersData: typeof parsedChapters, fontBytes: { notoFontBytes: ArrayBuffer, marmeladFontBytes: ArrayBuffer }, baseFontSize: number) => {
@@ -456,31 +511,43 @@ export const EpubSplitter: React.FC = () => {
                     <div>
                         <label htmlFor="outputFormat" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Output Format:</label>
                         <select id="outputFormat" value={outputFormat} onChange={e => setOutputFormat(e.target.value as any)} className="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
-                            <option value="zip">ZIP (.txt files)</option>
-                            <option value="pdf">PDF</option>
+                            <option value="zip-txt">ZIP (.txt files)</option>
+                            <option value="zip-pdf">ZIP (.pdf files)</option>
+                            <option value="single-txt">Single .txt file</option>
+                            <option value="single-docx">Single .docx file</option>
                         </select>
                     </div>
-                    <div>
-                        <label htmlFor="modeSelect" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Output Mode:</label>
-                        <select id="modeSelect" value={mode} onChange={e => setMode(e.target.value as any)} className="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
-                            <option value="single">Single Chapter per File</option>
-                            <option value="grouped">Grouped Chapters per File</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label htmlFor="chapterPattern" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                           Chapter Prefix:
-                           <span className={`tooltip-trigger relative group inline-block ml-1 cursor-help text-primary-600 font-bold border border-primary-600 rounded-full w-5 h-5 leading-4 text-center text-xs hover:bg-primary-600 hover:text-white ${activeTooltip === 'prefix' ? 'active' : ''}`} role="button" tabIndex={0} onClick={() => setActiveTooltip(p => p === 'prefix' ? null : 'prefix')}>
-                                (?)
-                                <span className="tooltip-text-popup absolute bottom-full left-1/2 -ml-[110px] w-[220px] invisible opacity-0 group-hover:visible group-hover:opacity-100 group-[.active]:visible group-[.active]:opacity-100 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-left rounded-md p-2 z-10 shadow-lg text-sm transition-opacity duration-300">Pattern for naming output files, e.g., 'C' will result in C01.txt, C02.txt. Click to dismiss.<div className="absolute top-full left-1/2 -ml-1 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-100 dark:border-t-slate-800"></div></span>
-                           </span>
-                        </label>
-                        <input type="text" id="chapterPattern" placeholder="e.g., Chapter " value={chapterPattern} onChange={e => setChapterPattern(e.target.value)} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
-                    </div>
-                    <div>
-                        <label htmlFor="startNumber" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Start Number:</label>
-                        <input type="number" id="startNumber" min="1" value={startNumber} onChange={e => setStartNumber(parseInt(e.target.value, 10))} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
-                    </div>
+
+                    {(outputFormat === 'zip-txt' || outputFormat === 'zip-pdf') && (
+                        <div>
+                            <label htmlFor="modeSelect" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Output Mode:</label>
+                            <select id="modeSelect" value={mode} onChange={e => setMode(e.target.value as any)} className="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
+                                <option value="single">Single Chapter per File</option>
+                                <option value="grouped">Grouped Chapters per File</option>
+                            </select>
+                        </div>
+                    )}
+
+                    {(outputFormat === 'zip-txt' || outputFormat === 'zip-pdf') && (
+                        <div>
+                            <label htmlFor="chapterPattern" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                            Chapter Prefix:
+                            <span className={`tooltip-trigger relative group inline-block ml-1 cursor-help text-primary-600 font-bold border border-primary-600 rounded-full w-5 h-5 leading-4 text-center text-xs hover:bg-primary-600 hover:text-white ${activeTooltip === 'prefix' ? 'active' : ''}`} role="button" tabIndex={0} onClick={() => setActiveTooltip(p => p === 'prefix' ? null : 'prefix')}>
+                                    (?)
+                                    <span className="tooltip-text-popup absolute bottom-full left-1/2 -ml-[110px] w-[220px] invisible opacity-0 group-hover:visible group-hover:opacity-100 group-[.active]:visible group-[.active]:opacity-100 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-left rounded-md p-2 z-10 shadow-lg text-sm transition-opacity duration-300">Pattern for naming output files, e.g., 'C' will result in C01.txt, C02.txt. Click to dismiss.<div className="absolute top-full left-1/2 -ml-1 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-100 dark:border-t-slate-800"></div></span>
+                            </span>
+                            </label>
+                            <input type="text" id="chapterPattern" placeholder="e.g., Chapter " value={chapterPattern} onChange={e => setChapterPattern(e.target.value)} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
+                        </div>
+                    )}
+
+                    {(outputFormat === 'zip-txt' || outputFormat === 'zip-pdf') && (
+                         <div>
+                            <label htmlFor="startNumber" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Start Number:</label>
+                            <input type="number" id="startNumber" min="1" value={startNumber} onChange={e => setStartNumber(parseInt(e.target.value, 10))} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
+                        </div>
+                    )}
+                   
                     <div>
                         <label htmlFor="offsetNumber" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Skip First:</label>
                         <input type="number" id="offsetNumber" min="0" value={offsetNumber} onChange={e => setOffsetNumber(parseInt(e.target.value, 10))} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
@@ -490,14 +557,15 @@ export const EpubSplitter: React.FC = () => {
                         <input type="number" id="skipLast" min="0" value={skipLast} onChange={e => setSkipLast(parseInt(e.target.value, 10))} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
                     </div>
                 </div>
-                 {mode === 'grouped' && (
+
+                 {mode === 'grouped' && (outputFormat === 'zip-txt' || outputFormat === 'zip-pdf') && (
                     <div className="mt-4 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
                         <label htmlFor="groupSize" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Chapters per File:</label>
                         <input type="number" id="groupSize" min="1" value={groupSize} onChange={e => setGroupSize(parseInt(e.target.value, 10))} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">When using grouped mode, how many chapters to include in each output file</p>
                     </div>
                 )}
-                 {outputFormat === 'pdf' && (
+                 {outputFormat === 'zip-pdf' && (
                     <div className="mt-4 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
                         <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-2 text-center">PDF Options</h3>
                         <div className="max-w-xs mx-auto">
