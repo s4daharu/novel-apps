@@ -72,3 +72,4 @@ This project is configured for automatic deployment to GitHub Pages using GitHub
 3. Make your changes
 4. Test locally
 5. Submit a pull request
+
