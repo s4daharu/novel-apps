@@ -7,23 +7,21 @@ const RUNTIME_CACHE = `novel-apps-runtime-${CACHE_VERSION}`;
 
 // Mobile-first caching strategy
 const STATIC_PATHS = new Set([
-  './',
-  './index.html',
-  './index.css',
-  './manifest.json',
-  './jszip.min.js'
+  '/',
+  '/index.html',
+  '/manifest.json'
 ]);
 
 const CRITICAL_ICONS = [
-  './icons/icon-72x72.svg',
-  './icons/icon-96x96.svg',
-  './icons/icon-192x192.svg',
-  './icons/icon-512x512.svg'
+  '/icons/icon-72x72.svg',
+  '/icons/icon-96x96.svg',
+  '/icons/icon-192x192.svg',
+  '/icons/icon-512x512.svg'
 ];
 
 const CRITICAL_FONTS = [
-  './fonts/NotoSansSC-Regular.otf',
-  './fonts/Marmelad-Regular.ttf'
+  '/fonts/NotoSansSC-Regular.otf',
+  '/fonts/Marmelad-Regular.ttf'
 ];
 
 
@@ -104,12 +102,12 @@ async function handleRequest(request) {
 
   try {
     // 1. Static app shell (cache-first for performance)
-    if (STATIC_PATHS.has(url.pathname) || STATIC_PATHS.has('./' + url.pathname.split('/').pop())) {
+    if (STATIC_PATHS.has(url.pathname)) {
       return await cacheFirst(request, STATIC_CACHE);
     }
 
     // 2. Icons & Fonts (cache-first, critical for UI)
-    if (url.pathname.includes('/icons/') || url.pathname.includes('/fonts/')) {
+    if (url.pathname.startsWith('/icons/') || url.pathname.startsWith('/fonts/')) {
         return await cacheFirst(request, STATIC_CACHE);
     }
     
@@ -119,7 +117,7 @@ async function handleRequest(request) {
     }
 
     // 4. External dependencies (network-first with fallback for freshness)
-    if (url.hostname.includes('esm.sh') || url.hostname.includes('cdn.jsdelivr.net') || url.hostname.includes('cdn.staticaly.com')) {
+    if (url.hostname.includes('esm.sh') || url.hostname.includes('cdn.jsdelivr.net') || url.hostname.includes('cdn.staticaly.com') || url.hostname.includes('aistudiocdn.com')) {
       return await networkFirstWithFallback(request, RUNTIME_CACHE);
     }
 
@@ -136,7 +134,7 @@ async function handleRequest(request) {
 
     // Return offline fallback for navigation requests
     if (request.mode === 'navigate') {
-      const offlineResponse = await caches.match('./index.html');
+      const offlineResponse = await caches.match('/index.html');
       if (offlineResponse) {
         return offlineResponse;
       }
@@ -225,15 +223,15 @@ self.addEventListener('push', event => {
     const data = event.data.json();
     const options = {
       body: data.body,
-      icon: './icons/icon-192x192.svg',
-      badge: './icons/icon-72x72.svg',
+      icon: '/icons/icon-192x192.svg',
+      badge: '/icons/icon-72x72.svg',
       vibrate: [200, 100, 200],
       data: data.url,
       actions: [
         {
           action: 'open',
           title: 'Open App',
-          icon: './icons/icon-96x96.svg'
+          icon: '/icons/icon-96x96.svg'
         },
         {
           action: 'close',
@@ -254,7 +252,7 @@ self.addEventListener('notificationclick', event => {
 
   if (event.action === 'open') {
     event.waitUntil(
-      clients.openWindow(event.notification.data || './')
+      clients.openWindow(event.notification.data || '/')
     );
   }
 });
