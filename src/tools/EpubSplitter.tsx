@@ -320,7 +320,7 @@ export const EpubSplitter: React.FC = () => {
         const fontBytes = await getFonts();
         const pdfBytes = await createPdfFromChapters(chaptersToProcess, fontBytes, fontSize);
         const fileNameBase = epubFile?.name.replace(/\.epub$/i, '') || 'novel';
-        triggerDownload(new Blob([pdfBytes as BlobPart], { type: 'application/pdf' }), `${fileNameBase}_combined.pdf`);
+        triggerDownload(new Blob([pdfBytes], { type: 'application/pdf' }), `${fileNameBase}_combined.pdf`);
 
     };
 
@@ -464,11 +464,11 @@ export const EpubSplitter: React.FC = () => {
         triggerDownload(blob, `${chapterPattern.trim()}_chapters_docx.zip`);
     };
 
-    const createPdfFromChapters = async (chaptersData: typeof parsedChapters, fontBytes: { notoFontBytes: ArrayBuffer, marmeladFontBytes: ArrayBuffer }, baseFontSize: number) => {
+    const createPdfFromChapters = async (chaptersData: typeof parsedChapters, fontBytes: { notoFontBytes: ArrayBuffer, latinFontBytes: ArrayBuffer }, baseFontSize: number) => {
         const pdfDoc = await PDFDocument.create();
         pdfDoc.registerFontkit(fontkit as any);
         const chineseFont = await pdfDoc.embedFont(fontBytes.notoFontBytes);
-        const englishFont = await pdfDoc.embedFont(fontBytes.marmeladFontBytes);
+        const englishFont = await pdfDoc.embedFont(fontBytes.latinFontBytes);
         
         const tocPage = pdfDoc.addPage(PageSizes.A4);
         const tocEntries: { title: string, page: any }[] = [];

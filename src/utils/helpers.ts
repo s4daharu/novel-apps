@@ -39,7 +39,7 @@ export const getJSZip = async (): Promise<any> => {
     }
 };
 
-let FONT_CACHE: { notoFontBytes: ArrayBuffer; marmeladFontBytes: ArrayBuffer; } | null = null;
+let FONT_CACHE: { notoFontBytes: ArrayBuffer; latinFontBytes: ArrayBuffer; } | null = null;
 
 async function fetchFont(url: string, fontName: string): Promise<ArrayBuffer> {
     const response = await fetch(url);
@@ -52,18 +52,18 @@ async function fetchFont(url: string, fontName: string): Promise<ArrayBuffer> {
 export async function getFonts() {
     if (FONT_CACHE) return FONT_CACHE;
     try {
-        // Use the local Marmelad font, served from the public directory.
-        const marmeladFontUrl = '/fonts/Marmelad-Regular.ttf';
+        // Use a font with broad Latin character support for Pinyin, etc.
+        const latinFontUrl = '/fonts/NotoSans-Regular.ttf';
         
         // Use the local Alibaba PuHuiTi font for Chinese characters.
         const chineseFontUrl = '/fonts/Alibaba-PuHuiTi-Heavy.otf';
 
-        const [marmeladFontBytes, chineseFontBytes] = await Promise.all([
-            fetchFont(marmeladFontUrl, 'Marmelad'),
+        const [latinFontBytes, chineseFontBytes] = await Promise.all([
+            fetchFont(latinFontUrl, 'Noto Sans'),
             fetchFont(chineseFontUrl, 'Alibaba PuHuiTi')
         ]);
         
-        FONT_CACHE = { notoFontBytes: chineseFontBytes, marmeladFontBytes };
+        FONT_CACHE = { notoFontBytes: chineseFontBytes, latinFontBytes };
         return FONT_CACHE;
     } catch (error: any) {
         console.error("Font load for PDF failed:", error);

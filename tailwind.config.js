@@ -8,7 +8,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Marmelad', '"Noto Sans SC"', 'sans-serif'],
+        sans: ['Noto Sans', '"Noto Sans SC"', 'sans-serif'],
       },
       colors: {
         primary: {
