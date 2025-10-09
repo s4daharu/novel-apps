@@ -43,16 +43,16 @@ let FONT_CACHE: { notoFontBytes: ArrayBuffer; marmeladFontBytes: ArrayBuffer; } 
 export async function getFonts() {
     if (FONT_CACHE) return FONT_CACHE;
     try {
-        const notoFontUrl = '/fonts/NotoSansSC-Regular.otf';
-        const marmeladFontUrl = '/fonts/Marmelad-Regular.ttf';
+        const marmeladFontUrl = 'https://fonts.gstatic.com/s/marmelad/v20/Qw3eZQdSHj_V_e_ha2t2-A.woff2';
+        const notoFontUrl = 'https://fonts.gstatic.com/s/notosanssc/v36/k3kJo84MPvpLmixcA63oeALZTYKL2g.woff2';
 
-        const [notoFontBytes, marmeladFontBytes] = await Promise.all([
-            fetch(notoFontUrl).then(res => {
-                if (!res.ok) throw new Error(`Font load failed: ${res.status}. Could not fetch NotoSansSC font from '${notoFontUrl}'. Make sure the file exists in 'public/fonts/'.`);
+        const [marmeladFontBytes, notoFontBytes] = await Promise.all([
+            fetch(marmeladFontUrl).then(res => {
+                if (!res.ok) throw new Error(`Failed to fetch Marmelad font from CDN: ${res.status}`);
                 return res.arrayBuffer();
             }),
-            fetch(marmeladFontUrl).then(res => {
-                if (!res.ok) throw new Error(`Failed to load Marmelad font from '${marmeladFontUrl}': ${res.status}. Make sure the file exists in 'public/fonts/'.`);
+            fetch(notoFontUrl).then(res => {
+                if (!res.ok) throw new Error(`Failed to fetch Noto Sans SC font from CDN: ${res.status}`);
                 return res.arrayBuffer();
             })
         ]);
@@ -60,7 +60,7 @@ export async function getFonts() {
         FONT_CACHE = { notoFontBytes, marmeladFontBytes };
         return FONT_CACHE;
     } catch (error: any) {
-        console.error("Font load failed:", error);
-        throw new Error(`Font load failed: ${error.message}`);
+        console.error("Font load for PDF failed:", error);
+        throw new Error(`Font load for PDF failed: ${error.message}`);
     }
 }

@@ -19,11 +19,6 @@ const CRITICAL_ICONS = [
   '/icons/icon-512x512.svg'
 ];
 
-const CRITICAL_FONTS = [
-  '/fonts/NotoSansSC-Regular.otf',
-  '/fonts/Marmelad-Regular.ttf'
-];
-
 
 // Install event - cache critical assets immediately
 self.addEventListener('install', event => {
@@ -40,11 +35,6 @@ self.addEventListener('install', event => {
       caches.open(STATIC_CACHE).then(cache => {
         console.log('[SW] Caching critical icons');
         return cache.addAll(CRITICAL_ICONS);
-      }),
-      // Cache critical fonts
-      caches.open(STATIC_CACHE).then(cache => {
-        console.log('[SW] Caching critical fonts');
-        return cache.addAll(CRITICAL_FONTS);
       })
     ]).then(() => {
       console.log('[SW] Installation complete, skipping wait');
@@ -106,27 +96,32 @@ async function handleRequest(request) {
       return await cacheFirst(request, STATIC_CACHE);
     }
 
-    // 2. Icons & Fonts (cache-first, critical for UI)
+    // 2. Icons & Local Fonts (cache-first, critical for UI)
     if (url.pathname.startsWith('/icons/') || url.pathname.startsWith('/fonts/')) {
         return await cacheFirst(request, STATIC_CACHE);
     }
     
-    // 3. Application script (stale-while-revalidate for fast non-blocking updates)
+    // 3. CDN Fonts (cache-first for performance and offline)
+    if (url.hostname === 'fonts.gstatic.com') {
+        return await cacheFirst(request, RUNTIME_CACHE);
+    }
+    
+    // 4. Application script (stale-while-revalidate for fast non-blocking updates)
     if (url.pathname.endsWith('.tsx')) {
         return await staleWhileRevalidate(request, DYNAMIC_CACHE);
     }
 
-    // 4. External dependencies (network-first with fallback for freshness)
+    // 5. External dependencies (network-first with fallback for freshness)
     if (url.hostname.includes('esm.sh') || url.hostname.includes('cdn.jsdelivr.net') || url.hostname.includes('cdn.staticaly.com') || url.hostname.includes('aistudiocdn.com')) {
       return await networkFirstWithFallback(request, RUNTIME_CACHE);
     }
 
-    // 5. HTML pages (network-first for fresh content)
+    // 6. HTML pages (network-first for fresh content)
     if (request.mode === 'navigate') {
       return await networkFirstWithFallback(request, DYNAMIC_CACHE);
     }
 
-    // 6. Everything else (cache-first is a safe default)
+    // 7. Everything else (cache-first is a safe default)
     return await cacheFirst(request, DYNAMIC_CACHE);
 
   } catch (error) {

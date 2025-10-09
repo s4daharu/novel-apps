@@ -7,6 +7,9 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Marmelad', '"Noto Sans SC"', 'sans-serif'],
+      },
       colors: {
         primary: {
           50: '#f0fdfa',
