@@ -52,12 +52,11 @@ async function fetchFont(url: string, fontName: string): Promise<ArrayBuffer> {
 export async function getFonts() {
     if (FONT_CACHE) return FONT_CACHE;
     try {
-        // Use the local Marmelad font for consistency with the UI.
-        const marmeladFontUrl = '/public/fonts/Marmelad-Regular.ttf';
+        // Use the local Marmelad font, served from the public directory.
+        const marmeladFontUrl = '/fonts/Marmelad-Regular.ttf';
         
-        // Use a stable, full OTF version of Noto Sans SC from a CDN for PDF embedding.
-        // This is more reliable than the WOFF2 from Google's dynamic API.
-        const notoFontUrl = 'https://cdn.jsdelivr.net/fontsource/fonts/noto-sans-sc@latest/chinese-simplified-400-normal.otf';
+        // Use a stable WOFF2 version of Noto Sans SC from the Fontsource CDN.
+        const notoFontUrl = 'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc/files/noto-sans-sc-chinese-simplified-400-normal.woff2';
 
         const [marmeladFontBytes, notoFontBytes] = await Promise.all([
             fetchFont(marmeladFontUrl, 'Marmelad'),
