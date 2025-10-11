@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 // @ts-ignore
 import { PDFDocument, rgb, PageSizes, PDFString, PDFName, PDFArray, PDFDict } from 'pdf-lib';
@@ -559,7 +560,7 @@ export const EpubSplitter: React.FC = () => {
 
         // 2. Generate and insert TOC pages
         const tocLineHeight = 14 * 1.8;
-        const { height: pageHeightConst } = PageSizes.A4;
+        const pageHeightConst = PageSizes.A4[1];
         const tocLinesPerPage = Math.floor((pageHeightConst - 2 * margin - (22 * 2.5)) / tocLineHeight);
         const tocLinesPerPageSubsequent = Math.floor((pageHeightConst - 2 * margin) / tocLineHeight);
 
