@@ -470,8 +470,8 @@ export const EpubSplitter: React.FC = () => {
         const chineseFont = await pdfDoc.embedFont(fontBytes.notoFontBytes);
         const englishFont = await pdfDoc.embedFont(fontBytes.latinFontBytes);
         
-        const tocPage = pdfDoc.addPage(PageSizes.A4);
         const tocEntries: { title: string, page: any }[] = [];
+        const outlineItemRefs: any[] = [];
 
         const FONT_SIZE = baseFontSize;
         const TITLE_FONT_SIZE = Math.round(baseFontSize * 1.25);
@@ -479,7 +479,6 @@ export const EpubSplitter: React.FC = () => {
         const TITLE_LINE_HEIGHT = TITLE_FONT_SIZE * 1.5;
         const PARAGRAPH_SPACING = LINE_HEIGHT * 0.5;
         const margin = 72;
-        const outlineItemRefs: any[] = [];
         
         const CJK_REGEX = /[\u4e00-\u9fa5\u3000-\u303F\uff00-\uffef]/;
         const SPLIT_REGEX = /([\u4e00-\u9fa5\u3000-\u303F\uff00-\uffef]+|[^\u4e00-\u9fa5\u3000-\u303F\uff00-\uffef]+)/g;
@@ -506,7 +505,8 @@ export const EpubSplitter: React.FC = () => {
                 currentX += font.widthOfTextAtSize(segment, size);
             }
         };
-
+        
+        // 1. Generate all chapter pages
         for (const chapter of chaptersData) {
             let page = pdfDoc.addPage(PageSizes.A4);
             const { width, height } = page.getSize();
@@ -557,6 +557,70 @@ export const EpubSplitter: React.FC = () => {
             }
         }
 
+        // 2. Generate and insert TOC pages
+        const tocLineHeight = 14 * 1.8;
+        const { height: pageHeightConst } = PageSizes.A4;
+        const tocLinesPerPage = Math.floor((pageHeightConst - 2 * margin - (22 * 2.5)) / tocLineHeight);
+        const tocLinesPerPageSubsequent = Math.floor((pageHeightConst - 2 * margin) / tocLineHeight);
+
+        let tocPageCount = 0;
+        if (tocEntries.length > 0) {
+            tocPageCount = 1;
+            const remainingEntries = tocEntries.length - tocLinesPerPage;
+            if (remainingEntries > 0) {
+                tocPageCount += Math.ceil(remainingEntries / tocLinesPerPageSubsequent);
+            }
+        }
+
+        for (let i = 0; i < tocPageCount; i++) {
+            pdfDoc.insertPage(i, PageSizes.A4);
+        }
+
+        const allPages = pdfDoc.getPages();
+        
+        const pageNumberMap = new Map<any, number>();
+        tocEntries.forEach(entry => {
+            const pageIndex = allPages.indexOf(entry.page);
+            if(pageIndex !== -1){
+                pageNumberMap.set(entry.page.ref, pageIndex + 1);
+            }
+        });
+        
+        let tocEntryIndex = 0;
+        for (let i = 0; i < tocPageCount; i++) {
+            const tocPage = allPages[i];
+            const { width: tocWidth, height: tocHeight } = tocPage.getSize();
+            let tocY = tocHeight - margin;
+            let tocPageAnnots = (tocPage.node.get(PDFName.of('Annots')) || pdfDoc.context.obj([])) as PDFArray;
+            tocPage.node.set(PDFName.of('Annots'), tocPageAnnots);
+
+            if (i === 0) {
+                drawMixedTextLine(tocPage, 'Table of Contents', { x: margin, y: tocY, size: 22 });
+                tocY -= 22 * 2.5;
+            }
+
+            const linesOnThisPage = (i === 0) ? tocLinesPerPage : tocLinesPerPageSubsequent;
+
+            for (let j = 0; j < linesOnThisPage && tocEntryIndex < tocEntries.length; j++) {
+                const entry = tocEntries[tocEntryIndex];
+                const pageNumber = pageNumberMap.get(entry.page.ref);
+
+                if (!pageNumber) {
+                    tocEntryIndex++;
+                    continue;
+                }
+
+                drawMixedTextLine(tocPage, entry.title, { x: margin, y: tocY, size: 14 });
+                tocPage.drawText(String(pageNumber), { x: tocWidth - margin - englishFont.widthOfTextAtSize(String(pageNumber), 14), y: tocY, font: englishFont, size: 14, color: rgb(0, 0, 0) });
+                
+                const { height: chapterPageHeight } = entry.page.getSize();
+                const linkAnnotation = pdfDoc.context.obj({ Type: 'Annot', Subtype: 'Link', Rect: [margin, tocY - 4, tocWidth - margin, tocY + 14], Border: [0, 0, 0], Dest: [entry.page.ref, PDFName.of('XYZ'), null, chapterPageHeight, null] });
+                tocPageAnnots.push(pdfDoc.context.register(linkAnnotation));
+                tocY -= tocLineHeight;
+                tocEntryIndex++;
+            }
+        }
+
         if (outlineItemRefs.length > 0) {
             const outlineRootRef = pdfDoc.context.nextRef();
             for (let i = 0; i < outlineItemRefs.length; i++) {
@@ -569,27 +633,6 @@ export const EpubSplitter: React.FC = () => {
             const outlineRoot = pdfDoc.context.obj({ Type: 'Outlines', First: outlineItemRefs[0], Last: outlineItemRefs[outlineItemRefs.length - 1], Count: outlineItemRefs.length });
             pdfDoc.context.assign(outlineRootRef, outlineRoot);
             pdfDoc.catalog.set(PDFName.of('Outlines'), outlineRootRef);
-        }
-    
-        const pages = pdfDoc.getPages();
-        const { width: tocWidth, height: tocHeight } = tocPage.getSize();
-        let tocY = tocHeight - margin;
-        let tocPageAnnots = (tocPage.node.get(PDFName.of('Annots')) || pdfDoc.context.obj([])) as PDFArray;
-        tocPage.node.set(PDFName.of('Annots'), tocPageAnnots);
-    
-        drawMixedTextLine(tocPage, 'Table of Contents', { x: margin, y: tocY, size: 22 });
-        tocY -= 22 * 2.5;
-    
-        for (const entry of tocEntries) {
-            if (tocY < margin) break;
-            const pageNumber = pages.indexOf(entry.page) + 1;
-            drawMixedTextLine(tocPage, entry.title, { x: margin, y: tocY, size: 14 });
-            tocPage.drawText(String(pageNumber), { x: tocWidth - margin - englishFont.widthOfTextAtSize(String(pageNumber), 14), y: tocY, font: englishFont, size: 14, color: rgb(0, 0, 0) });
-            
-            const { height: pageHeight } = entry.page.getSize();
-            const linkAnnotation = pdfDoc.context.obj({ Type: 'Annot', Subtype: 'Link', Rect: [margin, tocY - 4, tocWidth - margin, tocY + 14], Border: [0, 0, 0], Dest: [entry.page.ref, PDFName.of('XYZ'), null, pageHeight, null] });
-            tocPageAnnots.push(pdfDoc.context.register(linkAnnotation));
-            tocY -= 14 * 1.8;
         }
     
         return await pdfDoc.save();
