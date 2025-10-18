@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 // @ts-ignore
 import { PDFDocument, rgb, PageSizes, PDFString, PDFName, PDFArray, PDFDict } from 'pdf-lib';
@@ -29,6 +28,7 @@ export const EpubSplitter: React.FC = () => {
     const [skipLast, setSkipLast] = useState(0);
     const [groupSize, setGroupSize] = useState(4);
     const [pdfFontSize, setPdfFontSize] = useState(14);
+    const [useFirstLineAsHeading, setUseFirstLineAsHeading] = useState(false);
     
     // Handlers for chapter selection
     const handleSelectAll = () => {
@@ -291,16 +291,26 @@ export const EpubSplitter: React.FC = () => {
         const JSZip = await getJSZip();
         const zip = new JSZip();
 
+        const chaptersForPdf = chaptersToProcess.map(chapter => {
+            if (useFirstLineAsHeading) {
+                const lines = chapter.text.split('\n');
+                const title = lines.shift()?.trim() || chapter.title;
+                const text = lines.join('\n').trim();
+                return { ...chapter, title, text };
+            }
+            return chapter;
+        });
+
         if (mode === 'single') {
-            for (let i = 0; i < chaptersToProcess.length; i++) {
-                const chapter = chaptersToProcess[i];
+            for (let i = 0; i < chaptersForPdf.length; i++) {
+                const chapter = chaptersForPdf[i];
                 const chapNum = String(startNumber + i).padStart(2, '0');
                 const pdfBytes = await createPdfFromChapters([chapter], fontBytes, fontSize);
                 zip.file(`${chapterPattern}${chapNum}.pdf`, pdfBytes);
             }
         } else { // grouped
-            for (let i = 0; i < chaptersToProcess.length; i += groupSize) {
-                const group = chaptersToProcess.slice(i, i + groupSize);
+            for (let i = 0; i < chaptersForPdf.length; i += groupSize) {
+                const group = chaptersForPdf.slice(i, i + groupSize);
                 const groupStartNum = startNumber + i;
                 const groupEndNum = groupStartNum + group.length - 1;
                 
@@ -319,7 +329,18 @@ export const EpubSplitter: React.FC = () => {
     const generateSinglePdf = async (chaptersToProcess: typeof parsedChapters, fontSize: number) => {
         setStatus({ message: 'Generating single PDF...', type: 'info' });
         const fontBytes = await getFonts();
-        const pdfBytes = await createPdfFromChapters(chaptersToProcess, fontBytes, fontSize);
+
+        const chaptersForPdf = chaptersToProcess.map(chapter => {
+            if (useFirstLineAsHeading) {
+                const lines = chapter.text.split('\n');
+                const title = lines.shift()?.trim() || chapter.title;
+                const text = lines.join('\n').trim();
+                return { ...chapter, title, text };
+            }
+            return chapter;
+        });
+        
+        const pdfBytes = await createPdfFromChapters(chaptersForPdf, fontBytes, fontSize);
         const fileNameBase = epubFile?.name.replace(/\.epub$/i, '') || 'novel';
        triggerDownload(new Blob([pdfBytes as BlobPart], { type: 'application/pdf' }), `${fileNameBase}_combined.pdf`);
 
@@ -419,10 +440,19 @@ export const EpubSplitter: React.FC = () => {
     };
 
     const generateSingleDocx = async (chaptersToProcess: typeof parsedChapters) => {
-        const chaptersWithTitles = chaptersToProcess.map((chapter, i) => ({
-            title: `${chapterPattern}${startNumber + i}`,
-            text: chapter.text
-        }));
+        const chaptersWithTitles = chaptersToProcess.map((chapter, i) => {
+            if (useFirstLineAsHeading) {
+                const lines = chapter.text.split('\n');
+                const title = lines.shift()?.trim() || chapter.title;
+                const text = lines.join('\n').trim();
+                return { title, text };
+            } else {
+                return {
+                    title: `${chapterPattern}${startNumber + i}`,
+                    text: chapter.text
+                };
+            }
+        });
     
         const blob = await createDocxBlob(chaptersWithTitles);
         const fileNameBase = epubFile?.name.replace(/\.epub$/i, '') || 'novel';
@@ -437,10 +467,19 @@ export const EpubSplitter: React.FC = () => {
             for (let i = 0; i < chaptersToProcess.length; i++) {
                 const chapter = chaptersToProcess[i];
                 const chapNum = String(startNumber + i).padStart(2, '0');
-                const title = `${chapterPattern}${chapNum}`;
+                const filenameTitle = `${chapterPattern}${chapNum}`;
                 
-                const docxBlob = await createDocxBlob([{ title: chapter.title, text: chapter.text }]);
-                zip.file(`${title}.docx`, docxBlob);
+                let contentTitle = chapter.title;
+                let contentText = chapter.text;
+
+                if (useFirstLineAsHeading) {
+                    const lines = chapter.text.split('\n');
+                    contentTitle = lines.shift()?.trim() || chapter.title;
+                    contentText = lines.join('\n').trim();
+                }
+                
+                const docxBlob = await createDocxBlob([{ title: contentTitle, text: contentText }]);
+                zip.file(`${filenameTitle}.docx`, docxBlob);
             }
         } else { // grouped
             for (let i = 0; i < chaptersToProcess.length; i += groupSize) {
@@ -452,10 +491,16 @@ export const EpubSplitter: React.FC = () => {
                     ? `${chapterPattern}${String(groupStartNum).padStart(2, '0')}`
                     : `${chapterPattern}${String(groupStartNum).padStart(2, '0')}-${String(groupEndNum).padStart(2, '0')}`;
                 
-                const chaptersForDocx = group.map((chapter) => ({
-                     title: chapter.title,
-                     text: chapter.text
-                }));
+                const chaptersForDocx = group.map((chapter) => {
+                    let contentTitle = chapter.title;
+                    let contentText = chapter.text;
+                    if (useFirstLineAsHeading) {
+                        const lines = chapter.text.split('\n');
+                        contentTitle = lines.shift()?.trim() || chapter.title;
+                        contentText = lines.join('\n').trim();
+                    }
+                     return { title: contentTitle, text: contentText };
+                });
                 
                 const docxBlob = await createDocxBlob(chaptersForDocx);
                 zip.file(`${name}.docx`, docxBlob);
@@ -465,7 +510,7 @@ export const EpubSplitter: React.FC = () => {
         triggerDownload(blob, `${chapterPattern.trim()}_chapters_docx.zip`);
     };
 
-    const createPdfFromChapters = async (chaptersData: typeof parsedChapters, fontBytes: { notoFontBytes: ArrayBuffer, latinFontBytes: ArrayBuffer }, baseFontSize: number) => {
+    const createPdfFromChapters = async (chaptersData: { title: string, text: string }[], fontBytes: { notoFontBytes: ArrayBuffer, latinFontBytes: ArrayBuffer }, baseFontSize: number) => {
         const pdfDoc = await PDFDocument.create();
         pdfDoc.registerFontkit(fontkit as any);
         const chineseFont = await pdfDoc.embedFont(fontBytes.notoFontBytes);
@@ -732,6 +777,22 @@ export const EpubSplitter: React.FC = () => {
                             <label htmlFor="pdfFontSize" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Font Size:</label>
                             <input type="number" id="pdfFontSize" min="8" max="32" value={pdfFontSize} onChange={e => setPdfFontSize(parseInt(e.target.value, 10))} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
                         </div>
+                    </div>
+                )}
+
+                {(outputFormat.includes('pdf') || outputFormat.includes('docx')) && (
+                    <div className="mt-4 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
+                        <label className="flex items-center gap-2 justify-center text-slate-800 dark:text-slate-200 select-none cursor-pointer" htmlFor="useFirstLineAsHeading">
+                            <input
+                                type="checkbox"
+                                id="useFirstLineAsHeading"
+                                checked={useFirstLineAsHeading}
+                                onChange={e => setUseFirstLineAsHeading(e.target.checked)}
+                                className="w-4 h-4 align-middle rounded border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-slate-100 dark:focus:ring-offset-slate-800 accent-primary-600"
+                            />
+                            Use first line as chapter heading
+                        </label>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Treats the first line of text as the chapter title inside the document.</p>
                     </div>
                 )}
             </div>
