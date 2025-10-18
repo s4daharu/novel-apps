@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../contexts/AppContext';
@@ -233,7 +232,7 @@ export const FindReplaceBackup: React.FC = () => {
     ) : null;
     
     return (
-        <div className="tool-section absolute inset-0 flex flex-col bg-slate-200 dark:bg-slate-900/80">
+        <div className="tool-section absolute inset-0 flex flex-col bg-slate-50 dark:bg-slate-800">
             <header className="flex-shrink-0 flex items-center justify-between p-2 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                 <h2 className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate px-2">{fileName}</h2>
                 <div className="flex items-center gap-2">
@@ -241,16 +240,20 @@ export const FindReplaceBackup: React.FC = () => {
                     <button onClick={handleClose} className="inline-flex items-center justify-center px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 dark:text-white shadow-md transition-all">Close</button>
                 </div>
             </header>
-             <main className="flex-grow overflow-y-auto p-4 md:p-8 flex justify-center bg-slate-50 dark:bg-slate-800">
-                <div className="w-full max-w-2xl">
+            <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+                <div className="w-full max-w-2xl mx-auto">
                     {matches.length > 0 ? (
-                        <div className="p-4 bg-white dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 text-sm min-h-[8rem]">{preview}</div>
+                        <div className="p-4 bg-white dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 text-sm">
+                            {preview}
+                        </div>
                     ) : (
-                        <div className="text-center p-8 text-slate-500 dark:text-slate-400">{findPattern ? 'No results found.' : 'Enter a search term to begin.'}</div>
+                        <div className="text-center p-8 text-slate-500 dark:text-slate-400">
+                            {findPattern ? 'No results found.' : 'Enter a search term to begin.'}
+                        </div>
                     )}
                 </div>
             </main>
-            <footer className="bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-md border-t border-slate-300 dark:border-slate-700 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+            <footer className="flex-shrink-0 bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-md border-t border-slate-300 dark:border-slate-700 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
                 <div className="max-w-4xl mx-auto space-y-3">
                     <div className="flex items-center gap-2">
                         <div className="relative flex-grow">

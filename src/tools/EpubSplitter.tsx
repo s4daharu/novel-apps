@@ -551,6 +551,30 @@ export const EpubSplitter: React.FC = () => {
                 currentX += font.widthOfTextAtSize(segment, size);
             }
         };
+
+        const wrapText = (text: string, maxWidth: number, size: number, measureFn: (text: string, size: number) => number): string[] => {
+            const lines: string[] = [];
+            if (!text) return [''];
+            
+            let currentLine = '';
+            const segments = text.match(/[\u4e00-\u9fa5]|[\w'-]+|\s+|[^\s\w]/g) || [];
+    
+            for (const segment of segments) {
+                const testLine = currentLine + segment;
+                if (measureFn(testLine, size) > maxWidth && currentLine.length > 0) {
+                    lines.push(currentLine);
+                    currentLine = segment.trimStart();
+                } else {
+                    currentLine = testLine;
+                }
+            }
+            
+            if (currentLine.length > 0) {
+                lines.push(currentLine);
+            }
+            
+            return lines.map(l => l.trim()).filter(l => l.length > 0);
+        };
         
         // 1. Generate all chapter pages
         for (const chapter of chaptersData) {
@@ -572,8 +596,14 @@ export const EpubSplitter: React.FC = () => {
             };
     
             checkAndAddNewPage();
-            drawMixedTextLine(page, chapter.title, { x: margin, y, size: TITLE_FONT_SIZE });
-            y -= TITLE_LINE_HEIGHT * 1.5;
+
+            const wrappedTitleLines = wrapText(chapter.title, usableWidth, TITLE_FONT_SIZE, measureMixedTextWidth);
+            for (const line of wrappedTitleLines) {
+                checkAndAddNewPage();
+                drawMixedTextLine(page, line, { x: margin, y, size: TITLE_FONT_SIZE });
+                y -= TITLE_LINE_HEIGHT;
+            }
+            y -= TITLE_LINE_HEIGHT * 0.5;
     
             const paragraphs = chapter.text.split('\n\n');
             for (const para of paragraphs) {
@@ -606,16 +636,29 @@ export const EpubSplitter: React.FC = () => {
         // 2. Generate and insert TOC pages
         const tocLineHeight = 14 * 1.8;
         const pageHeightConst = PageSizes.A4[1];
-        const tocLinesPerPage = Math.floor((pageHeightConst - 2 * margin - (22 * 2.5)) / tocLineHeight);
-        const tocLinesPerPageSubsequent = Math.floor((pageHeightConst - 2 * margin) / tocLineHeight);
-
+        
         let tocPageCount = 0;
+        let tocPageLineCounts: number[] = [];
         if (tocEntries.length > 0) {
-            tocPageCount = 1;
-            const remainingEntries = tocEntries.length - tocLinesPerPage;
-            if (remainingEntries > 0) {
-                tocPageCount += Math.ceil(remainingEntries / tocLinesPerPageSubsequent);
+            let linesAvailable = Math.floor((pageHeightConst - 2 * margin - (22 * 2.5)) / tocLineHeight);
+            let currentLines = 0;
+            const tempTocWidth = PageSizes.A4[0];
+            
+            for(const entry of tocEntries) {
+                const pageNumStr = "999"; // Assume max 3 digits for calculation
+                const pageNumWidth = englishFont.widthOfTextAtSize(pageNumStr, 14);
+                const tocUsableWidth = tempTocWidth - 2 * margin - pageNumWidth - 20;
+                const wrappedLines = wrapText(entry.title, tocUsableWidth, 14, measureMixedTextWidth);
+
+                if(currentLines + wrappedLines.length > linesAvailable) {
+                    tocPageLineCounts.push(currentLines);
+                    currentLines = 0;
+                    linesAvailable = Math.floor((pageHeightConst - 2 * margin) / tocLineHeight);
+                }
+                currentLines += wrappedLines.length;
             }
+            if(currentLines > 0) tocPageLineCounts.push(currentLines);
+            tocPageCount = tocPageLineCounts.length;
         }
 
         for (let i = 0; i < tocPageCount; i++) {
@@ -645,9 +688,12 @@ export const EpubSplitter: React.FC = () => {
                 tocY -= 22 * 2.5;
             }
 
-            const linesOnThisPage = (i === 0) ? tocLinesPerPage : tocLinesPerPageSubsequent;
+            const linesOnThisPage = (i === 0) 
+                ? Math.floor((pageHeightConst - 2 * margin - (22 * 2.5)) / tocLineHeight)
+                : Math.floor((pageHeightConst - 2 * margin) / tocLineHeight);
 
-            for (let j = 0; j < linesOnThisPage && tocEntryIndex < tocEntries.length; j++) {
+            let linesDrawn = 0;
+            while(tocEntryIndex < tocEntries.length && linesDrawn < linesOnThisPage) {
                 const entry = tocEntries[tocEntryIndex];
                 const pageNumber = pageNumberMap.get(entry.page.ref);
 
@@ -655,14 +701,31 @@ export const EpubSplitter: React.FC = () => {
                     tocEntryIndex++;
                     continue;
                 }
+                
+                const pageNumStr = String(pageNumber);
+                const pageNumWidth = englishFont.widthOfTextAtSize(pageNumStr, 14);
+                const tocUsableWidth = tocWidth - 2 * margin - pageNumWidth - 20;
+                const wrappedTocLines = wrapText(entry.title, tocUsableWidth, 14, measureMixedTextWidth);
+                
+                if (linesDrawn + wrappedTocLines.length > linesOnThisPage && linesDrawn > 0) {
+                    break; 
+                }
 
-                drawMixedTextLine(tocPage, entry.title, { x: margin, y: tocY, size: 14 });
-                tocPage.drawText(String(pageNumber), { x: tocWidth - margin - englishFont.widthOfTextAtSize(String(pageNumber), 14), y: tocY, font: englishFont, size: 14, color: rgb(0, 0, 0) });
+                const entryStartY = tocY;
+                
+                for (const line of wrappedTocLines) {
+                    drawMixedTextLine(tocPage, line, { x: margin, y: tocY, size: 14 });
+                    tocY -= tocLineHeight;
+                }
+                
+                tocPage.drawText(String(pageNumber), { x: tocWidth - margin - pageNumWidth, y: entryStartY, font: englishFont, size: 14, color: rgb(0, 0, 0) });
                 
                 const { height: chapterPageHeight } = entry.page.getSize();
-                const linkAnnotation = pdfDoc.context.obj({ Type: 'Annot', Subtype: 'Link', Rect: [margin, tocY - 4, tocWidth - margin, tocY + 14], Border: [0, 0, 0], Dest: [entry.page.ref, PDFName.of('XYZ'), null, chapterPageHeight, null] });
+                const linkRect: [number, number, number, number] = [margin, tocY + tocLineHeight - 14 + 4, tocWidth - margin, entryStartY + 4];
+                const linkAnnotation = pdfDoc.context.obj({ Type: 'Annot', Subtype: 'Link', Rect: linkRect, Border: [0, 0, 0], Dest: [entry.page.ref, PDFName.of('XYZ'), null, chapterPageHeight, null] });
                 tocPageAnnots.push(pdfDoc.context.register(linkAnnotation));
-                tocY -= tocLineHeight;
+                
+                linesDrawn += wrappedTocLines.length;
                 tocEntryIndex++;
             }
         }
