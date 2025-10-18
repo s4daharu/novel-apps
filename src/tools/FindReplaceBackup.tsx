@@ -208,11 +208,13 @@ export const FindReplaceBackup: React.FC = () => {
 
     if (!backupData) {
         return (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-4">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">Find & Replace in Backup</h1>
-                <div className="max-w-md mx-auto">
-                    <FileInput inputId="frBackupFile" label="Upload Backup File" accept=".json,.txt,.nov" onFileSelected={handleFileSelected} />
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Upload a backup file to begin.</p>
+            <div className="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6">
+                <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 p-6 animate-fade-in tool-section">
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">Find & Replace in Backup</h1>
+                    <div className="max-w-md mx-auto">
+                        <FileInput inputId="frBackupFile" label="Upload Backup File" accept=".json,.txt,.nov" onFileSelected={handleFileSelected} />
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Upload a backup file to begin.</p>
+                    </div>
                 </div>
             </div>
         );
@@ -231,7 +233,7 @@ export const FindReplaceBackup: React.FC = () => {
     ) : null;
     
     return (
-        <div className="tool-section max-w-full h-[calc(100vh-56px-env(safe-area-inset-top))] md:h-[calc(100vh-72px-env(safe-area-inset-top))] flex flex-col bg-slate-200 dark:bg-slate-900/80 relative">
+        <div className="tool-section absolute inset-0 flex flex-col bg-slate-200 dark:bg-slate-900/80">
             <header className="flex-shrink-0 flex items-center justify-between p-2 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                 <h2 className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate px-2">{fileName}</h2>
                 <div className="flex items-center gap-2">

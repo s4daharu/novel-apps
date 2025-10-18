@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { ThemeToggleButton } from './ThemeToggleButton';
@@ -53,7 +54,7 @@ export const Layout: React.FC = () => {
             </div>
 
             {/* Main Content Container */}
-            <main id="main-content" className="flex-1 pb-20 md:pb-0 md:mr-64">
+            <main id="main-content" className="flex-1 pb-20 md:pb-0 md:mr-64 relative">
                 <Outlet />
             </main>
         </>
