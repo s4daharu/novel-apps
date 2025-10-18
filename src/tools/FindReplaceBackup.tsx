@@ -240,15 +240,21 @@ export const FindReplaceBackup: React.FC = () => {
                     <button onClick={handleClose} className="inline-flex items-center justify-center px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 dark:text-white shadow-md transition-all">Close</button>
                 </div>
             </header>
-            <main className="flex-1 p-4 md:p-8 overflow-y-auto">
-                <div className="w-full max-w-2xl mx-auto">
-                    {matches.length > 0 ? (
-                        <div className="p-4 bg-white dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 text-sm">
-                            {preview}
+            <main className="flex-1 p-4 md:p-8 relative">
+                <div className="w-full max-w-2xl mx-auto h-full flex flex-col">
+                    {findPattern ? (
+                        <div className="flex-1 overflow-y-auto p-4 bg-white dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 text-sm">
+                            {matches.length > 0 ? (
+                                preview
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-slate-500 dark:text-slate-400">
+                                    No results found.
+                                </div>
+                            )}
                         </div>
                     ) : (
-                        <div className="text-center p-8 text-slate-500 dark:text-slate-400">
-                            {findPattern ? 'No results found.' : 'Enter a search term to begin.'}
+                        <div className="flex-1 flex items-center justify-center text-center p-8 text-slate-500 dark:text-slate-400">
+                            Enter a search term to begin.
                         </div>
                     )}
                 </div>
@@ -266,9 +272,9 @@ export const FindReplaceBackup: React.FC = () => {
                         <button onClick={() => handleNavigate(1)} disabled={currentMatchIndex >= matches.length - 1} className="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-10 h-10 rounded-md inline-flex items-center justify-center text-2xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50" aria-label="Find Next">›</button>
                     </div>
                     <div className="flex items-center gap-2">
-                        <input type="text" value={replaceText} onChange={e => setReplaceText(e.target.value)} placeholder="Replace with" className="flex-grow bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 text-base text-slate-800 dark:text-slate-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"/>
-                        <button onClick={handleReplaceNext} disabled={matches.length === 0} className="flex-grow bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 h-10 rounded-md inline-flex items-center justify-center text-sm font-medium transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50">Replace</button>
-                        <button onClick={handleReviewReplaceAll} disabled={matches.length === 0} className="flex-grow bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 h-10 rounded-md inline-flex items-center justify-center text-sm font-medium transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50">Replace All</button>
+                        <input type="text" value={replaceText} onChange={e => setReplaceText(e.target.value)} placeholder="Replace with" className="flex-1 w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 text-base text-slate-800 dark:text-slate-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"/>
+                        <button onClick={handleReplaceNext} disabled={matches.length === 0} className="flex-shrink-0 px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 h-10 rounded-md inline-flex items-center justify-center text-sm font-medium transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50">Replace</button>
+                        <button onClick={handleReviewReplaceAll} disabled={matches.length === 0} className="flex-shrink-0 px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 h-10 rounded-md inline-flex items-center justify-center text-sm font-medium transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50">Replace All</button>
                     </div>
                     <div className="flex items-center justify-center pt-2">
                         <div className="flex justify-center bg-slate-100 dark:bg-slate-700 rounded-md p-1">
