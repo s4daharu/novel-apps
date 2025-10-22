@@ -55,12 +55,11 @@ This project is configured for automatic deployment to GitHub Pages using GitHub
 │   ├── pages/              # Page components
 │   ├── tools/              # Tool logic components
 │   ├── utils/              # Helper functions and types
-│   ├── App.tsx             # Main App component
-│   ├── main.tsx            # Application entry point
-│   ├── index.css           # Main stylesheet
-│   └── service-worker.ts   # Custom service worker logic
+│   └── App.tsx             # Main App component
 ├── .github/workflows/      # CI/CD workflows
 ├── index.html              # Main HTML template
+├── index.css               # Main stylesheet
+├── index.tsx               # Application entry point
 ├── package.json            # Project dependencies and scripts
 └── vite.config.ts          # Vite configuration
 ```

@@ -1,11 +1,43 @@
-import { defineConfig } from 'vite';
+import { defineConfig, Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import path from 'path';
+
+// Custom plugin to manage Tailwind CDN for development and inject bundled CSS for production.
+const tailwindManager = (): Plugin => {
+  let isBuild = false;
+  return {
+    name: 'tailwind-manager',
+    // Determine if this is a build command.
+    configResolved(config) {
+      isBuild = config.command === 'build';
+    },
+    // In build mode, remove the CDN script from the HTML.
+    transformIndexHtml(html) {
+      if (isBuild) {
+        return html.replace(/<script src="https:\/\/cdn\.tailwindcss\.com"><\/script>\n?/, '<!-- Tailwind CDN removed for build -->');
+      }
+      return html;
+    },
+    // In build mode, prepend the import for the local tailwind.css to the main entry file.
+    transform(code, id) {
+      const entryFile = path.resolve(process.cwd(), 'index.tsx');
+      if (isBuild && id === entryFile) {
+        return {
+          code: `import './tailwind.css';\n${code}`,
+          map: null,
+        };
+      }
+      return null;
+    }
+  };
+};
 
 export default defineConfig({
   base: '/',
   plugins: [
     react(),
+    tailwindManager(),
     VitePWA({
       registerType: 'autoUpdate',
       // Use the existing manifest.json from the public folder
