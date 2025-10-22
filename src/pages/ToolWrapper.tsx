@@ -12,13 +12,13 @@ import { FindReplaceBackup } from '../tools/FindReplaceBackup';
 
 // Tool mapping for the router
 export const toolSectionsMap: Record<string, { component: React.FC; title: string }> = {
-    'novelSplitter': { component: NovelSplitter, title: 'Novel Splitter' },
     'splitter': { component: EpubSplitter, title: 'EPUB Chapter Splitter' },
+    'augmentBackupWithZip': { component: AugmentBackupWithZip, title: 'Augment Backup with ZIP' },
     'zipEpub': { component: ZipEpub, title: 'ZIP ↔ EPUB' },
     'createBackupFromZip': { component: CreateBackupFromZip, title: 'Create Backup from ZIP' },
     'mergeBackup': { component: MergeBackup, title: 'Merge Backup Files' },
-    'augmentBackupWithZip': { component: AugmentBackupWithZip, title: 'Augment Backup with ZIP' },
-    'findReplaceBackup': { component: FindReplaceBackup, title: 'Find & Replace in Backup' }
+    'findReplaceBackup': { component: FindReplaceBackup, title: 'Find & Replace in Backup' },
+    'novelSplitter': { component: NovelSplitter, title: 'Novel Splitter' }
 };
 
 export const ToolWrapper = () => {

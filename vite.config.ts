@@ -4,13 +4,16 @@ import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
 // Custom plugin to manage Tailwind CDN for development and inject bundled CSS for production.
+// FIX: Use Vite's resolved config for the project root instead of process.cwd() to fix a type error.
 const tailwindManager = (): Plugin => {
   let isBuild = false;
+  let root: string;
   return {
     name: 'tailwind-manager',
     // Determine if this is a build command.
     configResolved(config) {
       isBuild = config.command === 'build';
+      root = config.root;
     },
     // In build mode, remove the CDN script from the HTML.
     transformIndexHtml(html) {
@@ -21,7 +24,7 @@ const tailwindManager = (): Plugin => {
     },
     // In build mode, prepend the import for the local tailwind.css to the main entry file.
     transform(code, id) {
-      const entryFile = path.resolve(process.cwd(), 'index.tsx');
+      const entryFile = path.resolve(root, 'index.tsx');
       if (isBuild && id === entryFile) {
         return {
           code: `import './tailwind.css';\n${code}`,

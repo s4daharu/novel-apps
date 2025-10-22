@@ -3,13 +3,13 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 const toolCardData = [
-  { id: 'novelSplitter', title: 'Novel Splitter', desc: 'Advanced tool to split, edit, and package .txt novels into chapters, with export to ZIP or themed EPUB.', size: 'full' },
-  { id: 'splitter', title: 'EPUB Chapter Splitter', desc: 'Divide EPUB files into individual or grouped chapter text files with precision control.' },
+  { id: 'splitter', title: 'EPUB Chapter Splitter', desc: 'Divide EPUB files into individual or grouped chapter text files with precision control.', size: 'full' },
+  { id: 'augmentBackupWithZip', title: 'Augment Backup with ZIP', desc: 'Expand existing novel backups by adding new chapters from ZIP files seamlessly.' },
   { id: 'zipEpub', title: 'ZIP ↔ EPUB', desc: 'Convert between ZIP files and EPUB format with bidirectional support and customization.' },
   { id: 'createBackupFromZip', title: 'Create Backup from ZIP', desc: 'Generate structured novel backup files directly from ZIP archives containing text chapters.' },
   { id: 'mergeBackup', title: 'Merge Backup Files', desc: 'Combine multiple novel backup files into a single, organized backup with smart conflict resolution.' },
-  { id: 'augmentBackupWithZip', title: 'Augment Backup with ZIP', desc: 'Expand existing novel backups by adding new chapters from ZIP files seamlessly.' },
   { id: 'findReplaceBackup', title: 'Find & Replace in Backup', desc: 'Perform powerful find and replace operations within novel backup files with regex support and preview.' },
+  { id: 'novelSplitter', title: 'Novel Splitter', desc: 'Advanced tool to split, edit, and package .txt novels into chapters, with export to ZIP or themed EPUB.', size: 'full' },
 ];
 
 export const Dashboard: React.FC = () => {

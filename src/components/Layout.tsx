@@ -20,6 +20,9 @@ export const Layout: React.FC = () => {
         }
         return 'Novel-Apps';
     };
+    
+    // Explicitly define order to match the dashboard
+    const toolOrder = ['splitter', 'augmentBackupWithZip', 'zipEpub', 'createBackupFromZip', 'mergeBackup', 'findReplaceBackup', 'novelSplitter'];
 
     return (
         <>
@@ -46,8 +49,8 @@ export const Layout: React.FC = () => {
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Tools</h2>
                     <nav className="space-y-2">
                         <Link to="/" className="w-full text-left px-4 py-3 rounded-lg text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200 block">Home Dashboard</Link>
-                        {Object.entries(toolSectionsMap).map(([id, { title }]) => (
-                             <Link key={id} to={`/tool/${id}`} className="w-full text-left px-4 py-3 rounded-lg text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200 block">{title}</Link>
+                        {toolOrder.map(id => (
+                             <Link key={id} to={`/tool/${id}`} className="w-full text-left px-4 py-3 rounded-lg text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200 block">{toolSectionsMap[id]?.title}</Link>
                         ))}
                     </nav>
                 </div>
