@@ -1,3 +1,23 @@
+
+@font-face {
+  font-family: 'Noto Sans';
+  src: url('/fonts/NotoSans-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Noto Sans SC';
+  src: url('https://fonts.gstatic.com/s/notosanssc/v36/k3kJo84MPvpLmixcA63oeALZTYKL2g.woff2') format('woff2');
+  unicode-range: U+4E00-9FFF, U+3400-4DBF, U+20000-2A6DF;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Performance optimizations */
 .tool-section {
     will-change: transform, opacity;
