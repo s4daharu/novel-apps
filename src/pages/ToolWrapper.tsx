@@ -1,4 +1,5 @@
 
+
 import React, { useEffect, useMemo } from 'react';
 import { useNavigate, Link, useParams } from 'react-router-dom';
 
@@ -9,6 +10,7 @@ import { CreateBackupFromZip } from '../tools/CreateBackupFromZip';
 import { MergeBackup } from '../tools/MergeBackup';
 import { AugmentBackupWithZip } from '../tools/AugmentBackupWithZip';
 import { FindReplaceBackup } from '../tools/FindReplaceBackup';
+import { BackupOrganizer } from '../tools/BackupOrganizer';
 
 // Tool mapping for the router
 export const toolSectionsMap: Record<string, { component: React.FC; title: string }> = {
@@ -18,6 +20,7 @@ export const toolSectionsMap: Record<string, { component: React.FC; title: strin
     'createBackupFromZip': { component: CreateBackupFromZip, title: 'Create Backup from ZIP' },
     'mergeBackup': { component: MergeBackup, title: 'Merge Backup Files' },
     'findReplaceBackup': { component: FindReplaceBackup, title: 'Find & Replace in Backup' },
+    'backupOrganizer': { component: BackupOrganizer, title: 'Backup Organizer' },
     'novelSplitter': { component: NovelSplitter, title: 'Novel Splitter' }
 };
 

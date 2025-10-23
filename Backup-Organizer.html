@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zip File Inspector & Sorter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        /* --- Base & Dark Mode Variables --- */
+        :root {
+            --primary-color: #007bff;
+            --primary-color-hover: #0069d9;
+            --secondary-color: #6c757d;
+            --background-color: #f8f9fa;
+            --surface-color: #ffffff;
+            --text-color: #212529;
+            --text-muted-color: #6c757d;
+            --border-color: #dee2e6;
+            --success-color: #28a745;
+            --error-color: #dc3545;
+            --info-color: #17a2b8;
+            --shadow-color: rgba(0,0,0,0.08);
+        }
+
+        body.dark-mode {
+            --primary-color: #3391ff;
+            --primary-color-hover: #50a1ff;
+            --secondary-color: #adb5bd;
+            --background-color: #121212;
+            --surface-color: #1e1e1e;
+            --text-color: #e0e0e0;
+            --text-muted-color: #888;
+            --border-color: #444;
+            --success-color: #2aaa4a;
+            --info-color: #24b3c9;
+            --shadow-color: rgba(0,0,0,0.3);
+        }
+
+        /* --- Mobile-First Base Styles --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 15px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        #container {
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: var(--surface-color);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px var(--shadow-color);
+            box-sizing: border-box;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+            gap: 15px;
+        }
+
+        .header-content { text-align: left; }
+        h1 { color: var(--primary-color); margin: 0; font-size: 1.8em; }
+        header p { color: var(--secondary-color); margin: 5px 0 0; }
+
+        .header-actions { display: flex; align-items: center; gap: 20px; }
+        .theme-switcher { display: flex; align-items: center; cursor: pointer; }
+        .theme-switcher span { margin-right: 8px; }
+        .toggle-track { width: 44px; height: 22px; background: #ccc; border-radius: 22px; position: relative; transition: background-color 0.3s; }
+        .toggle-thumb { width: 18px; height: 18px; background: white; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: transform 0.3s; }
+        body.dark-mode .toggle-track { background: var(--primary-color); }
+        body.dark-mode .toggle-thumb { transform: translateX(22px); }
+        #settings-btn { font-size: 1.8em; cursor: pointer; color: var(--secondary-color); }
+        #settings-btn:hover { color: var(--primary-color); }
+
+
+        #upload-area {
+            border: 3px dashed var(--border-color);
+            border-radius: 10px;
+            padding: 30px 20px;
+            text-align: center;
+            transition: background-color 0.3s, border-color 0.3s;
+            cursor: pointer;
+        }
+
+        #upload-area.drag-over { border-color: var(--primary-color); background-color: rgba(0, 123, 255, 0.05); }
+        #file-input { display: none; }
+
+        /* --- Mobile-First Controls --- */
+        #app-controls { display: none; margin-top: 20px; }
+        .controls-grid { display: grid; gap: 15px; }
+        .controls-row {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding: 10px;
+            background-color: var(--background-color);
+            border-radius: 8px;
+        }
+        #search-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px 12px;
+            border-radius: 5px; border: 1px solid var(--border-color);
+            background-color: var(--surface-color); color: var(--text-color);
+        }
+        .control-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .control-group.bulk-actions { display: grid; grid-template-columns: 1fr 1fr; }
+        .control-group button, .control-group select {
+            width: 100%; padding: 10px; border: none; border-radius: 5px;
+            color: white; background-color: var(--secondary-color);
+            cursor: pointer; font-size: 1em;
+        }
+        .control-group select {
+            background-color: var(--surface-color); color: var(--text-color);
+            border: 1px solid var(--border-color);
+            -webkit-appearance: none; appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23333' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right .7em top 50%;
+            background-size: .85em auto; padding-right: 2em;
+        }
+        body.dark-mode .control-group select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23eee' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3E%3C/svg%3E"); }
+        #summary-line { text-align: center; color: var(--text-muted-color); font-size: 0.9em; padding: 5px 0; }
+
+
+        /* --- Mobile-First File List --- */
+        .series-container { margin-top: 20px; }
+        .series-header {
+            display: flex; align-items: center; background-color: var(--primary-color);
+            color: white; padding: 12px 15px; border-radius: 8px; cursor: pointer;
+        }
+        .series-header.collapsed { border-radius: 8px; }
+        .series-header.other-files { background-color: var(--secondary-color); }
+        .series-header-title { flex-grow: 1; display: flex; align-items: center; flex-wrap: wrap; }
+        .series-header h2 { margin: 0; font-size: 1.2em; margin-right: 10px; }
+        .file-count { font-size: 0.8em; font-weight: 400; background-color: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; }
+        .series-toggle::after { content: '−'; font-size: 1.6em; font-weight: bold; margin-left: 15px; }
+        .series-header.collapsed .series-toggle::after { content: '+'; }
+
+        .file-list {
+            list-style: none; padding: 0; margin: 0;
+            border: 1px solid var(--border-color); border-top: none;
+            border-radius: 0 0 8px 8px; overflow: hidden;
+            max-height: 1500px; transition: max-height 0.5s ease-in-out, border 0.5s;
+        }
+        .file-list.collapsed { max-height: 0; border: none; }
+        .file-list li { padding: 12px 15px; border-bottom: 1px solid var(--border-color); }
+        .file-list li:last-child { border-bottom: none; }
+        .file-main-info { display: flex; align-items: center; gap: 10px; }
+        .file-name { flex-grow: 1; word-break: break-all; }
+        .file-name.clickable { cursor: pointer; }
+        .file-name.clickable:hover { color: var(--primary-color); }
+        .file-meta-info { display: flex; flex-wrap: wrap; gap: 15px; padding-left: 32px; margin-top: 5px; font-size: 0.85em; color: var(--text-muted-color); }
+        .file-path-info { padding-left: 32px; margin-top: 6px; font-size: 0.8em; color: var(--text-muted-color); word-break: break-all; }
+        .file-path-icon { margin-right: 4px; }
+        .latest-badge {
+            background-color: var(--success-color); color: white;
+            font-size: 0.7em; font-weight: bold; padding: 2px 6px;
+            border-radius: 8px; margin-left: 8px; vertical-align: middle;
+        }
+
+        .download-icon { font-size: 1.4em; color: var(--secondary-color); cursor: pointer; text-decoration: none; padding: 5px; }
+        .download-icon:hover { color: var(--primary-color); }
+        input[type="checkbox"] { width: 22px; height: 22px; flex-shrink: 0; }
+
+        #global-actions {
+            position: fixed; bottom: 15px; left: 15px; right: 15px;
+            max-width: 400px; margin: 20px auto 0;
+            background-color: #212529; color: white; padding: 15px; border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 10px;
+            transform: translateY(200%); opacity: 0;
+            transition: transform 0.4s ease-out, opacity 0.4s ease-out; z-index: 100;
+        }
+        #global-actions.visible { transform: translateY(0); opacity: 1; }
+        #global-actions-left { display: flex; flex-direction: column; align-items: flex-start; }
+        #preserve-structure-label { display: flex; align-items: center; font-size: 0.85em; }
+        #global-actions button { background-color: var(--info-color); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
+        #global-actions button:disabled { background-color: var(--secondary-color); cursor: not-allowed; }
+
+        #loading-spinner { display: none; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary-color); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 30px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        #modal-overlay, #settings-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6);
+            display: none; justify-content: center; align-items: center; z-index: 1000;
+        }
+        #modal-content, #settings-modal-content {
+            background: var(--surface-color); padding: 25px; border-radius: 10px; width: 90%;
+            max-width: 800px; max-height: 80vh; overflow-y: auto; position: relative;
+        }
+        #settings-modal-content { max-width: 450px; }
+        #modal-close, #settings-modal-close { position: absolute; top: 15px; right: 20px; font-size: 2em; cursor: pointer; color: #aaa; }
+        #modal-title, #settings-modal-title { margin-top: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        #modal-body { word-wrap: break-word; }
+        #modal-body img { max-width: 100%; height: auto; display: block; margin: 10px auto; }
+        #settings-modal-body .setting { margin-bottom: 15px; }
+        #settings-modal-body label { display: block; margin-bottom: 5px; }
+        #settings-modal-body select { width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 5px; background: var(--surface-color); color: var(--text-color); }
+
+
+        .status-message { text-align: center; padding: 15px; border-radius: 8px; margin-top: 20px; }
+        .status-message.error { background-color: #f8d7da; color: var(--error-color); }
+        .status-message.info { background-color: #e2e3e5; color: var(--secondary-color); }
+        body.dark-mode .status-message.error { background-color: #582125; }
+        body.dark-mode .status-message.info { background-color: #3e444a; }
+
+        #no-results { display: none; text-align: center; margin-top: 20px; color: var(--text-muted-color); }
+
+        /* --- Tablet & Desktop Overrides (min-width: 768px) --- */
+        @media (min-width: 768px) {
+            body { padding: 20px; }
+            #container { padding: 30px; }
+            h1 { font-size: 2em; }
+            .controls-row { flex-direction: row; justify-content: flex-start; flex-wrap: wrap; }
+            #search-input { max-width: 250px; }
+            .control-group.bulk-actions { display: flex; }
+            .control-group button, .control-group select { width: auto; }
+            #folder-filter { max-width: 200px; }
+            .file-list li { display: grid; grid-template-columns: auto 1fr auto auto auto; align-items: center; gap: 15px; padding: 10px 20px; }
+            .file-main-info, .file-meta-info { display: contents; }
+            .file-path-info { display: none; }
+            .file-meta-info span, .file-meta { text-align: right; }
+            .file-name { word-break: normal; }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <header>
+            <div class="header-content">
+                <h1>Zip File Inspector</h1>
+                <p>Advanced, in-browser .zip file analysis.</p>
+            </div>
+            <div class="header-actions">
+                <div class="theme-switcher" id="theme-switcher"></div>
+                <div id="settings-btn" title="Settings">⚙️</div>
+            </div>
+        </header>
+
+        <div id="upload-area">
+            <input type="file" id="file-input" accept=".zip">
+            <p><strong>Drag & Drop your .zip file here</strong> or click to select</p>
+        </div>
+
+        <div id="app-controls">
+            <div class="controls-grid">
+                <div class="controls-row">
+                    <div class="control-group">
+                         <input type="text" id="search-input" placeholder="Filter by name, desc...">
+                    </div>
+                     <div class="control-group">
+                        <label for="folder-filter">Folder:</label>
+                        <select id="folder-filter">
+                            <option value="all">All Folders</option>
+                        </select>
+                    </div>
+                </div>
+                 <div class="controls-row">
+                     <div class="control-group">
+                        <label for="series-sort-order">Sort Series:</label>
+                        <select id="series-sort-order">
+                            <option value="name-asc" selected>Series Name (A-Z)</option>
+                            <option value="file-count-desc">File Count (High-Low)</option>
+                            <option value="updated-desc">Last Updated (Newest)</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="sort-order">Sort Files:</label>
+                        <select id="sort-order">
+                            <option value="asc" selected>Oldest First</option>
+                            <option value="desc">Newest First</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="controls-row">
+                     <div class="control-group bulk-actions">
+                        <button id="select-newest-btn">Select Newest</button>
+                        <button id="select-oldest-btn">Select Oldest</button>
+                    </div>
+                </div>
+            </div>
+            <div id="summary-line"></div>
+        </div>
+
+        <div id="loading-spinner"></div>
+        <div id="status-message"></div>
+        <div id="output"></div>
+        <div id="other-files-output"></div>
+        <div id="no-results">No items match your search query.</div>
+    </div>
+    
+    <div id="global-actions">
+        <div id="global-actions-left">
+            <span id="selection-count"></span>
+            <label id="preserve-structure-label" title="When checked, downloaded zip will maintain the original folder paths.">
+                <input type="checkbox" id="preserve-structure-checkbox">
+                Preserve folder structure
+            </label>
+        </div>
+        <button id="download-selected-btn">Download Selected</button>
+    </div>
+    
+    <div id="modal-overlay">
+        <div id="modal-content">
+            <span id="modal-close">&times;</span>
+            <h2 id="modal-title"></h2>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <div id="settings-modal-overlay">
+        <div id="settings-modal-content">
+            <span id="settings-modal-close">&times;</span>
+            <h2 id="settings-modal-title">Settings</h2>
+            <div id="settings-modal-body">
+                <div class="setting">
+                    <label for="default-series-sort">Default Series Sort Order</label>
+                    <select id="default-series-sort">
+                        <option value="name-asc">Series Name (A-Z)</option>
+                        <option value="file-count-desc">File Count (High-Low)</option>
+                        <option value="updated-desc">Last Updated (Newest)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- App State ---
+        const appState = {
+            processedSeries: {},
+            otherFiles: [],
+            selectedFiles: new Set(),
+        };
+
+        // --- DOM Elements ---
+        const dom = {
+            body: document.body,
+            uploadArea: document.getElementById('upload-area'),
+            fileInput: document.getElementById('file-input'),
+            outputDiv: document.getElementById('output'),
+            otherFilesOutput: document.getElementById('other-files-output'),
+            statusMessage: document.getElementById('status-message'),
+            loadingSpinner: document.getElementById('loading-spinner'),
+            appControls: document.getElementById('app-controls'),
+            sortOrderSelect: document.getElementById('sort-order'),
+            seriesSortOrderSelect: document.getElementById('series-sort-order'),
+            searchInput: document.getElementById('search-input'),
+            folderFilterSelect: document.getElementById('folder-filter'),
+            summaryLine: document.getElementById('summary-line'),
+            noResults: document.getElementById('no-results'),
+            globalActions: {
+                bar: document.getElementById('global-actions'),
+                countSpan: document.getElementById('selection-count'),
+                downloadBtn: document.getElementById('download-selected-btn'),
+                preserveStructureCheckbox: document.getElementById('preserve-structure-checkbox'),
+            },
+            modal: {
+                overlay: document.getElementById('modal-overlay'),
+                title: document.getElementById('modal-title'),
+                body: document.getElementById('modal-body'),
+                close: document.getElementById('modal-close'),
+            },
+            settings: {
+                btn: document.getElementById('settings-btn'),
+                overlay: document.getElementById('settings-modal-overlay'),
+                close: document.getElementById('settings-modal-close'),
+                defaultSeriesSort: document.getElementById('default-series-sort'),
+            },
+            themeSwitcher: document.getElementById('theme-switcher'),
+            selectNewestBtn: document.getElementById('select-newest-btn'),
+            selectOldestBtn: document.getElementById('select-oldest-btn'),
+        };
+        
+        // --- Event Listeners Setup ---
+        const setupEventListeners = () => {
+            dom.uploadArea.addEventListener('click', () => dom.fileInput.click());
+            ['dragover', 'dragenter'].forEach(ev => dom.uploadArea.addEventListener(ev, e => { e.preventDefault(); dom.uploadArea.classList.add('drag-over'); }));
+            ['dragleave', 'drop'].forEach(ev => dom.uploadArea.addEventListener(ev, () => dom.uploadArea.classList.remove('drag-over')));
+            dom.uploadArea.addEventListener('drop', e => { e.preventDefault(); if (e.dataTransfer.files.length) handleFileUpload(e.dataTransfer.files[0]); });
+            dom.fileInput.addEventListener('change', e => { if (e.target.files.length) handleFileUpload(e.target.files[0]); });
+            
+            dom.sortOrderSelect.addEventListener('change', displayResults);
+            dom.seriesSortOrderSelect.addEventListener('change', displayResults);
+            dom.searchInput.addEventListener('input', handleSearchFilter);
+            dom.folderFilterSelect.addEventListener('change', handleSearchFilter);
+            dom.globalActions.downloadBtn.addEventListener('click', downloadSelectedFiles);
+            
+            dom.modal.overlay.addEventListener('click', e => { if (e.target === dom.modal.overlay) hideModal(); });
+            dom.modal.close.addEventListener('click', hideModal);
+            
+            dom.settings.btn.addEventListener('click', showSettingsModal);
+            dom.settings.overlay.addEventListener('click', e => { if (e.target === dom.settings.overlay) hideSettingsModal(); });
+            dom.settings.close.addEventListener('click', hideSettingsModal);
+            dom.settings.defaultSeriesSort.addEventListener('change', () => localStorage.setItem('defaultSeriesSort', dom.settings.defaultSeriesSort.value));
+
+            dom.themeSwitcher.addEventListener('click', toggleTheme);
+            dom.selectNewestBtn.addEventListener('click', () => selectLatestFiles('newest'));
+            dom.selectOldestBtn.addEventListener('click', () => selectLatestFiles('oldest'));
+        };
+
+        // --- Theme & Settings Management ---
+        const applyTheme = (theme) => {
+            localStorage.setItem('theme', theme);
+            dom.body.classList.toggle('dark-mode', theme === 'dark');
+        };
+
+        const toggleTheme = () => {
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+        };
+
+        const loadPreferences = () => {
+            dom.themeSwitcher.innerHTML = `<span>Dark Mode</span><div class="toggle-track"><div class="toggle-thumb"></div></div>`;
+            applyTheme(localStorage.getItem('theme') || 'light');
+
+            const defaultSort = localStorage.getItem('defaultSeriesSort') || 'name-asc';
+            dom.seriesSortOrderSelect.value = defaultSort;
+            dom.settings.defaultSeriesSort.value = defaultSort;
+        };
+        
+        const showSettingsModal = () => dom.settings.overlay.style.display = 'flex';
+        const hideSettingsModal = () => dom.settings.overlay.style.display = 'none';
+
+        // --- Main Logic ---
+        function handleFileUpload(file) {
+            if (file && file.type === "application/zip") {
+                processZipFile(file);
+            } else {
+                displayMessage('Please upload a valid .zip file.', 'error');
+            }
+        }
+        
+        async function processZipFile(zipFile) {
+            resetUIState();
+            try {
+                const zip = await JSZip.loadAsync(zipFile);
+                const filePromises = [];
+                zip.forEach((_, zipEntry) => {
+                    if (!zipEntry.dir) filePromises.push(parseFileContent(zipEntry));
+                });
+
+                const files = (await Promise.all(filePromises)).filter(f => f);
+                
+                let novFileCount = 0;
+                files.forEach(fileInfo => {
+                    if (fileInfo.fileType === 'nov') {
+                        novFileCount++;
+                        if (!appState.processedSeries[fileInfo.seriesName]) {
+                            appState.processedSeries[fileInfo.seriesName] = [];
+                        }
+                        appState.processedSeries[fileInfo.seriesName].push(fileInfo);
+                    } else {
+                        appState.otherFiles.push(fileInfo);
+                    }
+                });
+                
+                if (novFileCount === 0 && appState.otherFiles.length === 0) {
+                    displayMessage('No processable files found in the zip archive.', 'info');
+                } else {
+                    const allFiles = [...Object.values(appState.processedSeries).flat(), ...appState.otherFiles];
+                    const uniqueFolders = [...new Set(allFiles.map(f => f.folderPath))];
+                    populateFolderFilter(uniqueFolders);
+
+                    dom.appControls.style.display = 'block';
+                    displayResults();
+                    dom.summaryLine.textContent = `Found ${novFileCount} metadata files across ${Object.keys(appState.processedSeries).length} series, and ${appState.otherFiles.length} other files.`;
+                }
+
+            } catch (err) {
+                displayMessage(`Error reading zip file: ${err.message}`, 'error');
+            } finally {
+                dom.loadingSpinner.style.display = 'none';
+            }
+        }
+
+        async function parseFileContent(zipEntry) {
+            const fullPath = zipEntry.name;
+            const originalName = fullPath.split('/').pop();
+            const lastSlashIndex = fullPath.lastIndexOf('/');
+            const folderPath = lastSlashIndex > -1 ? fullPath.substring(0, lastSlashIndex + 1) : '/';
+            const fileExt = originalName.split('.').pop().toLowerCase();
+
+            const baseInfo = {
+                originalName,
+                folderPath,
+                fullPath,
+                zipEntry,
+                size: zipEntry._data.uncompressedSize,
+                dateObject: zipEntry.date,
+            };
+
+            if (fullPath.toLowerCase().endsWith('.nov') || fullPath.toLowerCase().endsWith('.nov.txt')) {
+                try {
+                    const content = await zipEntry.async('string');
+                    const data = JSON.parse(content);
+                    if (!data.title || !data.last_update_date) return null;
+                    
+                    return {
+                        ...baseInfo,
+                        fileType: 'nov',
+                        seriesName: data.title,
+                        timestamp: data.last_update_date,
+                        dateObject: new Date(data.last_update_date),
+                        jsonData: data,
+                    };
+                } catch { return null; }
+            } else {
+                 return { ...baseInfo, fileType: fileExt };
+            }
+        }
+        
+        function populateFolderFilter(folders) {
+            dom.folderFilterSelect.innerHTML = '<option value="all">All Folders</option>';
+            if (folders.length > 1) {
+                folders.sort((a, b) => a.localeCompare(b));
+                folders.forEach(folder => {
+                    const option = document.createElement('option');
+                    option.value = folder;
+                    option.textContent = folder;
+                    dom.folderFilterSelect.appendChild(option);
+                });
+                dom.folderFilterSelect.parentElement.style.display = '';
+            } else {
+                dom.folderFilterSelect.parentElement.style.display = 'none';
+            }
+        }
+
+        // --- UI Rendering ---
+        function displayResults() {
+            dom.outputDiv.innerHTML = ''; 
+            dom.otherFilesOutput.innerHTML = '';
+            
+            const fileSortOrder = dom.sortOrderSelect.value;
+            const seriesSortOrder = dom.seriesSortOrderSelect.value;
+            
+            let sortedSeriesNames = Object.keys(appState.processedSeries);
+            if (seriesSortOrder === 'name-asc') {
+                sortedSeriesNames.sort((a, b) => a.localeCompare(b));
+            } else if (seriesSortOrder === 'file-count-desc') {
+                sortedSeriesNames.sort((a, b) => appState.processedSeries[b].length - appState.processedSeries[a].length);
+            } else if (seriesSortOrder === 'updated-desc') {
+                sortedSeriesNames.sort((a, b) => {
+                    const lastA = Math.max(...appState.processedSeries[a].map(f => f.timestamp));
+                    const lastB = Math.max(...appState.processedSeries[b].map(f => f.timestamp));
+                    return lastB - lastA;
+                });
+            }
+
+            sortedSeriesNames.forEach(seriesName => {
+                const seriesFiles = appState.processedSeries[seriesName];
+                seriesFiles.sort((a, b) => fileSortOrder === 'asc' ? a.timestamp - b.timestamp : b.timestamp - a.timestamp);
+                dom.outputDiv.appendChild(createSeriesPanel(seriesName, seriesFiles));
+            });
+
+            if(appState.otherFiles.length > 0) {
+                renderOtherFiles();
+            }
+
+            handleSearchFilter();
+        }
+        
+        function createSeriesPanel(seriesName, seriesFiles) {
+            const container = document.createElement('div');
+            container.className = 'series-container';
+            container.dataset.seriesName = seriesName;
+            
+            const header = document.createElement('div');
+            header.className = 'series-header';
+            
+            const fileList = document.createElement('ul');
+            fileList.className = 'file-list';
+            
+            const newestFile = seriesFiles.reduce((latest, file) => (!latest || file.timestamp > latest.timestamp) ? file : latest, null);
+
+            seriesFiles.forEach(file => {
+                const listItem = document.createElement('li');
+                listItem.dataset.fileName = file.originalName.toLowerCase();
+                listItem.dataset.seriesName = file.seriesName.toLowerCase();
+                listItem.dataset.description = file.jsonData.description ? file.jsonData.description.toLowerCase() : '';
+                listItem.dataset.folderPath = file.folderPath;
+                const isNewest = file === newestFile;
+                
+                listItem.innerHTML = `
+                    <div class="file-main-info">
+                        <input type="checkbox" data-filename="${file.fullPath}" ${appState.selectedFiles.has(file) ? 'checked' : ''}>
+                        <span class="file-name clickable" title="Folder: ${file.folderPath}">
+                            ${file.originalName}
+                            ${isNewest ? '<span class="latest-badge">Latest</span>' : ''}
+                        </span>
+                        <a class="download-icon" title="Download ${file.originalName}">&#x2193;</a>
+                    </div>
+                    <div class="file-meta-info">
+                        <span class="file-date">${formatDate(file.dateObject)}</span>
+                        <span class="file-size">${formatBytes(file.size)}</span>
+                    </div>
+                    <div class="file-path-info">
+                        <span class="file-path-icon">📁</span>
+                        <span class="file-path">${file.folderPath}</span>
+                    </div>
+                `;
+
+                listItem.querySelector('input[type="checkbox"]').addEventListener('change', (e) => updateSelection(file, e.target.checked));
+                listItem.querySelector('.file-name').addEventListener('click', () => showFilePreview(file));
+                listItem.querySelector('.download-icon').addEventListener('click', (e) => { e.preventDefault(); downloadSingleFile(file); });
+
+                fileList.appendChild(listItem);
+            });
+
+            const selectAllCheckbox = document.createElement('input');
+            selectAllCheckbox.type = 'checkbox';
+            selectAllCheckbox.title = 'Select all files in this series';
+            selectAllCheckbox.addEventListener('change', (e) => {
+                const isChecked = e.target.checked;
+                fileList.querySelectorAll('li').forEach(li => {
+                    if (li.style.display !== 'none') {
+                        const file = seriesFiles.find(f => f.fullPath === li.querySelector('input').dataset.filename);
+                        if(file) updateSelection(file, isChecked);
+                    }
+                });
+                displayResults();
+            });
+
+            header.innerHTML = `<div class="series-header-title"><h2>${seriesName}</h2><span class="file-count">${seriesFiles.length} files</span></div><span class="series-toggle"></span>`;
+            header.prepend(selectAllCheckbox);
+            header.addEventListener('click', e => { 
+                if (e.target.type !== 'checkbox') { 
+                    header.classList.toggle('collapsed'); 
+                    fileList.classList.toggle('collapsed');
+                }
+            });
+            
+            container.append(header, fileList);
+            updateSeriesSelectAllCheckbox(container);
+            return container;
+        }
+
+        function renderOtherFiles() {
+            const container = document.createElement('div');
+            container.className = 'series-container';
+            container.dataset.seriesName = "Other Files";
+            
+            const header = document.createElement('div');
+            header.className = 'series-header other-files';
+            
+            const fileList = document.createElement('ul');
+            fileList.className = 'file-list';
+
+            appState.otherFiles.sort((a,b) => a.fullPath.localeCompare(b.fullPath)).forEach(file => {
+                const listItem = document.createElement('li');
+                listItem.dataset.fileName = file.originalName.toLowerCase();
+                listItem.dataset.seriesName = "other files";
+                listItem.dataset.description = ""; // Other files don't have descriptions
+                listItem.dataset.folderPath = file.folderPath;
+
+                listItem.innerHTML = `
+                     <div class="file-main-info">
+                        <input type="checkbox" data-filename="${file.fullPath}" ${appState.selectedFiles.has(file) ? 'checked' : ''}>
+                        <span class="file-name" title="Folder: ${file.folderPath}">${file.originalName}</span>
+                        <a class="download-icon" title="Download ${file.originalName}">&#x2193;</a>
+                    </div>
+                    <div class="file-meta-info">
+                        <span class="file-date">${formatDate(file.dateObject)}</span>
+                        <span class="file-size">${formatBytes(file.size)}</span>
+                    </div>
+                    <div class="file-path-info">
+                        <span class="file-path-icon">📁</span>
+                        <span class="file-path">${file.folderPath}</span>
+                    </div>
+                `;
+                 listItem.querySelector('input[type="checkbox"]').addEventListener('change', (e) => updateSelection(file, e.target.checked));
+                 listItem.querySelector('.download-icon').addEventListener('click', (e) => { e.preventDefault(); downloadSingleFile(file); });
+                
+                const previewableExts = ['txt', 'md', 'json', 'svg', 'jpg', 'jpeg', 'png', 'gif'];
+                if(previewableExts.includes(file.fileType)) {
+                    listItem.querySelector('.file-name').classList.add('clickable');
+                    listItem.querySelector('.file-name').addEventListener('click', () => showFilePreview(file));
+                }
+
+                 fileList.appendChild(listItem);
+            });
+            
+            const selectAllCheckbox = document.createElement('input');
+            selectAllCheckbox.type = 'checkbox';
+            selectAllCheckbox.title = 'Select all other files';
+            selectAllCheckbox.addEventListener('change', (e) => {
+                const isChecked = e.target.checked;
+                 fileList.querySelectorAll('li').forEach(li => {
+                    if (li.style.display !== 'none') {
+                        const file = appState.otherFiles.find(f => f.fullPath === li.querySelector('input').dataset.filename);
+                        if(file) updateSelection(file, isChecked);
+                    }
+                });
+                displayResults();
+            });
+
+            header.innerHTML = `<div class="series-header-title"><h2>Other Files</h2><span class="file-count">${appState.otherFiles.length} files</span></div><span class="series-toggle"></span>`;
+            header.prepend(selectAllCheckbox);
+            header.addEventListener('click', e => { 
+                if (e.target.type !== 'checkbox') { 
+                    header.classList.toggle('collapsed'); 
+                    fileList.classList.toggle('collapsed');
+                }
+            });
+            
+            container.append(header, fileList);
+            dom.otherFilesOutput.appendChild(container);
+            updateSeriesSelectAllCheckbox(container);
+        }
+        
+        // --- Selection & Actions ---
+        function selectLatestFiles(type) {
+            appState.selectedFiles.clear();
+            const fileSortOrder = dom.sortOrderSelect.value;
+
+            Object.values(appState.processedSeries).forEach(seriesFiles => {
+                if (seriesFiles.length === 0) return;
+                let fileToSelect;
+                if (type === 'newest') {
+                    fileToSelect = (fileSortOrder === 'asc') ? seriesFiles[seriesFiles.length - 1] : seriesFiles[0];
+                } else { // oldest
+                    fileToSelect = (fileSortOrder === 'asc') ? seriesFiles[0] : seriesFiles[seriesFiles.length - 1];
+                }
+                appState.selectedFiles.add(fileToSelect);
+            });
+            
+            displayResults();
+            updateGlobalActionsBar();
+        }
+
+        async function downloadSingleFile(fileInfo) {
+            const content = await fileInfo.zipEntry.async('blob');
+            downloadBlob(content, fileInfo.originalName);
+        }
+        
+        async function downloadSelectedFiles() {
+            if (appState.selectedFiles.size === 0) return;
+            
+            const btn = dom.globalActions.downloadBtn;
+            const originalText = btn.textContent;
+            btn.textContent = 'Zipping...';
+            btn.disabled = true;
+
+            const zip = new JSZip();
+            const preserveStructure = dom.globalActions.preserveStructureCheckbox.checked;
+
+            for (const fileInfo of appState.selectedFiles) {
+                const content = await fileInfo.zipEntry.async('blob');
+                const path = preserveStructure ? fileInfo.fullPath : fileInfo.originalName;
+                zip.file(path, content);
+            }
+            const zipContent = await zip.generateAsync({ type:"blob" });
+            downloadBlob(zipContent, 'Custom_Selection.zip');
+
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+
+        // --- UI & State Updaters ---
+        const updateSeriesSelectAllCheckbox = (container) => {
+             const seriesName = container.dataset.seriesName;
+            let seriesFiles;
+            if (seriesName === 'Other Files') {
+                seriesFiles = appState.otherFiles;
+            } else {
+                 seriesFiles = appState.processedSeries[seriesName];
+            }
+           
+            if (!seriesFiles || seriesFiles.length === 0) return;
+
+            const allSelected = seriesFiles.every(f => appState.selectedFiles.has(f));
+            const someSelected = seriesFiles.some(f => appState.selectedFiles.has(f));
+            const selectAllCheckbox = container.querySelector('.series-header input[type="checkbox"]');
+            
+            selectAllCheckbox.checked = allSelected;
+            selectAllCheckbox.indeterminate = !allSelected && someSelected;
+        };
+
+        function updateSelection(file, isSelected) {
+            if (isSelected) appState.selectedFiles.add(file);
+            else appState.selectedFiles.delete(file);
+            updateGlobalActionsBar();
+        }
+        
+        function updateGlobalActionsBar() {
+            const count = appState.selectedFiles.size;
+            dom.globalActions.bar.classList.toggle('visible', count > 0);
+            if (count > 0) {
+                dom.globalActions.countSpan.textContent = `${count} file${count > 1 ? 's' : ''} selected`;
+            }
+        }
+        
+        function handleSearchFilter() {
+            const query = dom.searchInput.value.toLowerCase();
+            const selectedFolder = dom.folderFilterSelect.value;
+            let visibleContainers = 0;
+
+            document.querySelectorAll('.series-container').forEach(container => {
+                let visibleFilesCount = 0;
+                container.querySelectorAll('.file-list li').forEach(li => {
+                    const textMatch = (
+                        li.dataset.fileName.includes(query) ||
+                        li.dataset.seriesName.includes(query) ||
+                        li.dataset.description.includes(query)
+                    );
+                    const folderMatch = (selectedFolder === 'all' || li.dataset.folderPath === selectedFolder);
+
+                    const isVisible = textMatch && folderMatch;
+                    li.style.display = isVisible ? '' : 'none';
+                    if (isVisible) visibleFilesCount++;
+                });
+
+                if (visibleFilesCount > 0) {
+                    container.style.display = '';
+                    visibleContainers++;
+                } else {
+                    container.style.display = 'none';
+                }
+            });
+            
+            dom.noResults.style.display = visibleContainers === 0 && (query || selectedFolder !== 'all') ? 'block' : 'none';
+        }
+        
+        // --- Utility & Helper Functions ---
+        function resetUIState() {
+            dom.outputDiv.innerHTML = '';
+            dom.otherFilesOutput.innerHTML = '';
+            dom.summaryLine.innerHTML = '';
+            dom.statusMessage.className = 'status-message';
+            dom.statusMessage.innerHTML = '';
+            dom.loadingSpinner.style.display = 'block';
+            dom.appControls.style.display = 'none';
+            dom.searchInput.value = '';
+            populateFolderFilter([]);
+            appState.processedSeries = {};
+            appState.otherFiles = [];
+            appState.selectedFiles.clear();
+            updateGlobalActionsBar();
+        }
+
+        async function showFilePreview(fileInfo) {
+            dom.modal.title.textContent = `Preview: ${fileInfo.originalName}`;
+            dom.modal.body.innerHTML = '<div>Loading content...</div>';
+            dom.modal.overlay.style.display = 'flex';
+            
+            if (fileInfo.fileType === 'nov') {
+                const data = fileInfo.jsonData;
+                const wordCount = data.revisions?.[0]?.book_progresses?.[0]?.word_count?.toLocaleString() || 'N/A';
+                const sceneCount = data.scenes?.length || 'N/A';
+                const sectionCount = data.sections?.length || 'N/A';
+                const summaryHtml = `
+                    <style> .meta-grid { display: grid; grid-template-columns: 130px 1fr; gap: 10px 15px; align-items: start; } .meta-grid strong { color: var(--primary-color); text-align: right; } .meta-grid pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 1em; } </style>
+                    <div class="meta-grid">
+                        <strong>Title:</strong>         <span>${data.title || 'N/A'}</span>
+                        <strong>Description:</strong>   <pre>${data.description || 'N/A'}</pre>
+                        <strong>Folder Path:</strong>   <span>${fileInfo.folderPath}</span>
+                        <strong>Last Updated:</strong>  <span>${formatDate(fileInfo.dateObject)}</span>
+                        <strong>Word Count:</strong>    <span>${wordCount}</span>
+                        <strong>Scene Count:</strong>   <span>${sceneCount}</span>
+                        <strong>Section Count:</strong> <span>${sectionCount}</span>
+                        <strong>File Size:</strong>     <span>${formatBytes(fileInfo.size)}</span>
+                    </div>`;
+                dom.modal.body.innerHTML = summaryHtml;
+            } 
+            else if (['jpg', 'jpeg', 'png', 'gif', 'svg'].includes(fileInfo.fileType)) {
+                try {
+                    const blob = await fileInfo.zipEntry.async('blob');
+                    const imageUrl = URL.createObjectURL(blob);
+                    dom.modal.body.innerHTML = `<img src="${imageUrl}" alt="Image preview">`;
+                } catch (err) { dom.modal.body.textContent = `Error loading image preview: ${err.message}`; }
+            }
+            else {
+                try {
+                    const content = await fileInfo.zipEntry.async('string');
+                    const pre = document.createElement('pre');
+                    pre.textContent = content;
+                    dom.modal.body.innerHTML = '';
+                    dom.modal.body.appendChild(pre);
+                } catch (err) { dom.modal.body.textContent = `Error loading file preview: ${err.message}`; }
+            }
+        }
+
+        function hideModal() {
+            const activeImage = dom.modal.body.querySelector('img');
+            if (activeImage) URL.revokeObjectURL(activeImage.src);
+            dom.modal.overlay.style.display = 'none';
+            dom.modal.body.innerHTML = '';
+            dom.modal.title.textContent = '';
+        }
+        
+        function downloadBlob(blob, filename) {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+        }
+        
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        function formatDate(date) {
+            return date.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+        }
+
+        function displayMessage(message, type = 'info') {
+             dom.statusMessage.textContent = message;
+             dom.statusMessage.className = `status-message ${type}`;
+        }
+        
+        // --- App Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadPreferences();
+            setupEventListeners();
+        });
+    </script>
+</body>
+</html>

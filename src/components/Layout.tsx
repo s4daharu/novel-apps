@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { ThemeToggleButton } from './ThemeToggleButton';
@@ -22,7 +23,7 @@ export const Layout: React.FC = () => {
     };
     
     // Explicitly define order to match the dashboard
-    const toolOrder = ['splitter', 'augmentBackupWithZip', 'zipEpub', 'createBackupFromZip', 'mergeBackup', 'findReplaceBackup', 'novelSplitter'];
+    const toolOrder = ['splitter', 'augmentBackupWithZip', 'zipEpub', 'createBackupFromZip', 'mergeBackup', 'findReplaceBackup', 'backupOrganizer', 'novelSplitter'];
 
     return (
         <>

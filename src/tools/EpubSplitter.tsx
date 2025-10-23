@@ -9,9 +9,11 @@ import { Status } from '../utils/types';
 
 // Minimal type definitions to avoid @ts-ignore and enhance type safety
 type Fontkit = { [key: string]: any; };
-interface PDFDocument extends PDFLibDoc {
+// FIX: The original `interface PDFDocument extends PDFLibDoc` was causing type errors where methods from the base class were not found.
+// Using an intersection type correctly combines the base `PDFLibDoc` type with our custom `registerFontkit` method, resolving the issue.
+type PDFDocument = PDFLibDoc & {
     registerFontkit: (fk: Fontkit) => void;
-}
+};
 
 export const EpubSplitter: React.FC = () => {
     const { showToast, showSpinner, hideSpinner } = useAppContext();

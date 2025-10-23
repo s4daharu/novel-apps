@@ -8,6 +8,7 @@ const toolCardData = [
   { id: 'createBackupFromZip', title: 'Create Backup from ZIP', desc: 'Generate structured novel backup files directly from ZIP archives containing text chapters.' },
   { id: 'mergeBackup', title: 'Merge Backup Files', desc: 'Combine multiple novel backup files into a single, organized backup with smart conflict resolution.' },
   { id: 'findReplaceBackup', title: 'Find & Replace in Backup', desc: 'Perform powerful find and replace operations within novel backup files with regex support and preview.' },
+  { id: 'backupOrganizer', title: 'Backup Organizer', desc: 'Inspect, sort, and manage complex ZIP archives. Intelligently groups novel backups and identifies the latest versions.', size: 'full' },
   { id: 'novelSplitter', title: 'Novel Splitter', desc: 'Advanced tool to split, edit, and package .txt novels into chapters, with export to ZIP or themed EPUB.', size: 'full' },
 ];
 

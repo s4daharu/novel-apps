@@ -55,6 +55,9 @@ export type BackupData = {
     last_update_date: number;
     last_backup_date: number;
     revisions: BackupRevision[];
+    // Properties below are not part of the standard backup format but used internally
+    scenes?: any;
+    sections?: any;
 };
 
 // Types for Find & Replace tool
@@ -69,4 +72,19 @@ export type FrMatch = {
 export type FrReviewItem = FrMatch & {
   id: number;
   context: React.ReactNode;
+};
+
+// Types for Backup Organizer tool
+export type BackupOrganizerFileInfo = {
+    fullPath: string;
+    originalName: string;
+    folderPath: string;
+    zipEntry: any; // from JSZip
+    size: number;
+    dateObject: Date;
+    fileType: string;
+    // For .nov files
+    seriesName?: string;
+    timestamp?: number;
+    jsonData?: BackupData;
 };
