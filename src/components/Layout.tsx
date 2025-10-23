@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { ThemeToggleButton } from './ThemeToggleButton';
@@ -51,7 +49,7 @@ export const Layout: React.FC = () => {
                     <nav className="space-y-2">
                         <Link to="/" className="w-full text-left px-4 py-3 rounded-lg text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200 block">Home Dashboard</Link>
                         {toolOrder.map(id => (
-                             <Link key={id} to={`/tool/${id}`} className="w-full text-left px-4 py-3 rounded-lg text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200 block">{toolSectionsMap[id]?.title}</Link>
+                             toolSectionsMap[id] && <Link key={id} to={`/tool/${id}`} className="w-full text-left px-4 py-3 rounded-lg text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200 block">{toolSectionsMap[id]?.title}</Link>
                         ))}
                     </nav>
                 </div>

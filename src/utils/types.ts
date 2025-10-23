@@ -55,9 +55,6 @@ export type BackupData = {
     last_update_date: number;
     last_backup_date: number;
     revisions: BackupRevision[];
-    // Properties below are not part of the standard backup format but used internally
-    scenes?: any;
-    sections?: any;
 };
 
 // Types for Find & Replace tool

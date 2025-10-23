@@ -1,3 +1,5 @@
+declare module 'fontkit';
+
 import React, { useState, useEffect } from 'react';
 import { PDFDocument as PDFLibDoc, rgb, PageSizes, PDFString, PDFName, PDFArray, PDFDict } from 'pdf-lib';
 import * as fontkit from 'fontkit';

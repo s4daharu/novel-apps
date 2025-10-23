@@ -53,7 +53,7 @@ export const BackupOrganizer: React.FC = () => {
             const JSZip = await getJSZip();
             const zip = await JSZip.loadAsync(file);
             const filePromises: Promise<BackupOrganizerFileInfo | null>[] = [];
-            zip.forEach((_, zipEntry) => {
+            zip.forEach((_: string, zipEntry: any) => {
                 if (!zipEntry.dir) {
                     filePromises.push(parseFileContent(zipEntry));
                 }
@@ -301,7 +301,7 @@ const SeriesPanel = ({ seriesName, files, selectedFiles, onSelection, onSeriesSe
     
     return (
         <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
-            <header onClick={() => setCollapsedSeries(p => { const s = new Set(p); isCollapsed ? s.delete(seriesName) : s.add(seriesName); return s; })} className="p-3 flex items-center gap-3 cursor-pointer">
+            <header onClick={() => setCollapsedSeries((p: Set<string>) => { const s = new Set(p); isCollapsed ? s.delete(seriesName) : s.add(seriesName); return s; })} className="p-3 flex items-center gap-3 cursor-pointer">
                 <input type="checkbox" checked={allVisibleSelected} ref={el => el && (el.indeterminate = !allVisibleSelected && someVisibleSelected)} onClick={e => e.stopPropagation()} onChange={e => onSeriesSelection(visibleFiles, e.target.checked)} className="w-5 h-5 rounded" />
                 <h2 className="font-semibold text-lg flex-grow text-slate-800 dark:text-slate-200">{seriesName}</h2>
                 <span className="text-sm px-2 py-1 bg-slate-200 dark:bg-slate-700 rounded-full">{files.length}</span>
@@ -335,7 +335,7 @@ const OtherFilesPanel = ({ files, selectedFiles, onSelection, onSeriesSelection,
     
     return (
         <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
-            <header onClick={() => setCollapsedSeries(p => { const s = new Set(p); isCollapsed ? s.delete(seriesName) : s.add(seriesName); return s; })} className="p-3 flex items-center gap-3 cursor-pointer">
+            <header onClick={() => setCollapsedSeries((p: Set<string>) => { const s = new Set(p); isCollapsed ? s.delete(seriesName) : s.add(seriesName); return s; })} className="p-3 flex items-center gap-3 cursor-pointer">
                  <input type="checkbox" checked={allVisibleSelected} ref={el => el && (el.indeterminate = !allVisibleSelected && someVisibleSelected)} onClick={e => e.stopPropagation()} onChange={e => onSeriesSelection(visibleFiles, e.target.checked)} className="w-5 h-5 rounded" />
                 <h2 className="font-semibold text-lg flex-grow text-slate-800 dark:text-slate-200">{seriesName}</h2>
                 <span className="text-sm px-2 py-1 bg-slate-200 dark:bg-slate-700 rounded-full">{files.length}</span>
@@ -385,12 +385,16 @@ const PreviewModal = ({ file, onClose }: { file: BackupOrganizerFileInfo, onClos
                 setContent(`<img src="${url}" alt="Preview" class="max-w-full max-h-[60vh] mx-auto" />`);
                 return () => URL.revokeObjectURL(url);
             } else {
-                const text = await file.zipEntry.async('string');
-                setContent(`<pre class="whitespace-pre-wrap text-sm">${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>`);
+                try {
+                    const text = await file.zipEntry.async('string');
+                    setContent(`<pre class="whitespace-pre-wrap text-sm">${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>`);
+                } catch {
+                    setContent('Preview not available for this binary file.');
+                }
             }
         };
-        const cleanup = loadContent();
-        return () => { cleanup.then(c => c && c()); };
+        const cleanupPromise = loadContent();
+        return () => { cleanupPromise.then(cleanup => cleanup && cleanup()); };
     }, [file]);
 
     return (
