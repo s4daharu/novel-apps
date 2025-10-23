@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
-// @ts-ignore
-import { PDFDocument, rgb, PageSizes, PDFString, PDFName, PDFArray, PDFDict } from 'pdf-lib';
-// @ts-ignore
+import React, { useState, useEffect } from 'react';
+import { PDFDocument as PDFLibDoc, rgb, PageSizes, PDFString, PDFName, PDFArray, PDFDict } from 'pdf-lib';
 import * as fontkit from 'fontkit';
 import { useAppContext } from '../contexts/AppContext';
 import { FileInput } from '../components/FileInput';
 import { StatusMessage } from '../components/StatusMessage';
 import { triggerDownload, getJSZip, getFonts, escapeHTML } from '../utils/helpers';
 import { Status } from '../utils/types';
+
+// Minimal type definitions to avoid @ts-ignore and enhance type safety
+type Fontkit = { [key: string]: any; };
+interface PDFDocument extends PDFLibDoc {
+    registerFontkit: (fk: Fontkit) => void;
+}
 
 export const EpubSplitter: React.FC = () => {
     const { showToast, showSpinner, hideSpinner } = useAppContext();
@@ -201,8 +205,8 @@ export const EpubSplitter: React.FC = () => {
             return;
         }
 
-        showSpinner();
-
+        hideSpinner(); // Hide global spinner, use local status for progress
+        
         try {
             const chaptersToProcess = parsedChapters.slice(startChapterIndex, endChapterIndex + 1);
 
@@ -248,12 +252,11 @@ export const EpubSplitter: React.FC = () => {
             console.error("EPUB Splitter Error:", err);
             setStatus({ message: `Error: ${err.message}`, type: 'error' });
             showToast(`Error splitting EPUB: ${err.message}`, true);
-        } finally {
-            hideSpinner();
         }
     };
 
     const generateTxtZip = async (chaptersToProcess: typeof parsedChapters) => {
+        showSpinner(); // Use global spinner for this faster operation
         const JSZip = await getJSZip();
         const zip = new JSZip();
         const BOM = "\uFEFF"; // UTF-8 Byte Order Mark
@@ -278,6 +281,7 @@ export const EpubSplitter: React.FC = () => {
         }
         const blob = await zip.generateAsync({ type: 'blob' });
         triggerDownload(blob, `${chapterPattern.trim()}_chapters.zip`);
+        hideSpinner();
     };
     
     const generatePdfZip = async (chaptersToProcess: typeof parsedChapters, fontSize: number) => {
@@ -298,6 +302,8 @@ export const EpubSplitter: React.FC = () => {
 
         if (mode === 'single') {
             for (let i = 0; i < chaptersForPdf.length; i++) {
+                setStatus({ message: `Generating PDF for chapter ${i + 1} of ${chaptersForPdf.length}...`, type: 'info' });
+                await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI to update
                 const chapter = chaptersForPdf[i];
                 const chapNum = String(startNumber + i).padStart(2, '0');
                 const pdfBytes = await createPdfFromChapters([chapter], fontBytes, fontSize);
@@ -305,6 +311,8 @@ export const EpubSplitter: React.FC = () => {
             }
         } else { // grouped
             for (let i = 0; i < chaptersForPdf.length; i += groupSize) {
+                setStatus({ message: `Generating PDF for group starting at chapter ${i + 1}...`, type: 'info' });
+                await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI to update
                 const group = chaptersForPdf.slice(i, i + groupSize);
                 const groupStartNum = startNumber + i;
                 const groupEndNum = groupStartNum + group.length - 1;
@@ -335,13 +343,17 @@ export const EpubSplitter: React.FC = () => {
             return chapter;
         });
         
-        const pdfBytes = await createPdfFromChapters(chaptersForPdf, fontBytes, fontSize);
+        const pdfBytes = await createPdfFromChapters(chaptersForPdf, fontBytes, fontSize, (progress) => {
+            setStatus({ message: `Processing chapter ${progress.current} of ${progress.total} for PDF...`, type: 'info' });
+        });
+
         const fileNameBase = epubFile?.name.replace(/\.epub$/i, '') || 'novel';
        triggerDownload(new Blob([pdfBytes as BlobPart], { type: 'application/pdf' }), `${fileNameBase}.pdf`);
 
     };
 
     const generateSingleTxt = async (chaptersToProcess: typeof parsedChapters) => {
+        showSpinner();
         const BOM = "\uFEFF";
         const content = chaptersToProcess.map((chapter, i) => {
             const title = `${chapterPattern}${startNumber + i}`;
@@ -351,6 +363,7 @@ export const EpubSplitter: React.FC = () => {
         const blob = new Blob([BOM + content], { type: 'text/plain;charset=utf-8' });
         const fileNameBase = epubFile?.name.replace(/\.epub$/i, '') || 'novel';
         triggerDownload(blob, `${fileNameBase}.txt`);
+        hideSpinner();
     };
 
     const createDocxBlob = async (chaptersData: { title: string, text: string }[]): Promise<Blob> => {
@@ -435,6 +448,7 @@ export const EpubSplitter: React.FC = () => {
     };
 
     const generateSingleDocx = async (chaptersToProcess: typeof parsedChapters) => {
+        showSpinner();
         const chaptersWithTitles = chaptersToProcess.map((chapter, i) => {
             if (useFirstLineAsHeading) {
                 const lines = chapter.text.split('\n');
@@ -452,6 +466,7 @@ export const EpubSplitter: React.FC = () => {
         const blob = await createDocxBlob(chaptersWithTitles);
         const fileNameBase = epubFile?.name.replace(/\.epub$/i, '') || 'novel';
         triggerDownload(blob, `${fileNameBase}.docx`);
+        hideSpinner();
     };
 
     const generateDocxZip = async (chaptersToProcess: typeof parsedChapters) => {
@@ -460,6 +475,8 @@ export const EpubSplitter: React.FC = () => {
     
         if (mode === 'single') {
             for (let i = 0; i < chaptersToProcess.length; i++) {
+                setStatus({ message: `Generating DOCX for chapter ${i + 1} of ${chaptersToProcess.length}...`, type: 'info' });
+                await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI to update
                 const chapter = chaptersToProcess[i];
                 const chapNum = String(startNumber + i).padStart(2, '0');
                 const filenameTitle = `${chapterPattern}${chapNum}`;
@@ -478,6 +495,8 @@ export const EpubSplitter: React.FC = () => {
             }
         } else { // grouped
             for (let i = 0; i < chaptersToProcess.length; i += groupSize) {
+                setStatus({ message: `Generating DOCX for group starting at chapter ${i + 1}...`, type: 'info' });
+                await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI to update
                 const group = chaptersToProcess.slice(i, i + groupSize);
                 const groupStartNum = startNumber + i;
                 const groupEndNum = groupStartNum + group.length - 1;
@@ -505,9 +524,9 @@ export const EpubSplitter: React.FC = () => {
         triggerDownload(blob, `${chapterPattern.trim()}_chapters_docx.zip`);
     };
 
-    const createPdfFromChapters = async (chaptersData: { title: string, text: string }[], fontBytes: { notoFontBytes: ArrayBuffer, latinFontBytes: ArrayBuffer }, baseFontSize: number) => {
-        const pdfDoc = await PDFDocument.create();
-        pdfDoc.registerFontkit(fontkit as any);
+    const createPdfFromChapters = async (chaptersData: { title: string, text: string }[], fontBytes: { notoFontBytes: ArrayBuffer, latinFontBytes: ArrayBuffer }, baseFontSize: number, onProgress?: (progress: { current: number; total: number }) => void) => {
+        const pdfDoc = await PDFLibDoc.create() as PDFDocument;
+        pdfDoc.registerFontkit(fontkit);
         const chineseFont = await pdfDoc.embedFont(fontBytes.notoFontBytes);
         const englishFont = await pdfDoc.embedFont(fontBytes.latinFontBytes);
         
@@ -572,7 +591,11 @@ export const EpubSplitter: React.FC = () => {
         };
         
         // 1. Generate all chapter pages
-        for (const chapter of chaptersData) {
+        for (const [index, chapter] of chaptersData.entries()) {
+            if (onProgress) {
+                onProgress({ current: index + 1, total: chaptersData.length });
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
             let page = pdfDoc.addPage(PageSizes.A4);
             const { width, height } = page.getSize();
             tocEntries.push({ title: chapter.title, page });
@@ -744,7 +767,7 @@ export const EpubSplitter: React.FC = () => {
 
 
     return (
-        <div id="splitterApp" className="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 animate-fade-in tool-section">
+        <div id="splitterApp" className="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 animate-fade-in will-change-[transform,opacity]">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">EPUB Chapter Splitter</h1>
              <div className="max-w-md mx-auto">
                 <FileInput inputId="epubUpload" label="Upload EPUB File" accept=".epub" onFileSelected={handleFileSelected} onFileCleared={() => { setEpubFile(null); resetChapterSelection(); setStatus(null); }} />

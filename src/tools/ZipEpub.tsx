@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { FileInput } from '../components/FileInput';
@@ -304,10 +303,10 @@ const ZipToEpub: React.FC = () => {
             const JSZip = await getJSZip();
             const epubZip = new JSZip();
             epubZip.file("mimetype", "application/epub+zip", { compression: "STORE" });
-            epubZip.folder("META-INF").file("container.xml", `<?xml version="1.0" encoding="UTF-8"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>`);
+            epubZip.folder("META-INF")!.file("container.xml", `<?xml version="1.0" encoding="UTF-8"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>`);
             
-            const oebps = epubZip.folder("OEBPS");
-            oebps.folder("css").file("style.css", "body{font-family:sans-serif;line-height:1.6;} h2{text-align:center;} p{text-indent:1.5em; margin:0; text-align:justify;}");
+            const oebps = epubZip.folder("OEBPS")!;
+            oebps.folder("css")!.file("style.css", "body{font-family:sans-serif;line-height:1.6;} h2{text-align:center;} p{text-indent:1.5em; margin:0; text-align:justify;}");
 
             const manifestItems: any[] = [{ id: "css", href: "css/style.css", "media-type": "text/css" }, { id: "nav", href: "nav.xhtml", "media-type": "application/xhtml+xml", properties: "nav" }];
             const spineItems: any[] = [];
@@ -315,9 +314,9 @@ const ZipToEpub: React.FC = () => {
             if (coverFile) {
                 const ext = coverFile.name.split('.').pop()?.toLowerCase() || 'jpg';
                 const mediaType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
-                oebps.folder("images").file(`cover.${ext}`, await coverFile.arrayBuffer());
+                oebps.folder("images")!.file(`cover.${ext}`, await coverFile.arrayBuffer());
                 manifestItems.push({ id: "cover-image", href: `images/cover.${ext}`, "media-type": mediaType, properties: "cover-image" });
-                oebps.folder("text").file("cover.xhtml", `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml"><head><title>Cover</title></head><body style="text-align:center;margin:0;padding:0;"><img src="../images/cover.${ext}" alt="Cover" style="max-width:100%;max-height:100vh;object-fit:contain;"/></body></html>`);
+                oebps.folder("text")!.file("cover.xhtml", `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml"><head><title>Cover</title></head><body style="text-align:center;margin:0;padding:0;"><img src="../images/cover.${ext}" alt="Cover" style="max-width:100%;max-height:100vh;object-fit:contain;"/></body></html>`);
                 manifestItems.push({ id: "cover-page", href: "text/cover.xhtml", "media-type": "application/xhtml+xml" });
                 spineItems.push({ idref: "cover-page", linear: "no" });
             }
@@ -330,7 +329,7 @@ const ZipToEpub: React.FC = () => {
             chapters.forEach((chapter, i) => {
                 const filename = `chapter_${i + 1}.xhtml`;
                 const xhtml = textToXHTML(chapter.content, chapter.title);
-                oebps.folder("text").file(filename, xhtml);
+                oebps.folder("text")!.file(filename, xhtml);
                 const itemId = `chapter-${i + 1}`;
                 manifestItems.push({ id: itemId, href: `text/${filename}`, "media-type": "application/xhtml+xml" });
                 spineItems.push({ idref: itemId });
@@ -411,7 +410,7 @@ export const ZipEpub: React.FC = () => {
   const [mode, setMode] = useState<'zipToEpub' | 'epubToZip'>('zipToEpub');
 
   return (
-    <div id="zipEpubApp" className="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 animate-fade-in tool-section">
+    <div id="zipEpubApp" className="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 animate-fade-in will-change-[transform,opacity]">
       <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">ZIP ↔ EPUB Converter</h1>
       <div className="max-w-md mx-auto mb-6">
         <label className="text-center block mb-4 text-slate-800 dark:text-slate-200">Conversion Direction:</label>

@@ -1,3 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/*
+This file is intentionally left blank.
+Styling is now handled by the Tailwind CSS CDN script in index.html.
+*/

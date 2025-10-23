@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useMemo } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { FileInput } from '../components/FileInput';
@@ -138,7 +137,7 @@ export const MergeBackup: React.FC = () => {
     const covers = useMemo(() => files.map(f => f.cover).filter((c): c is string => c !== null), [files]);
 
     return (
-        <div id="mergeBackupApp" className="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 animate-fade-in tool-section">
+        <div id="mergeBackupApp" className="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 animate-fade-in will-change-[transform,opacity]">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">Merge Backup Files</h1>
             <div className="max-w-md mx-auto mb-6">
                 <FileInput inputId="mergeBackupFiles" label="Upload Backup Files" accept=".json,.txt,.nov" multiple onFileSelected={handleFileSelected} onFileCleared={() => setFiles([])} />
