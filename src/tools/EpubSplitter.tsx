@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 // @ts-ignore
 import { PDFDocument, rgb, PageSizes, PDFString, PDFName, PDFArray, PDFDict } from 'pdf-lib';
 // @ts-ignore
@@ -15,7 +15,6 @@ export const EpubSplitter: React.FC = () => {
     // Component State
     const [epubFile, setEpubFile] = useState<File | null>(null);
     const [parsedChapters, setParsedChapters] = useState<{ index: number; title: string; text: string }[]>([]);
-    const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
     const [status, setStatus] = useState<Status | null>(null);
     const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
@@ -24,62 +23,33 @@ export const EpubSplitter: React.FC = () => {
     const [mode, setMode] = useState<'single' | 'grouped'>('single');
     const [chapterPattern, setChapterPattern] = useState('Chapter ');
     const [startNumber, setStartNumber] = useState(1);
+    const [startChapterIndex, setStartChapterIndex] = useState(0);
+    const [endChapterIndex, setEndChapterIndex] = useState(0);
     const [groupSize, setGroupSize] = useState(4);
     const [pdfFontSize, setPdfFontSize] = useState(14);
     const [useFirstLineAsHeading, setUseFirstLineAsHeading] = useState(false);
-
-    // Range Selection State
-    const [isRangeSelectorOpen, setIsRangeSelectorOpen] = useState(false);
-    const [rangeStart, setRangeStart] = useState(1);
-    const [rangeEnd, setRangeEnd] = useState(1);
-
-    useEffect(() => {
-        setRangeStart(1);
-        setRangeEnd(parsedChapters.length);
-    }, [parsedChapters]);
     
-    // Handlers for chapter selection
-    const handleSelectAll = () => {
-        const allIndices = new Set(parsedChapters.map(c => c.index));
-        setSelectedIndices(allIndices);
+    // Handlers for chapter range selection
+    const handleStartChapterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newStartIndex = parseInt(e.target.value, 10);
+        setStartChapterIndex(newStartIndex);
+        if (newStartIndex > endChapterIndex) {
+            setEndChapterIndex(newStartIndex);
+        }
     };
 
-    const handleDeselectAll = () => {
-        setSelectedIndices(new Set());
-    };
-    
-    const handleCheckboxClick = (clickedIndex: number) => {
-        const newSelectedIndices = new Set(selectedIndices);
-        if (newSelectedIndices.has(clickedIndex)) {
-            newSelectedIndices.delete(clickedIndex);
-        } else {
-            newSelectedIndices.add(clickedIndex);
+    const handleEndChapterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newEndIndex = parseInt(e.target.value, 10);
+        setEndChapterIndex(newEndIndex);
+        if (newEndIndex < startChapterIndex) {
+            setStartChapterIndex(newEndIndex);
         }
-        setSelectedIndices(newSelectedIndices);
-    };
-
-    const handleApplyRangeSelection = () => {
-        const start = Math.max(0, rangeStart - 1); // 1-based to 0-based
-        const end = Math.min(parsedChapters.length - 1, rangeEnd - 1);
-        
-        if (start > end) {
-            showToast("'From' chapter must be less than or equal to 'To' chapter.", true);
-            return;
-        }
-    
-        const newSelectedIndices = new Set(selectedIndices);
-        for (let i = start; i <= end; i++) {
-            const chapterIndex = parsedChapters[i].index;
-            newSelectedIndices.add(chapterIndex);
-        }
-        setSelectedIndices(newSelectedIndices);
-        setIsRangeSelectorOpen(false); // Close the selector
-        showToast(`Selected chapters from ${rangeStart} to ${rangeEnd}.`, false);
     };
 
     const resetChapterSelection = () => {
         setParsedChapters([]);
-        setSelectedIndices(new Set());
+        setStartChapterIndex(0);
+        setEndChapterIndex(0);
     };
     
     const readFileAsArrayBuffer = (file: File): Promise<ArrayBuffer> => {
@@ -184,11 +154,12 @@ export const EpubSplitter: React.FC = () => {
             
             const chapters = tempChapters.map((chap, index) => ({ index, title: chap.title, text: chap.text }));
             setParsedChapters(chapters);
-            setSelectedIndices(new Set(chapters.map(c => c.index)));
-
+            setStartChapterIndex(0);
             if (chapters.length > 0) {
+                setEndChapterIndex(chapters.length - 1);
                 showToast(`Found ${chapters.length} chapters.`);
             } else {
+                setEndChapterIndex(0);
                 showToast('No chapters found. Check EPUB structure.', true);
                 setStatus({ message: 'Error: No chapters found.', type: 'error' });
             }
@@ -204,9 +175,9 @@ export const EpubSplitter: React.FC = () => {
     
     const handleSplit = async () => {
         setStatus(null);
-        if (selectedIndices.size === 0) {
-            showToast("No chapters selected to process.", true);
-            setStatus({ message: 'Error: No chapters selected to process.', type: 'error' });
+        if (parsedChapters.length === 0) {
+            showToast("No chapters available to process.", true);
+            setStatus({ message: 'Error: No chapters available to process.', type: 'error' });
             return;
         }
 
@@ -214,6 +185,7 @@ export const EpubSplitter: React.FC = () => {
             setStatus({ message: 'Error: Start Number must be 1 or greater.', type: 'error' });
             return;
         }
+
         if (mode === 'grouped' && (isNaN(groupSize) || groupSize < 1)) {
             setStatus({ message: 'Error: Chapters per File must be 1 or greater.', type: 'error' });
             return;
@@ -222,11 +194,10 @@ export const EpubSplitter: React.FC = () => {
         showSpinner();
 
         try {
-            const chaptersToProcess = parsedChapters
-                .filter(chap => selectedIndices.has(chap.index));
+            const chaptersToProcess = parsedChapters.slice(startChapterIndex, endChapterIndex + 1);
 
             if (chaptersToProcess.length === 0) {
-                throw new Error(`No chapters were selected to process.`);
+                throw new Error(`The selected range resulted in no chapters to process.`);
             }
 
             switch (outputFormat) {
@@ -770,34 +741,27 @@ export const EpubSplitter: React.FC = () => {
             </div>
 
              {parsedChapters.length > 0 && (
-                <div className="mt-6 p-4 bg-slate-100 dark:bg-slate-700/30 rounded-lg border border-slate-200 dark:border-slate-600/50">
-                    <div className="flex items-center justify-between mb-4">
-                        <h4 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Select Chapters to Split</h4>
-                        <div className="text-sm text-primary-600 dark:text-primary-400">{selectedIndices.size} / {parsedChapters.length} selected</div>
-                    </div>
-                    <div className="mb-4 flex justify-center flex-wrap gap-3">
-                        <button type="button" onClick={handleSelectAll} className="inline-flex items-center justify-center rounded-lg font-medium bg-teal-600 hover:bg-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 px-3 py-1 text-sm">Select All</button>
-                        <button type="button" onClick={handleDeselectAll} className="inline-flex items-center justify-center rounded-lg font-medium bg-teal-600 hover:bg-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 px-3 py-1 text-sm">Deselect All</button>
-                        <button type="button" onClick={() => setIsRangeSelectorOpen(p => !p)} className="inline-flex items-center justify-center rounded-lg font-medium bg-teal-600 hover:bg-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 px-3 py-1 text-sm">Select Range</button>
-                    </div>
-                    {isRangeSelectorOpen && (
-                        <div className="flex items-center justify-center flex-wrap gap-2 p-3 bg-slate-200 dark:bg-slate-700/50 rounded-lg my-3 max-w-md mx-auto">
-                            <label htmlFor="rangeFrom" className="text-sm font-medium text-slate-700 dark:text-slate-300 shrink-0">From:</label>
-                            <input type="number" id="rangeFrom" value={rangeStart} onChange={e => setRangeStart(parseInt(e.target.value) || 1)} min="1" max={parsedChapters.length} className="w-20 bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-1.5 text-gray-900 dark:text-white focus:border-primary-500"/>
-                            <label htmlFor="rangeTo" className="text-sm font-medium text-slate-700 dark:text-slate-300 shrink-0">To:</label>
-                            <input type="number" id="rangeTo" value={rangeEnd} onChange={e => setRangeEnd(parseInt(e.target.value) || 1)} min="1" max={parsedChapters.length} className="w-20 bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-1.5 text-gray-900 dark:text-white focus:border-primary-500"/>
-                            <button onClick={handleApplyRangeSelection} className="inline-flex items-center justify-center rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 px-3 py-1.5 text-sm">Apply</button>
+                 <div className="mt-6 p-4 bg-slate-100 dark:bg-slate-700/30 rounded-lg border border-slate-200 dark:border-slate-600/50">
+                    <h4 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 text-center">Select Chapter Range</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-xl mx-auto">
+                        <div>
+                            <label htmlFor="startChapter" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">From Chapter:</label>
+                            <select id="startChapter" value={startChapterIndex} onChange={handleStartChapterChange} className="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
+                                {parsedChapters.map((chap, index) => (
+                                    <option key={chap.index} value={index}>{chap.title}</option>
+                                ))}
+                            </select>
                         </div>
-                    )}
-                    <ul className="max-w-xl mx-auto max-h-48 overflow-y-auto bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 list-none text-left" aria-label="List of EPUB chapters for selection">
-                        {parsedChapters.map(chap => (
-                            <li key={chap.index} onClick={() => handleCheckboxClick(chap.index)} className="flex items-center gap-2 p-1.5 rounded-md transition-colors hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer select-none">
-                                <input type="checkbox" readOnly checked={selectedIndices.has(chap.index)} className="w-4 h-4 rounded border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-primary-500 accent-primary-600 pointer-events-none" />
-                                <span className="text-sm text-slate-700 dark:text-slate-300 flex-1">{chap.title}</span>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
+                        <div>
+                            <label htmlFor="endChapter" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">To Chapter:</label>
+                            <select id="endChapter" value={endChapterIndex} onChange={handleEndChapterChange} className="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
+                                {parsedChapters.map((chap, index) => (
+                                    <option key={chap.index} value={index}>{chap.title}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                 </div>
             )}
             
             <div className="max-w-md mx-auto">
