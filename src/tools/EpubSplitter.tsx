@@ -46,6 +46,16 @@ export const EpubSplitter: React.FC = () => {
         }
     };
 
+    const getFirstLinePreview = (text: string) => {
+        if (!text) return '';
+        const firstLine = text.split('\n')[0].trim();
+        if (firstLine) {
+            const truncated = firstLine.length > 60 ? `${firstLine.substring(0, 60)}...` : firstLine;
+            return ` - "${truncated}"`;
+        }
+        return '';
+    };
+
     const resetChapterSelection = () => {
         setParsedChapters([]);
         setStartChapterIndex(0);
@@ -327,7 +337,7 @@ export const EpubSplitter: React.FC = () => {
         
         const pdfBytes = await createPdfFromChapters(chaptersForPdf, fontBytes, fontSize);
         const fileNameBase = epubFile?.name.replace(/\.epub$/i, '') || 'novel';
-       triggerDownload(new Blob([pdfBytes as BlobPart], { type: 'application/pdf' }), `${fileNameBase}_combined.pdf`);
+       triggerDownload(new Blob([pdfBytes as BlobPart], { type: 'application/pdf' }), `${fileNameBase}.pdf`);
 
     };
 
@@ -340,7 +350,7 @@ export const EpubSplitter: React.FC = () => {
 
         const blob = new Blob([BOM + content], { type: 'text/plain;charset=utf-8' });
         const fileNameBase = epubFile?.name.replace(/\.epub$/i, '') || 'novel';
-        triggerDownload(blob, `${fileNameBase}_combined.txt`);
+        triggerDownload(blob, `${fileNameBase}.txt`);
     };
 
     const createDocxBlob = async (chaptersData: { title: string, text: string }[]): Promise<Blob> => {
@@ -441,7 +451,7 @@ export const EpubSplitter: React.FC = () => {
     
         const blob = await createDocxBlob(chaptersWithTitles);
         const fileNameBase = epubFile?.name.replace(/\.epub$/i, '') || 'novel';
-        triggerDownload(blob, `${fileNameBase}_combined.docx`);
+        triggerDownload(blob, `${fileNameBase}.docx`);
     };
 
     const generateDocxZip = async (chaptersToProcess: typeof parsedChapters) => {
@@ -748,7 +758,9 @@ export const EpubSplitter: React.FC = () => {
                             <label htmlFor="startChapter" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">From Chapter:</label>
                             <select id="startChapter" value={startChapterIndex} onChange={handleStartChapterChange} className="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
                                 {parsedChapters.map((chap, index) => (
-                                    <option key={chap.index} value={index}>{chap.title}</option>
+                                    <option key={chap.index} value={index}>
+                                        {`${chap.title}${getFirstLinePreview(chap.text)}`}
+                                    </option>
                                 ))}
                             </select>
                         </div>
@@ -756,7 +768,9 @@ export const EpubSplitter: React.FC = () => {
                             <label htmlFor="endChapter" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">To Chapter:</label>
                             <select id="endChapter" value={endChapterIndex} onChange={handleEndChapterChange} className="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
                                 {parsedChapters.map((chap, index) => (
-                                    <option key={chap.index} value={index}>{chap.title}</option>
+                                    <option key={chap.index} value={index}>
+                                        {`${chap.title}${getFirstLinePreview(chap.text)}`}
+                                    </option>
                                 ))}
                             </select>
                         </div>
