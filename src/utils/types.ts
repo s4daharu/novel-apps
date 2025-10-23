@@ -84,4 +84,5 @@ export type BackupOrganizerFileInfo = {
     seriesName?: string;
     timestamp?: number;
     jsonData?: BackupData;
+    wordCount?: number;
 };

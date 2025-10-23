@@ -4,6 +4,7 @@ import { FileInput } from '../components/FileInput';
 import { StatusMessage } from '../components/StatusMessage';
 import { getJSZip, triggerDownload } from '../utils/helpers';
 import { Status, BackupData, BackupOrganizerFileInfo } from '../utils/types';
+import { calculateWordCount } from '../utils/backupHelpers';
 
 const formatBytes = (bytes: number, decimals = 2) => {
     if (bytes === 0) return '0 Bytes';
@@ -16,6 +17,69 @@ const formatBytes = (bytes: number, decimals = 2) => {
 
 const formatDate = (date: Date) => date.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
 
+const FilePanel = ({ title, files, selectedFiles, onSelection, onSeriesSelection, onPreview, onDownload, collapsedSeries, setCollapsedSeries, newestFileTimestamp, fileSort }: {
+    title: string;
+    files: BackupOrganizerFileInfo[];
+    selectedFiles: Set<BackupOrganizerFileInfo>;
+    onSelection: (file: BackupOrganizerFileInfo, isSelected: boolean) => void;
+    onSeriesSelection: (files: BackupOrganizerFileInfo[], isSelected: boolean) => void;
+    onPreview: (file: BackupOrganizerFileInfo) => void;
+    onDownload: (file: BackupOrganizerFileInfo) => void;
+    collapsedSeries: Set<string>;
+    setCollapsedSeries: React.Dispatch<React.SetStateAction<Set<string>>>;
+    newestFileTimestamp: number;
+    fileSort: string;
+}) => {
+    const isCollapsed = collapsedSeries.has(title);
+    const visibleFiles = files;
+    const allVisibleSelected = visibleFiles.length > 0 && visibleFiles.every((f:any) => selectedFiles.has(f));
+    const someVisibleSelected = visibleFiles.some((f:any) => selectedFiles.has(f));
+    
+    return (
+        <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
+            <header onClick={() => setCollapsedSeries((p: Set<string>) => { const s = new Set(p); isCollapsed ? s.delete(title) : s.add(title); return s; })} className="p-3 flex items-center gap-3 cursor-pointer select-none">
+                {/* FIX: The `ref` callback for setting the indeterminate state was implicitly returning a boolean.
+                    This has been corrected to a function block that returns void, resolving the TypeScript error. */}
+                <input type="checkbox" checked={allVisibleSelected} ref={el => { if (el) { el.indeterminate = !allVisibleSelected && someVisibleSelected; } }} onClick={e => e.stopPropagation()} onChange={e => onSeriesSelection(visibleFiles, e.target.checked)} className="w-5 h-5 rounded accent-primary-600 focus:ring-primary-500" />
+                <h2 className="font-semibold text-lg flex-grow text-slate-800 dark:text-slate-200">{title}</h2>
+                <span className="text-sm px-2 py-1 bg-slate-200 dark:bg-slate-700 rounded-full">{files.length}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-slate-500 dark:text-slate-400 transition-transform duration-200 ${isCollapsed ? '' : 'rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+            </header>
+            {!isCollapsed && (
+                <ul className="list-none p-0 m-0 border-t border-slate-200 dark:border-slate-700">
+                    {files.map((file: BackupOrganizerFileInfo) => (
+                        <li key={file.fullPath} className="flex items-start gap-3 p-3 border-b border-slate-200 dark:border-slate-700 last:border-b-0">
+                            <input type="checkbox" checked={selectedFiles.has(file)} onChange={e => onSelection(file, e.target.checked)} className="w-5 h-5 rounded mt-1 accent-primary-600 focus:ring-primary-500" />
+                            <div className="flex-grow min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <span onClick={() => onPreview(file)} className="truncate cursor-pointer hover:text-primary-500 font-medium text-slate-800 dark:text-slate-200" title={file.originalName}>{file.originalName}</span>
+                                    {file.timestamp === newestFileTimestamp && file.fileType === 'nov' && <span className="flex-shrink-0 text-xs px-1.5 py-0.5 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full">Latest</span>}
+                                </div>
+                                <div className="flex items-center gap-x-3 gap-y-1 flex-wrap text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    <span>{formatDate(file.dateObject)}</span>
+                                    <span className="hidden sm:inline text-slate-300 dark:text-slate-600">|</span>
+                                    <span>{formatBytes(file.size)}</span>
+                                    {file.wordCount != null && (
+                                        <>
+                                            <span className="hidden sm:inline text-slate-300 dark:text-slate-600">|</span>
+                                            <span>{file.wordCount.toLocaleString()} words</span>
+                                        </>
+                                    )}
+                                     <span className="hidden sm:inline text-slate-300 dark:text-slate-600">|</span>
+                                    <span className="truncate" title={file.folderPath}>{file.folderPath}</span>
+                                </div>
+                            </div>
+                            <button onClick={() => onDownload(file)} className="flex-shrink-0 p-2 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400" aria-label={`Download ${file.originalName}`}>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+};
+
 export const BackupOrganizer: React.FC = () => {
     const { showToast, showSpinner, hideSpinner } = useAppContext();
 
@@ -27,13 +91,11 @@ export const BackupOrganizer: React.FC = () => {
     const [selectedFiles, setSelectedFiles] = useState<Set<BackupOrganizerFileInfo>>(new Set());
     const [allFolders, setAllFolders] = useState<string[]>([]);
     
-    // Filters & Sorting
     const [searchQuery, setSearchQuery] = useState('');
     const [folderFilter, setFolderFilter] = useState('all');
     const [seriesSort, setSeriesSort] = useState('name-asc');
-    const [fileSort, setFileSort] = useState('desc');
+    const [fileSort, setFileSort] = useState('date-desc');
 
-    // UI State
     const [collapsedSeries, setCollapsedSeries] = useState<Set<string>>(new Set());
     const [modalContent, setModalContent] = useState<BackupOrganizerFileInfo | null>(null);
     const [preserveStructure, setPreserveStructure] = useState(false);
@@ -60,7 +122,6 @@ export const BackupOrganizer: React.FC = () => {
             });
 
             const allFiles = (await Promise.all(filePromises)).filter((f): f is BackupOrganizerFileInfo => f !== null);
-
             const series: Record<string, BackupOrganizerFileInfo[]> = {};
             const others: BackupOrganizerFileInfo[] = [];
             let novFileCount = 0;
@@ -68,9 +129,7 @@ export const BackupOrganizer: React.FC = () => {
             allFiles.forEach(fileInfo => {
                 if (fileInfo.fileType === 'nov' && fileInfo.seriesName) {
                     novFileCount++;
-                    if (!series[fileInfo.seriesName]) {
-                        series[fileInfo.seriesName] = [];
-                    }
+                    if (!series[fileInfo.seriesName]) series[fileInfo.seriesName] = [];
                     series[fileInfo.seriesName].push(fileInfo);
                 } else {
                     others.push(fileInfo);
@@ -99,87 +158,65 @@ export const BackupOrganizer: React.FC = () => {
         const folderPath = fullPath.substring(0, fullPath.lastIndexOf('/') + 1) || '/';
         const fileExt = originalName.split('.').pop()?.toLowerCase() || '';
 
-        const baseInfo = {
-            fullPath, originalName, folderPath, zipEntry,
-            size: zipEntry._data.uncompressedSize,
-            dateObject: zipEntry.date,
-            fileType: fileExt,
-        };
+        const baseInfo = { fullPath, originalName, folderPath, zipEntry, size: zipEntry._data.uncompressedSize, dateObject: zipEntry.date, fileType: fileExt };
 
-        if (originalName.toLowerCase().endsWith('.nov') || originalName.toLowerCase().endsWith('.nov.txt')) {
+        if (fileExt === 'nov' || originalName.toLowerCase().endsWith('.nov.txt')) {
             try {
                 const content = await zipEntry.async('string');
                 const data = JSON.parse(content) as BackupData;
                 if (!data.title || !data.last_update_date) return null;
+                const wordCount = data.revisions?.[0]?.scenes ? calculateWordCount(data.revisions[0].scenes) : 0;
                 
-                return {
-                    ...baseInfo,
-                    seriesName: data.title,
-                    timestamp: data.last_update_date,
-                    dateObject: new Date(data.last_update_date),
-                    jsonData: data,
-                };
+                return { ...baseInfo, seriesName: data.title, timestamp: data.last_update_date, dateObject: new Date(data.last_update_date), jsonData: data, wordCount };
             } catch { return null; }
-        } else {
-             return baseInfo;
         }
+        return baseInfo;
     };
     
     const filteredAndSortedData = useMemo(() => {
         const query = searchQuery.toLowerCase();
         
-        const filterFile = (file: BackupOrganizerFileInfo) => {
-            const folderMatch = folderFilter === 'all' || file.folderPath === folderFilter;
-            if (!folderMatch) return false;
-            
-            const textMatch = (
-                file.originalName.toLowerCase().includes(query) ||
-                (file.seriesName && file.seriesName.toLowerCase().includes(query)) ||
-                (file.jsonData?.description && file.jsonData.description.toLowerCase().includes(query))
-            );
-            return textMatch;
-        };
-
-        const sortedSeries = Object.entries(processedSeries).map(([seriesName, files]) => {
-            const sortedFiles = [...files].sort((a, b) => fileSort === 'asc' ? (a.timestamp ?? 0) - (b.timestamp ?? 0) : (b.timestamp ?? 0) - (a.timestamp ?? 0));
-            return { seriesName, files: sortedFiles.filter(filterFile) };
-        }).filter(s => s.files.length > 0);
-
-        if (seriesSort === 'name-asc') {
-            sortedSeries.sort((a, b) => a.seriesName.localeCompare(b.seriesName));
-        } else if (seriesSort === 'file-count-desc') {
-            sortedSeries.sort((a, b) => b.files.length - a.files.length);
-        } else if (seriesSort === 'updated-desc') {
-            sortedSeries.sort((a, b) => {
-                const lastA = Math.max(...a.files.map(f => f.timestamp ?? 0));
-                const lastB = Math.max(...b.files.map(f => f.timestamp ?? 0));
-                return lastB - lastA;
-            });
-        }
+        const filterFile = (file: BackupOrganizerFileInfo) => (
+            (folderFilter === 'all' || file.folderPath === folderFilter) &&
+            (file.originalName.toLowerCase().includes(query) ||
+             (file.seriesName && file.seriesName.toLowerCase().includes(query)) ||
+             (file.jsonData?.description && file.jsonData.description.toLowerCase().includes(query)))
+        );
         
-        return {
-            series: sortedSeries,
-            others: otherFiles.filter(filterFile).sort((a,b) => a.fullPath.localeCompare(b.fullPath)),
+        const fileSorter = (a: BackupOrganizerFileInfo, b: BackupOrganizerFileInfo) => {
+            switch (fileSort) {
+                case 'date-asc': return (a.timestamp ?? a.dateObject.getTime()) - (b.timestamp ?? b.dateObject.getTime());
+                case 'date-desc': return (b.timestamp ?? b.dateObject.getTime()) - (a.timestamp ?? a.dateObject.getTime());
+                case 'size-asc': return a.size - b.size;
+                case 'size-desc': return b.size - a.size;
+                case 'word-count-asc': return (a.wordCount ?? -1) - (b.wordCount ?? -1);
+                case 'word-count-desc': return (b.wordCount ?? -1) - (a.wordCount ?? -1);
+                case 'name-asc': return a.originalName.localeCompare(b.originalName);
+                case 'name-desc': return b.originalName.localeCompare(a.originalName);
+                default: return 0;
+            }
         };
 
-    }, [searchQuery, folderFilter, seriesSort, fileSort, processedSeries, otherFiles]);
+        const sortedSeries = Object.entries(processedSeries).map(([seriesName, files]) => ({
+            seriesName,
+            files: files.filter(filterFile).sort(fileSorter)
+        })).filter(s => s.files.length > 0);
 
+        if (seriesSort === 'name-asc') sortedSeries.sort((a, b) => a.seriesName.localeCompare(b.seriesName));
+        else if (seriesSort === 'file-count-desc') sortedSeries.sort((a, b) => b.files.length - a.files.length);
+        else if (seriesSort === 'updated-desc') sortedSeries.sort((a, b) => Math.max(...b.files.map(f => f.timestamp ?? 0)) - Math.max(...a.files.map(f => f.timestamp ?? 0)));
+        
+        return { series: sortedSeries, others: otherFiles.filter(filterFile).sort(fileSorter) };
+    }, [searchQuery, folderFilter, seriesSort, fileSort, processedSeries, otherFiles]);
+    
     const handleSelection = useCallback((file: BackupOrganizerFileInfo, isSelected: boolean) => {
-        setSelectedFiles(prev => {
-            const newSet = new Set(prev);
-            if (isSelected) newSet.add(file);
-            else newSet.delete(file);
-            return newSet;
-        });
+        setSelectedFiles(prev => { const newSet = new Set(prev); isSelected ? newSet.add(file) : newSet.delete(file); return newSet; });
     }, []);
 
     const handleSeriesSelection = useCallback((files: BackupOrganizerFileInfo[], isSelected: boolean) => {
         setSelectedFiles(prev => {
             const newSet = new Set(prev);
-            files.forEach(file => {
-                if (isSelected) newSet.add(file);
-                else newSet.delete(file);
-            });
+            files.forEach(file => isSelected ? newSet.add(file) : newSet.delete(file));
             return newSet;
         });
     }, []);
@@ -193,6 +230,15 @@ export const BackupOrganizer: React.FC = () => {
             if (fileToSelect) newSelections.add(fileToSelect);
         });
         setSelectedFiles(newSelections);
+    };
+    
+    const handleSelectAll = (select: boolean) => {
+        if (select) {
+            const allVisibleFiles = new Set([...filteredAndSortedData.series.flatMap(s => s.files), ...filteredAndSortedData.others]);
+            setSelectedFiles(allVisibleFiles);
+        } else {
+            setSelectedFiles(new Set());
+        }
     };
 
     const downloadSelected = async () => {
@@ -215,16 +261,20 @@ export const BackupOrganizer: React.FC = () => {
         }
     };
     
-    const resetState = () => {
-        setZipFile(null);
-        setStatus(null);
-        setProcessedSeries({});
-        setOtherFiles([]);
-        setSelectedFiles(new Set());
-        setAllFolders([]);
-        setSearchQuery('');
-        setFolderFilter('all');
+     const downloadSingleFile = async (fileInfo: BackupOrganizerFileInfo) => {
+        showToast(`Downloading ${fileInfo.originalName}...`);
+        showSpinner();
+        try {
+            const content = await fileInfo.zipEntry.async('blob');
+            triggerDownload(content, fileInfo.originalName);
+        } catch (err: any) {
+            showToast(`Error downloading file: ${err.message}`, true);
+        } finally {
+            hideSpinner();
+        }
     };
+    
+    const resetState = () => { setZipFile(null); setStatus(null); setProcessedSeries({}); setOtherFiles([]); setSelectedFiles(new Set()); setAllFolders([]); setSearchQuery(''); setFolderFilter('all'); };
 
     if (!zipFile) {
         return (
@@ -239,26 +289,43 @@ export const BackupOrganizer: React.FC = () => {
     }
     
     return (
-        <div id="backupOrganizerApp" className="max-w-5xl mx-auto p-4 md:p-6 space-y-5 animate-fade-in">
+        <div id="backupOrganizerApp" className="max-w-5xl mx-auto p-4 md:p-6 space-y-5 animate-fade-in pb-28">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">Backup Organizer</h1>
 
-            <div className="p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                <div className="lg:col-span-2">
-                    <label htmlFor="searchInput" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Filter:</label>
-                    <input type="text" id="searchInput" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Filter by name, desc..." className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-gray-900 dark:text-white"/>
-                </div>
-                {allFolders.length > 1 && (
+            <div className="p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 items-end">
                     <div>
-                        <label htmlFor="folderFilter" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Folder:</label>
-                        <select id="folderFilter" value={folderFilter} onChange={e => setFolderFilter(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-gray-900 dark:text-white">
-                            <option value="all">All Folders</option>
-                            {allFolders.map(f => <option key={f} value={f}>{f}</option>)}
+                        <label htmlFor="searchInput" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Filter by Name/Description:</label>
+                        <input type="text" id="searchInput" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="e.g., Chapter 1, draft..." className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-gray-900 dark:text-white"/>
+                    </div>
+                     {allFolders.length > 1 && (
+                        <div>
+                            <label htmlFor="folderFilter" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Filter by Folder:</label>
+                            <select id="folderFilter" value={folderFilter} onChange={e => setFolderFilter(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-gray-900 dark:text-white">
+                                <option value="all">All Folders</option>
+                                {allFolders.map(f => <option key={f} value={f}>{f || '/'}</option>)}
+                            </select>
+                        </div>
+                    )}
+                    <div>
+                        <label htmlFor="fileSort" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Sort Files By:</label>
+                        <select id="fileSort" value={fileSort} onChange={e => setFileSort(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-gray-900 dark:text-white">
+                           <option value="date-desc">Date (Newest First)</option>
+                           <option value="date-asc">Date (Oldest First)</option>
+                           <option value="name-asc">Name (A-Z)</option>
+                           <option value="name-desc">Name (Z-A)</option>
+                           <option value="size-desc">Size (Largest First)</option>
+                           <option value="size-asc">Size (Smallest First)</option>
+                           <option value="word-count-desc">Word Count (Most First)</option>
+                           <option value="word-count-asc">Word Count (Fewest First)</option>
                         </select>
                     </div>
-                )}
-                <div className="grid grid-cols-2 gap-2">
-                    <button onClick={() => handleSelectLatest('newest')} className="px-3 py-2 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Select Newest</button>
-                    <button onClick={() => handleSelectLatest('oldest')} className="px-3 py-2 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Select Oldest</button>
+                     <div className="grid grid-cols-2 gap-2">
+                        <button onClick={() => handleSelectLatest('newest')} className="px-3 py-2 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Select Newest</button>
+                        <button onClick={() => handleSelectLatest('oldest')} className="px-3 py-2 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Select Oldest</button>
+                        <button onClick={() => handleSelectAll(true)} className="px-3 py-2 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Select All</button>
+                        <button onClick={() => handleSelectAll(false)} className="px-3 py-2 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Select None</button>
+                    </div>
                 </div>
             </div>
 
@@ -266,16 +333,16 @@ export const BackupOrganizer: React.FC = () => {
 
             <div className="space-y-4">
                 {filteredAndSortedData.series.map(({ seriesName, files }) => (
-                    <SeriesPanel key={seriesName} seriesName={seriesName} files={files} selectedFiles={selectedFiles} onSelection={handleSelection} onSeriesSelection={handleSeriesSelection} onPreview={setModalContent} collapsedSeries={collapsedSeries} setCollapsedSeries={setCollapsedSeries} newestFileTimestamp={Math.max(...files.map(f => f.timestamp ?? 0))} />
+                    <FilePanel key={seriesName} title={seriesName} files={files} selectedFiles={selectedFiles} onSelection={handleSelection} onSeriesSelection={handleSeriesSelection} onPreview={setModalContent} onDownload={downloadSingleFile} collapsedSeries={collapsedSeries} setCollapsedSeries={setCollapsedSeries} newestFileTimestamp={Math.max(...files.map(f => f.timestamp ?? 0))} fileSort={fileSort} />
                 ))}
                 {filteredAndSortedData.others.length > 0 && (
-                    <OtherFilesPanel files={filteredAndSortedData.others} selectedFiles={selectedFiles} onSelection={handleSelection} onSeriesSelection={handleSeriesSelection} onPreview={setModalContent} collapsedSeries={collapsedSeries} setCollapsedSeries={setCollapsedSeries} />
+                     <FilePanel title="Other Files" files={filteredAndSortedData.others} selectedFiles={selectedFiles} onSelection={handleSelection} onSeriesSelection={handleSeriesSelection} onPreview={setModalContent} onDownload={downloadSingleFile} collapsedSeries={collapsedSeries} setCollapsedSeries={setCollapsedSeries} newestFileTimestamp={0} fileSort={fileSort} />
                 )}
             </div>
 
             {selectedFiles.size > 0 && (
-                <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-md z-40 animate-slide-in">
-                    <div className="bg-slate-800/90 dark:bg-slate-900/90 backdrop-blur-sm text-white rounded-xl p-4 shadow-2xl flex items-center justify-between gap-4">
+                <div className="fixed bottom-0 left-0 right-0 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:bottom-4 z-40 sm:w-full sm:max-w-md animate-slide-in">
+                    <div className="bg-slate-800/90 dark:bg-slate-900/90 backdrop-blur-sm text-white sm:rounded-xl p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4 shadow-2xl flex items-center justify-between gap-4">
                         <div>
                             <p className="font-bold">{selectedFiles.size} file(s) selected</p>
                             <label className="text-xs flex items-center gap-2 text-slate-300 mt-1 cursor-pointer">
@@ -293,109 +360,47 @@ export const BackupOrganizer: React.FC = () => {
     );
 };
 
-const SeriesPanel = ({ seriesName, files, selectedFiles, onSelection, onSeriesSelection, onPreview, collapsedSeries, setCollapsedSeries, newestFileTimestamp }: any) => {
-    const isCollapsed = collapsedSeries.has(seriesName);
-    const visibleFiles = files;
-    const allVisibleSelected = visibleFiles.every((f:any) => selectedFiles.has(f));
-    const someVisibleSelected = visibleFiles.some((f:any) => selectedFiles.has(f));
-    
-    return (
-        <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
-            <header onClick={() => setCollapsedSeries((p: Set<string>) => { const s = new Set(p); isCollapsed ? s.delete(seriesName) : s.add(seriesName); return s; })} className="p-3 flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" checked={allVisibleSelected} ref={el => el && (el.indeterminate = !allVisibleSelected && someVisibleSelected)} onClick={e => e.stopPropagation()} onChange={e => onSeriesSelection(visibleFiles, e.target.checked)} className="w-5 h-5 rounded" />
-                <h2 className="font-semibold text-lg flex-grow text-slate-800 dark:text-slate-200">{seriesName}</h2>
-                <span className="text-sm px-2 py-1 bg-slate-200 dark:bg-slate-700 rounded-full">{files.length}</span>
-            </header>
-            {!isCollapsed && (
-                <ul className="list-none p-0 m-0 border-t border-slate-200 dark:border-slate-700">
-                    {files.map((file: BackupOrganizerFileInfo) => (
-                        <li key={file.fullPath} className="grid grid-cols-[auto_1fr_auto] md:grid-cols-[auto_1fr_120px_100px_auto] gap-3 items-center p-3 border-b border-slate-200 dark:border-slate-700 last:border-b-0">
-                            <input type="checkbox" checked={selectedFiles.has(file)} onChange={e => onSelection(file, e.target.checked)} className="w-5 h-5 rounded" />
-                            <div className="truncate">
-                                <span onClick={() => onPreview(file)} className="cursor-pointer hover:text-primary-500">{file.originalName}</span>
-                                {file.timestamp === newestFileTimestamp && <span className="ml-2 text-xs px-1.5 py-0.5 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full">Latest</span>}
-                                <p className="text-xs text-slate-500 dark:text-slate-400 truncate md:hidden">{formatDate(file.dateObject)} - {formatBytes(file.size)}</p>
-                            </div>
-                            <span className="hidden md:inline text-sm text-right text-slate-600 dark:text-slate-400">{formatDate(file.dateObject)}</span>
-                            <span className="hidden md:inline text-sm text-right text-slate-600 dark:text-slate-400">{formatBytes(file.size)}</span>
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </div>
-    );
-};
-
-const OtherFilesPanel = ({ files, selectedFiles, onSelection, onSeriesSelection, onPreview, collapsedSeries, setCollapsedSeries }: any) => {
-    const seriesName = "Other Files";
-    const isCollapsed = collapsedSeries.has(seriesName);
-    const visibleFiles = files;
-    const allVisibleSelected = visibleFiles.every((f: any) => selectedFiles.has(f));
-    const someVisibleSelected = visibleFiles.some((f: any) => selectedFiles.has(f));
-    
-    return (
-        <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
-            <header onClick={() => setCollapsedSeries((p: Set<string>) => { const s = new Set(p); isCollapsed ? s.delete(seriesName) : s.add(seriesName); return s; })} className="p-3 flex items-center gap-3 cursor-pointer">
-                 <input type="checkbox" checked={allVisibleSelected} ref={el => el && (el.indeterminate = !allVisibleSelected && someVisibleSelected)} onClick={e => e.stopPropagation()} onChange={e => onSeriesSelection(visibleFiles, e.target.checked)} className="w-5 h-5 rounded" />
-                <h2 className="font-semibold text-lg flex-grow text-slate-800 dark:text-slate-200">{seriesName}</h2>
-                <span className="text-sm px-2 py-1 bg-slate-200 dark:bg-slate-700 rounded-full">{files.length}</span>
-            </header>
-            {!isCollapsed && (
-                 <ul className="list-none p-0 m-0 border-t border-slate-200 dark:border-slate-700">
-                    {files.map((file: BackupOrganizerFileInfo) => (
-                        <li key={file.fullPath} className="grid grid-cols-[auto_1fr_auto] md:grid-cols-[auto_1fr_120px_100px_auto] gap-3 items-center p-3 border-b border-slate-200 dark:border-slate-700 last:border-b-0">
-                            <input type="checkbox" checked={selectedFiles.has(file)} onChange={e => onSelection(file, e.target.checked)} className="w-5 h-5 rounded" />
-                            <div className="truncate">
-                                <span onClick={() => onPreview(file)} className="cursor-pointer hover:text-primary-500">{file.originalName}</span>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 truncate md:hidden">{formatDate(file.dateObject)} - {formatBytes(file.size)}</p>
-                            </div>
-                            <span className="hidden md:inline text-sm text-right text-slate-600 dark:text-slate-400">{formatDate(file.dateObject)}</span>
-                            <span className="hidden md:inline text-sm text-right text-slate-600 dark:text-slate-400">{formatBytes(file.size)}</span>
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </div>
-    );
-};
-
 const PreviewModal = ({ file, onClose }: { file: BackupOrganizerFileInfo, onClose: () => void }) => {
     const [content, setContent] = useState<string | null>('Loading...');
+    const [imageUrl, setImageUrl] = useState<string | null>(null);
 
     useEffect(() => {
+        let active = true;
         const loadContent = async () => {
             if (file.fileType === 'nov' && file.jsonData) {
                 const data = file.jsonData;
-                const wordCount = data.revisions?.[0]?.book_progresses?.[0]?.word_count?.toLocaleString() || 'N/A';
+                const wordCount = data.revisions?.[0]?.book_progresses?.slice(-1)[0]?.word_count?.toLocaleString() || 'N/A';
                 const sceneCount = data.revisions?.[0]?.scenes?.length || 'N/A';
-                const sectionCount = data.revisions?.[0]?.sections?.length || 'N/A';
-                setContent(`<div class="grid grid-cols-[120px_1fr] gap-x-4 gap-y-2">
-                    <strong class="text-right text-primary-500">Title:</strong> <span>${data.title || 'N/A'}</span>
-                    <strong class="text-right text-primary-500">Description:</strong> <pre class="whitespace-pre-wrap font-sans">${data.description || 'N/A'}</pre>
-                    <strong class="text-right text-primary-500">Folder Path:</strong> <span>${file.folderPath}</span>
-                    <strong class="text-right text-primary-500">Last Updated:</strong> <span>${formatDate(file.dateObject)}</span>
-                    <strong class="text-right text-primary-500">Word Count:</strong> <span>${wordCount}</span>
-                    <strong class="text-right text-primary-500">Scene Count:</strong> <span>${sceneCount}</span>
-                    <strong class="text-right text-primary-500">Section Count:</strong> <span>${sectionCount}</span>
-                    <strong class="text-right text-primary-500">File Size:</strong> <span>${formatBytes(file.size)}</span>
+                if (active) setContent(`<div class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+                    <strong class="text-right text-slate-500 dark:text-slate-400">Title:</strong> <span>${data.title || 'N/A'}</span>
+                    <strong class="text-right text-slate-500 dark:text-slate-400">Description:</strong> <pre class="whitespace-pre-wrap font-sans">${data.description || 'N/A'}</pre>
+                    <strong class="text-right text-slate-500 dark:text-slate-400">Path:</strong> <span>${file.folderPath}</span>
+                    <strong class="text-right text-slate-500 dark:text-slate-400">Updated:</strong> <span>${formatDate(file.dateObject)}</span>
+                    <strong class="text-right text-slate-500 dark:text-slate-400">Words:</strong> <span>${wordCount}</span>
+                    <strong class="text-right text-slate-500 dark:text-slate-400">Scenes:</strong> <span>${sceneCount}</span>
+                    <strong class="text-right text-slate-500 dark:text-slate-400">Size:</strong> <span>${formatBytes(file.size)}</span>
                 </div>`);
-            } else if (['jpg', 'jpeg', 'png', 'gif', 'svg'].includes(file.fileType)) {
+            } else if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(file.fileType)) {
                 const blob = await file.zipEntry.async('blob');
                 const url = URL.createObjectURL(blob);
-                setContent(`<img src="${url}" alt="Preview" class="max-w-full max-h-[60vh] mx-auto" />`);
-                return () => URL.revokeObjectURL(url);
+                if (active) { setImageUrl(url); setContent(null); }
             } else {
                 try {
                     const text = await file.zipEntry.async('string');
-                    setContent(`<pre class="whitespace-pre-wrap text-sm">${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>`);
+                    if (active) setContent(`<pre class="whitespace-pre-wrap text-sm">${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>`);
                 } catch {
-                    setContent('Preview not available for this binary file.');
+                    if (active) setContent('Preview not available for this binary file.');
                 }
             }
         };
-        const cleanupPromise = loadContent();
-        return () => { cleanupPromise.then(cleanup => cleanup && cleanup()); };
-    }, [file]);
+        
+        loadContent();
+
+        return () => {
+            active = false;
+            if (imageUrl) URL.revokeObjectURL(imageUrl);
+        };
+    }, [file, imageUrl]);
 
     return (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -404,7 +409,10 @@ const PreviewModal = ({ file, onClose }: { file: BackupOrganizerFileInfo, onClos
                     <h3 className="font-semibold text-lg truncate text-slate-800 dark:text-slate-200" title={file.originalName}>{file.originalName}</h3>
                     <button onClick={onClose} className="text-2xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white">&times;</button>
                 </header>
-                <div className="p-4 overflow-y-auto" dangerouslySetInnerHTML={{ __html: content || '' }}></div>
+                <div className="p-4 overflow-y-auto">
+                    {imageUrl && <img src={imageUrl} alt="Preview" className="max-w-full max-h-[60vh] mx-auto" />}
+                    {content && <div dangerouslySetInnerHTML={{ __html: content }} />}
+                </div>
             </div>
         </div>
     );
