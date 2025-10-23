@@ -17,6 +17,35 @@ const formatBytes = (bytes: number, decimals = 2) => {
 
 const formatDate = (date: Date) => date.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
 
+const getSeriesNameFromTitle = (title: string): string => {
+    if (!title) return 'Untitled Series';
+
+    // This regex is designed to be non-greedy and match common chapter range patterns
+    const chapterRangePattern = /(C|Ch|Chapter)?\s?\d+[-_]\d+/i;
+    const simpleChapterPattern = /(C|Ch|Chapter)\s?\d+/i;
+
+    let cleanedTitle = title
+        // Remove prefixes like "101-200_", "C1_100_", or "Ch 1-100 "
+        .replace(new RegExp(`^${chapterRangePattern.source}[-_]?\\s*`), '')
+        // Remove suffixes like " C1-300", "_C101_200", or " C102_END"
+        .replace(new RegExp(`\\s*[-_]?${chapterRangePattern.source}(\\s*_END)?$`), '')
+        // Remove simple chapter indicators like " C101" at the end of the string
+        .replace(new RegExp(`\\s*${simpleChapterPattern.source}$`), '')
+        // Normalize underscores/hyphens to spaces and collapse multiple whitespace characters
+        .replace(/[_-]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+        
+    // If cleaning the title results in an empty string (e.g., the title was just "1-100"),
+    // fall back to the original title to avoid blank series names.
+    if (!cleanedTitle) {
+        return title;
+    }
+    
+    return cleanedTitle;
+};
+
+
 const FilePanel = ({ title, files, selectedFiles, onSelection, onSeriesSelection, onPreview, onDownload, collapsedSeries, setCollapsedSeries, newestFileTimestamp, fileSort }: {
     title: string;
     files: BackupOrganizerFileInfo[];
@@ -100,10 +129,40 @@ export const BackupOrganizer: React.FC = () => {
     const [modalContent, setModalContent] = useState<BackupOrganizerFileInfo | null>(null);
     const [preserveStructure, setPreserveStructure] = useState(false);
 
+    const parseFileContent = useCallback(async (zipEntry: any): Promise<BackupOrganizerFileInfo> => {
+        const fullPath = zipEntry.name;
+        const originalName = fullPath.split('/').pop() || '';
+        const folderPath = fullPath.substring(0, fullPath.lastIndexOf('/') + 1) || '/';
+        const fileExt = originalName.split('.').pop()?.toLowerCase() || '';
+
+        const baseInfo: BackupOrganizerFileInfo = { fullPath, originalName, folderPath, zipEntry, size: zipEntry._data.uncompressedSize, dateObject: zipEntry.date, fileType: fileExt };
+
+        if (fileExt === 'nov' || fileExt === 'json' || originalName.toLowerCase().endsWith('.nov.txt')) {
+            try {
+                const content = await zipEntry.async('string');
+                const data = JSON.parse(content) as BackupData;
+                if (data.title && typeof data.last_update_date !== 'undefined' && data.revisions) {
+                    const wordCount = data.revisions?.[0]?.scenes ? calculateWordCount(data.revisions[0].scenes) : 0;
+                    const seriesName = getSeriesNameFromTitle(data.title);
+                    return { ...baseInfo, seriesName, timestamp: data.last_update_date, dateObject: new Date(data.last_update_date), jsonData: data, wordCount };
+                }
+            } catch {
+                 // Not a valid backup json, fall through to return baseInfo and classify as "Other File"
+            }
+        }
+        return baseInfo;
+    }, []);
+
     const handleFileSelected = async (files: FileList) => {
         resetState();
         const file = files[0];
-        if (!file || file.type !== "application/zip") {
+        const isZipFile = file && (
+            file.type === 'application/zip' ||
+            file.type === 'application/x-zip-compressed' ||
+            file.name.toLowerCase().endsWith('.zip')
+        );
+
+        if (!isZipFile) {
             showToast('Please upload a valid .zip file.', true);
             return;
         }
@@ -114,20 +173,20 @@ export const BackupOrganizer: React.FC = () => {
         try {
             const JSZip = await getJSZip();
             const zip = await JSZip.loadAsync(file);
-            const filePromises: Promise<BackupOrganizerFileInfo | null>[] = [];
+            const filePromises: Promise<BackupOrganizerFileInfo>[] = [];
             zip.forEach((_: string, zipEntry: any) => {
                 if (!zipEntry.dir) {
                     filePromises.push(parseFileContent(zipEntry));
                 }
             });
 
-            const allFiles = (await Promise.all(filePromises)).filter((f): f is BackupOrganizerFileInfo => f !== null);
+            const allFiles = await Promise.all(filePromises);
             const series: Record<string, BackupOrganizerFileInfo[]> = {};
             const others: BackupOrganizerFileInfo[] = [];
             let novFileCount = 0;
 
             allFiles.forEach(fileInfo => {
-                if (fileInfo.fileType === 'nov' && fileInfo.seriesName) {
+                if (fileInfo.seriesName) {
                     novFileCount++;
                     if (!series[fileInfo.seriesName]) series[fileInfo.seriesName] = [];
                     series[fileInfo.seriesName].push(fileInfo);
@@ -150,27 +209,6 @@ export const BackupOrganizer: React.FC = () => {
         } finally {
             hideSpinner();
         }
-    };
-
-    const parseFileContent = async (zipEntry: any): Promise<BackupOrganizerFileInfo | null> => {
-        const fullPath = zipEntry.name;
-        const originalName = fullPath.split('/').pop() || '';
-        const folderPath = fullPath.substring(0, fullPath.lastIndexOf('/') + 1) || '/';
-        const fileExt = originalName.split('.').pop()?.toLowerCase() || '';
-
-        const baseInfo = { fullPath, originalName, folderPath, zipEntry, size: zipEntry._data.uncompressedSize, dateObject: zipEntry.date, fileType: fileExt };
-
-        if (fileExt === 'nov' || originalName.toLowerCase().endsWith('.nov.txt')) {
-            try {
-                const content = await zipEntry.async('string');
-                const data = JSON.parse(content) as BackupData;
-                if (!data.title || !data.last_update_date) return null;
-                const wordCount = data.revisions?.[0]?.scenes ? calculateWordCount(data.revisions[0].scenes) : 0;
-                
-                return { ...baseInfo, seriesName: data.title, timestamp: data.last_update_date, dateObject: new Date(data.last_update_date), jsonData: data, wordCount };
-            } catch { return null; }
-        }
-        return baseInfo;
     };
     
     const filteredAndSortedData = useMemo(() => {
@@ -323,8 +361,8 @@ export const BackupOrganizer: React.FC = () => {
                      <div className="grid grid-cols-2 gap-2">
                         <button onClick={() => handleSelectLatest('newest')} className="px-3 py-2 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Select Newest</button>
                         <button onClick={() => handleSelectLatest('oldest')} className="px-3 py-2 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Select Oldest</button>
-                        <button onClick={() => handleSelectAll(true)} className="px-3 py-2 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Select All</button>
-                        <button onClick={() => handleSelectAll(false)} className="px-3 py-2 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Select None</button>
+                        <button onClick={() => handleSelectAll(true)} className="px-3 py-2 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Select All</option>
+                        <button onClick={() => handleSelectAll(false)} className="px-3 py-2 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Select None</option>
                     </div>
                 </div>
             </div>
