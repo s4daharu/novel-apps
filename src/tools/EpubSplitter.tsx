@@ -22,7 +22,6 @@ export const EpubSplitter: React.FC = () => {
     const [epubFile, setEpubFile] = useState<File | null>(null);
     const [parsedChapters, setParsedChapters] = useState<{ index: number; title: string; text: string }[]>([]);
     const [status, setStatus] = useState<Status | null>(null);
-    const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
     // Form Inputs State
     const [outputFormat, setOutputFormat] = useState<'zip-txt' | 'zip-pdf' | 'single-txt' | 'single-docx' | 'zip-docx' | 'single-pdf'>('zip-txt');
@@ -34,6 +33,7 @@ export const EpubSplitter: React.FC = () => {
     const [groupSize, setGroupSize] = useState(4);
     const [pdfFontSize, setPdfFontSize] = useState(14);
     const [useFirstLineAsHeading, setUseFirstLineAsHeading] = useState(false);
+    const [isFormattingOptionsOpen, setFormattingOptionsOpen] = useState(false);
     
     // Handlers for chapter range selection
     const handleStartChapterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -767,6 +767,7 @@ export const EpubSplitter: React.FC = () => {
         return await pdfDoc.save();
     }
 
+    const showFormattingOptions = outputFormat.includes('pdf') || outputFormat.includes('docx');
 
     return (
         <div id="splitterApp" className="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 animate-fade-in will-change-[transform,opacity]">
@@ -830,10 +831,15 @@ export const EpubSplitter: React.FC = () => {
                     <div>
                         <label htmlFor="chapterPattern" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                         Chapter Prefix:
-                        <span className={`tooltip-trigger relative group inline-block ml-1 cursor-help text-primary-600 font-bold border border-primary-600 rounded-full w-5 h-5 leading-4 text-center text-xs hover:bg-primary-600 hover:text-white ${activeTooltip === 'prefix' ? 'active' : ''}`} role="button" tabIndex={0} onClick={() => setActiveTooltip(p => p === 'prefix' ? null : 'prefix')}>
-                                (?)
-                                <span className="tooltip-text-popup absolute bottom-full left-1/2 -ml-[110px] w-[220px] invisible opacity-0 group-hover:visible group-hover:opacity-100 group-[.active]:visible group-[.active]:opacity-100 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-left rounded-md p-2 z-10 shadow-lg text-sm transition-opacity duration-300">Pattern for naming output files, e.g., 'C' will result in C01.txt, C02.txt. Click to dismiss.<div className="absolute top-full left-1/2 -ml-1 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-100 dark:border-t-slate-800"></div></span>
-                        </span>
+                        <div className="relative group">
+                             <button type="button" aria-describedby="prefix-tooltip" className="flex items-center justify-center p-1 cursor-help text-primary-600 font-bold border border-primary-600 rounded-full w-6 h-6 leading-4 text-center text-sm hover:bg-primary-600 hover:text-white">
+                                ?
+                            </button>
+                            <span id="prefix-tooltip" role="tooltip" className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-56 invisible opacity-0 group-hover:visible group-hover:opacity-100 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-left rounded-md p-2 z-10 shadow-lg text-sm transition-opacity duration-300">
+                                Pattern for naming output files, e.g., 'C' will result in C01.txt, C02.txt.
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-[-4px] w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-100 dark:border-t-slate-800"></div>
+                            </span>
+                        </div>
                         </label>
                         <input type="text" id="chapterPattern" placeholder="e.g., Chapter " value={chapterPattern} onChange={e => setChapterPattern(e.target.value)} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
                     </div>
@@ -851,29 +857,35 @@ export const EpubSplitter: React.FC = () => {
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">When using grouped mode, how many chapters to include in each output file</p>
                     </div>
                 )}
-                 {(outputFormat === 'zip-pdf' || outputFormat === 'single-pdf') && (
+                 {showFormattingOptions && (
                     <div className="mt-4 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
-                        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-2 text-center">PDF Options</h3>
-                        <div className="max-w-xs mx-auto">
-                            <label htmlFor="pdfFontSize" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Font Size:</label>
-                            <input type="number" id="pdfFontSize" min="8" max="32" value={pdfFontSize} onChange={e => setPdfFontSize(parseInt(e.target.value, 10))} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
-                        </div>
-                    </div>
-                )}
-
-                {(outputFormat.includes('pdf') || outputFormat.includes('docx')) && (
-                    <div className="mt-4 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
-                        <label className="flex items-center gap-2 justify-center text-slate-800 dark:text-slate-200 select-none cursor-pointer" htmlFor="useFirstLineAsHeading">
-                            <input
-                                type="checkbox"
-                                id="useFirstLineAsHeading"
-                                checked={useFirstLineAsHeading}
-                                onChange={e => setUseFirstLineAsHeading(e.target.checked)}
-                                className="w-4 h-4 align-middle rounded border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-slate-100 dark:focus:ring-offset-slate-800 accent-primary-600"
-                            />
-                            Use first line as chapter heading
-                        </label>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Treats the first line of text as the chapter title inside the document.</p>
+                        <button type="button" onClick={() => setFormattingOptionsOpen(!isFormattingOptionsOpen)} className="w-full flex justify-between items-center text-left">
+                            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Formatting Options</h3>
+                             <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-slate-500 dark:text-slate-400 transition-transform duration-200 ${isFormattingOptionsOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                        </button>
+                        {isFormattingOptionsOpen && (
+                            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-600 space-y-4">
+                                {(outputFormat === 'zip-pdf' || outputFormat === 'single-pdf') && (
+                                    <div className="max-w-xs mx-auto">
+                                        <label htmlFor="pdfFontSize" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">PDF Font Size:</label>
+                                        <input type="number" id="pdfFontSize" min="8" max="32" value={pdfFontSize} onChange={e => setPdfFontSize(parseInt(e.target.value, 10))} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
+                                    </div>
+                                )}
+                                <div>
+                                    <label className="flex items-center gap-2 justify-center text-slate-800 dark:text-slate-200 select-none cursor-pointer" htmlFor="useFirstLineAsHeading">
+                                        <input
+                                            type="checkbox"
+                                            id="useFirstLineAsHeading"
+                                            checked={useFirstLineAsHeading}
+                                            onChange={e => setUseFirstLineAsHeading(e.target.checked)}
+                                            className="w-4 h-4 align-middle rounded border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-slate-100 dark:focus:ring-offset-slate-800 accent-primary-600"
+                                        />
+                                        Use first line as chapter heading
+                                    </label>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Treats the first line of text as the chapter title inside the document.</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

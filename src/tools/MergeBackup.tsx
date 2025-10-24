@@ -133,6 +133,17 @@ export const MergeBackup: React.FC = () => {
         draggedOverItemIndex.current = null;
         setFiles(items);
     };
+
+    const handleMove = (index: number, direction: 'up' | 'down') => {
+        if ((direction === 'up' && index === 0) || (direction === 'down' && index === files.length - 1)) {
+            return;
+        }
+        const newFiles = [...files];
+        const item = newFiles.splice(index, 1)[0];
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        newFiles.splice(newIndex, 0, item);
+        setFiles(newFiles);
+    };
     
     const covers = useMemo(() => files.map(f => f.cover).filter((c): c is string => c !== null), [files]);
 
@@ -145,12 +156,20 @@ export const MergeBackup: React.FC = () => {
             {files.length > 0 && (
                 <>
                 <div className="max-w-md mx-auto">
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Files to merge (drag to reorder):</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Files to merge (drag or use arrows to reorder):</label>
                     <ul className="list-none p-2 my-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-100 dark:bg-slate-800 max-h-48 overflow-y-auto">
                         {files.map((file, index) => (
                             <li key={file.id} draggable onDragStart={() => (draggedItemIndex.current = index)} onDragEnter={() => (draggedOverItemIndex.current = index)} onDragEnd={handleDragSort} onDragOver={e => e.preventDefault()}
-                                className="flex items-center p-2.5 border-b border-slate-200 dark:border-slate-700 last:border-b-0 cursor-grab user-select-none transition-all duration-200 rounded-md mb-0.5 hover:bg-slate-200/50 dark:hover:bg-slate-700/50">
-                                <span className="text-slate-800 dark:text-slate-200 p-1.5 text-sm">{file.title}</span>
+                                className="flex items-center p-1.5 border-b border-slate-200 dark:border-slate-700 last:border-b-0 cursor-grab user-select-none transition-all duration-200 rounded-md mb-0.5 hover:bg-slate-200/50 dark:hover:bg-slate-700/50">
+                                <span className="flex-grow text-slate-800 dark:text-slate-200 p-1.5 text-sm">{file.title}</span>
+                                <div className="flex flex-col">
+                                    <button onClick={() => handleMove(index, 'up')} disabled={index === 0} className="p-1 text-slate-500 disabled:opacity-30" aria-label={`Move ${file.title} up`}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" /></svg>
+                                    </button>
+                                    <button onClick={() => handleMove(index, 'down')} disabled={index === files.length - 1} className="p-1 text-slate-500 disabled:opacity-30" aria-label={`Move ${file.title} down`}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7 7" /></svg>
+                                    </button>
+                                </div>
                             </li>
                         ))}
                     </ul>

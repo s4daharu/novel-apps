@@ -208,7 +208,7 @@ export const FindReplaceBackup: React.FC = () => {
     if (!backupData) {
         return (
             <div className="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6">
-                <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 p-6 animate-fade-in will-change-[transform,opacity]">
+                <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 p-6 animate-fade-in">
                     <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">Find & Replace in Backup</h1>
                     <div className="max-w-md mx-auto">
                         <FileInput inputId="frBackupFile" label="Upload Backup File" accept=".json,.txt,.nov" onFileSelected={handleFileSelected} />
@@ -261,28 +261,31 @@ export const FindReplaceBackup: React.FC = () => {
             </main>
             <footer className="flex-shrink-0 bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-md border-t border-slate-300 dark:border-slate-700 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
                 <div className="max-w-4xl mx-auto space-y-3">
-                    <div className="flex items-center gap-2">
-                        <div className="relative flex-grow">
+                    <div className="flex flex-col sm:flex-row items-center gap-2">
+                        <div className="relative flex-grow w-full">
                              <input type="text" value={findPattern} onChange={e => setFindPattern(e.target.value)} placeholder="Find" className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 pr-24 text-base text-slate-800 dark:text-slate-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500" />
                              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1 pointer-events-none">
                                 {matches.length > 0 ? `${currentMatchIndex + 1} of ${matches.length}` : 'No results'}
                             </div>
                         </div>
-                        <button onClick={() => handleNavigate(-1)} disabled={currentMatchIndex <= 0} className="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-10 h-10 rounded-md inline-flex items-center justify-center text-2xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50" aria-label="Find Previous">‹</button>
-                        <button onClick={() => handleNavigate(1)} disabled={currentMatchIndex >= matches.length - 1} className="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-10 h-10 rounded-md inline-flex items-center justify-center text-2xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50" aria-label="Find Next">›</button>
+                         <div className="flex-shrink-0 flex items-center gap-2">
+                            <button onClick={() => handleNavigate(-1)} disabled={currentMatchIndex <= 0} className="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-10 h-10 rounded-md inline-flex items-center justify-center text-2xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50" aria-label="Find Previous">‹</button>
+                            <button onClick={() => handleNavigate(1)} disabled={currentMatchIndex >= matches.length - 1} className="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-10 h-10 rounded-md inline-flex items-center justify-center text-2xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50" aria-label="Find Next">›</button>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-center gap-2">
                         <input type="text" value={replaceText} onChange={e => setReplaceText(e.target.value)} placeholder="Replace with" className="flex-1 w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 text-base text-slate-800 dark:text-slate-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"/>
-                        <button onClick={handleReplaceNext} disabled={matches.length === 0} className="flex-shrink-0 px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 h-10 rounded-md inline-flex items-center justify-center text-sm font-medium transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50">Replace</button>
-                        <button onClick={handleReviewReplaceAll} disabled={matches.length === 0} className="flex-shrink-0 px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 h-10 rounded-md inline-flex items-center justify-center text-sm font-medium transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50">Replace All</button>
+                        <div className="flex-shrink-0 flex items-center gap-2">
+                            <button onClick={handleReplaceNext} disabled={matches.length === 0} className="px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 h-10 rounded-md inline-flex items-center justify-center text-sm font-medium transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50">Replace</button>
+                            <button onClick={handleReviewReplaceAll} disabled={matches.length === 0} className="px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 h-10 rounded-md inline-flex items-center justify-center text-sm font-medium transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50">Replace All</button>
+                        </div>
                     </div>
                     <div className="flex items-center justify-center pt-2">
-                        <div className="flex justify-center bg-slate-100 dark:bg-slate-700 rounded-md p-1">
+                        <div className="flex flex-wrap justify-center gap-2 p-1">
                             {Object.entries({useRegex: 'Regex', caseSensitive: 'Case-sensitive', wholeWord: 'Whole word'}).map(([key, label]) => (
-                                <label key={key} className={`flex-1 flex justify-center px-3 py-1.5 transition-colors duration-200 rounded-md ${options[key as keyof typeof options] ? 'bg-primary-500/20' : ''}`} htmlFor={`fr-${key}`}>
-                                    <input type="checkbox" id={`fr-${key}`} checked={options[key as keyof typeof options]} onChange={e => setOptions(o => ({ ...o, [key]: e.target.checked }))} className="hidden" />
-                                    <span className={`text-sm font-medium ${options[key as keyof typeof options] ? 'text-primary-600' : 'text-slate-600 dark:text-slate-300'} whitespace-nowrap`}>{label}</span>
-                                </label>
+                                <button key={key} onClick={() => setOptions(o => ({ ...o, [key]: !o[key as keyof typeof options] }))} className={`cursor-pointer px-4 py-2 transition-colors duration-200 rounded-lg text-sm font-medium whitespace-nowrap ${options[key as keyof typeof options] ? 'bg-primary-600 text-white shadow-md' : 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200'}`}>
+                                    {label}
+                                </button>
                             ))}
                         </div>
                     </div>

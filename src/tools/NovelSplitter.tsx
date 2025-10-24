@@ -124,6 +124,9 @@ export const NovelSplitter: React.FC = () => {
     const { showToast, showSpinner, hideSpinner } = useAppContext();
     const [state, dispatch] = useReducer(reducer, initialState);
     const { step, rawText, fileName, encoding, splitRegex, matchedHeadings, cleanupRules, chapters, selectedChapterId, meta, isFullScreen, showFindReplace, findQuery, replaceQuery, isChapterNavOpen } = state;
+    const [isCleanupOpen, setCleanupOpen] = useState(false);
+    const [isSplitPreviewOpen, setSplitPreviewOpen] = useState(false);
+    const [isActionsMenuOpen, setActionsMenuOpen] = useState(false);
     const contentEditableRef = useRef<HTMLTextAreaElement>(null);
     const draggedItem = useRef<Chapter | null>(null);
     const [dragIndicator, setDragIndicator] = useState<{ id: string, position: 'top' | 'bottom' } | null>(null);
@@ -337,10 +340,21 @@ export const NovelSplitter: React.FC = () => {
         setDragIndicator(null);
     };
 
+    const handleMoveChapter = (index: number, direction: 'up' | 'down') => {
+        if ((direction === 'up' && index === 0) || (direction === 'down' && index === chapters.length - 1)) {
+            return;
+        }
+        const newChapters = [...chapters];
+        const item = newChapters.splice(index, 1)[0];
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        newChapters.splice(newIndex, 0, item);
+        dispatch({ type: 'REORDER_CHAPTERS', payload: newChapters });
+    };
+
     const currentChapter = useMemo(() => chapters.find(c => c.id === selectedChapterId), [chapters, selectedChapterId]);
 
     if (step === 'upload') return (
-        <div className="max-w-4xl mx-auto p-4 md:p-6 will-change-[transform,opacity]">
+        <div className="max-w-4xl mx-auto p-4 md:p-6">
              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">Novel Splitter</h1>
              <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4 mb-4">
                  <label className="block mb-1.5 font-semibold text-slate-800 dark:text-slate-200">1. Upload Novel File (.txt)</label>
@@ -357,21 +371,35 @@ export const NovelSplitter: React.FC = () => {
                  </div>
              </div>
              <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4 mb-4">
-                 <label className="block mb-1.5 font-semibold text-slate-800 dark:text-slate-200">2. Cleanup Rules (Regex)</label>
-                 {cleanupRules.map((rule) => (
-                     <div key={rule.id} className="flex gap-2 items-center mb-1.5">
-                         <input type="text" placeholder="Find pattern" value={rule.find} onChange={e => dispatch({ type: 'UPDATE_RULE', payload: { id: rule.id, find: e.target.value } })} className="flex-grow bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm" />
-                         <input type="text" placeholder="Replace with" value={rule.replace} onChange={e => dispatch({ type: 'UPDATE_RULE', payload: { id: rule.id, replace: e.target.value } })} className="flex-grow bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm" />
-                         <button onClick={() => dispatch({ type: 'DELETE_RULE', payload: rule.id })} disabled={cleanupRules.length === 1} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50">-</button>
-                     </div>
-                 ))}
-                 <button onClick={() => dispatch({ type: 'ADD_RULE' })} className="px-3 py-1 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800">+</button>
+                 <button type="button" onClick={() => setCleanupOpen(!isCleanupOpen)} className="w-full flex justify-between items-center font-semibold text-slate-800 dark:text-slate-200">
+                    2. Cleanup Rules (Regex)
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform ${isCleanupOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                 </button>
+                 {isCleanupOpen && (
+                    <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                        {cleanupRules.map((rule) => (
+                            <div key={rule.id} className="flex gap-2 items-center mb-1.5">
+                                <input type="text" placeholder="Find pattern" value={rule.find} onChange={e => dispatch({ type: 'UPDATE_RULE', payload: { id: rule.id, find: e.target.value } })} className="flex-grow bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm" />
+                                <input type="text" placeholder="Replace with" value={rule.replace} onChange={e => dispatch({ type: 'UPDATE_RULE', payload: { id: rule.id, replace: e.target.value } })} className="flex-grow bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm" />
+                                <button onClick={() => dispatch({ type: 'DELETE_RULE', payload: rule.id })} disabled={cleanupRules.length === 1} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50">-</button>
+                            </div>
+                        ))}
+                        <button onClick={() => dispatch({ type: 'ADD_RULE' })} className="px-3 py-1 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800">+</button>
+                    </div>
+                 )}
              </div>
              <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4 mb-4">
-                  <label className="block mb-1.5 font-semibold text-slate-800 dark:text-slate-200">3. Chapter Splitting (Regex)</label>
-                  <input type="text" value={splitRegex} onChange={e => dispatch({ type: 'SET_STATE', payload: { splitRegex: e.target.value } })} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 mb-2" />
-                  <button onClick={previewSplit} className="px-4 py-2 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800">Preview Matches</button>
-                  {matchedHeadings.length > 0 && <div className="mt-2 p-2 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg max-h-32 overflow-y-auto text-xs font-mono">{matchedHeadings.map((h, i) => <div key={i}>{h}</div>)}</div>}
+                <button type="button" onClick={() => setSplitPreviewOpen(!isSplitPreviewOpen)} className="w-full flex justify-between items-center font-semibold text-slate-800 dark:text-slate-200">
+                    3. Chapter Splitting (Regex)
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform ${isSplitPreviewOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                {isSplitPreviewOpen && (
+                    <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                        <input type="text" value={splitRegex} onChange={e => dispatch({ type: 'SET_STATE', payload: { splitRegex: e.target.value } })} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 mb-2" />
+                        <button onClick={previewSplit} className="px-4 py-2 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800">Preview Matches</button>
+                        {matchedHeadings.length > 0 && <div className="mt-2 p-2 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg max-h-32 overflow-y-auto text-xs font-mono">{matchedHeadings.map((h, i) => <div key={i}>{h}</div>)}</div>}
+                    </div>
+                )}
              </div>
              <div className="mt-6 flex justify-center">
                  <button onClick={processNovel} disabled={!rawText} className="px-6 py-3 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg disabled:opacity-50">Process Novel</button>
@@ -405,11 +433,23 @@ export const NovelSplitter: React.FC = () => {
                         <div className={`absolute top-0 left-0 h-full w-64 md:w-full bg-slate-100 dark:bg-slate-800 md:bg-white/70 md:dark:bg-slate-800/50 backdrop-blur-sm border-r md:border border-slate-200 dark:border-slate-700 rounded-r-lg md:rounded-xl shadow-lg flex flex-col transform transition-transform duration-300 ${isChapterNavOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`} onClick={e => e.stopPropagation()}>
                             <div className="p-4 border-b border-slate-200 dark:border-slate-700 font-semibold">Chapters ({chapters.length})</div>
                             <ul className="flex-1 overflow-y-auto p-2 list-none">
-                                {chapters.map(chapter => (
-                                    <li key={chapter.id} onClick={() => { dispatch({ type: 'SET_STATE', payload: { selectedChapterId: chapter.id, isChapterNavOpen: false } }); }}
-                                        className={`p-2 rounded-md cursor-pointer truncate ${selectedChapterId === chapter.id ? 'bg-primary-500 text-white' : 'hover:bg-slate-200 dark:hover:bg-slate-700'} ${dragIndicator?.id === chapter.id ? (dragIndicator.position === 'top' ? 'border-t-2 border-primary-500' : 'border-b-2 border-primary-500') : ''}`}
+                                {chapters.map((chapter, index) => (
+                                    <li key={chapter.id} 
+                                        className={`p-1 rounded-md cursor-pointer ${selectedChapterId === chapter.id ? 'bg-primary-500 text-white' : 'hover:bg-slate-200 dark:hover:bg-slate-700'} ${dragIndicator?.id === chapter.id ? (dragIndicator.position === 'top' ? 'border-t-2 border-primary-500' : 'border-b-2 border-primary-500') : ''}`}
                                         draggable onDragStart={() => (draggedItem.current = chapter)} onDragEnd={() => handleDragSort(chapter)} onDragOver={e => { e.preventDefault(); const rect = e.currentTarget.getBoundingClientRect(); setDragIndicator({ id: chapter.id, position: e.clientY - rect.top > rect.height / 2 ? 'bottom' : 'top' }); }}>
-                                        <input type="text" value={chapter.title} onClick={e => e.stopPropagation()} onChange={e => dispatch({ type: 'UPDATE_CHAPTER', payload: { id: chapter.id, title: e.target.value } })} className="w-full bg-transparent outline-none border-none p-1 rounded focus:bg-white/20" />
+                                        <div onClick={() => { dispatch({ type: 'SET_STATE', payload: { selectedChapterId: chapter.id, isChapterNavOpen: false } }); }} className="flex items-center">
+                                            <div className="flex-grow">
+                                                <input type="text" value={chapter.title} onClick={e => e.stopPropagation()} onChange={e => dispatch({ type: 'UPDATE_CHAPTER', payload: { id: chapter.id, title: e.target.value } })} className="w-full bg-transparent outline-none border-none p-1 rounded focus:bg-white/20" />
+                                            </div>
+                                            <div className="flex flex-col ml-1">
+                                                <button onClick={(e) => { e.stopPropagation(); handleMoveChapter(index, 'up'); }} disabled={index === 0} className="p-1 disabled:opacity-20">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" /></svg>
+                                                </button>
+                                                <button onClick={(e) => { e.stopPropagation(); handleMoveChapter(index, 'down'); }} disabled={index === chapters.length - 1} className="p-1 disabled:opacity-20">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7 7" /></svg>
+                                                </button>
+                                            </div>
+                                        </div>
                                     </li>
                                 ))}
                             </ul>
@@ -419,9 +459,23 @@ export const NovelSplitter: React.FC = () => {
                     {/* Editor Panel */}
                     <div className="flex flex-col gap-2">
                         <div className="flex-shrink-0 flex flex-wrap items-center gap-2">
-                            <button onClick={() => dispatch({ type: 'MERGE_CHAPTER_WITH_NEXT' })} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Merge with Next</button>
-                            <button onClick={() => contentEditableRef.current && dispatch({ type: 'SPLIT_CHAPTER', payload: { cursorPosition: contentEditableRef.current.selectionStart } })} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Split at Cursor</button>
-                            <button onClick={() => dispatch({ type: 'SET_STATE', payload: { showFindReplace: !showFindReplace }})} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Find/Replace</button>
+                            {/* Desktop Actions */}
+                            <div className="hidden md:flex flex-wrap items-center gap-2">
+                                <button onClick={() => dispatch({ type: 'MERGE_CHAPTER_WITH_NEXT' })} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Merge with Next</button>
+                                <button onClick={() => contentEditableRef.current && dispatch({ type: 'SPLIT_CHAPTER', payload: { cursorPosition: contentEditableRef.current.selectionStart } })} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Split at Cursor</button>
+                                <button onClick={() => dispatch({ type: 'SET_STATE', payload: { showFindReplace: !showFindReplace }})} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Find/Replace</button>
+                            </div>
+                            {/* Mobile Actions Dropdown */}
+                            <div className="relative md:hidden">
+                                <button onClick={() => setActionsMenuOpen(!isActionsMenuOpen)} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">More Actions</button>
+                                {isActionsMenuOpen && (
+                                    <div className="absolute top-full mt-2 left-0 bg-white dark:bg-slate-700 rounded-lg shadow-lg border border-slate-200 dark:border-slate-600 z-10 w-48">
+                                        <button onClick={() => { dispatch({ type: 'MERGE_CHAPTER_WITH_NEXT' }); setActionsMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-600">Merge with Next</button>
+                                        <button onClick={() => { contentEditableRef.current && dispatch({ type: 'SPLIT_CHAPTER', payload: { cursorPosition: contentEditableRef.current.selectionStart } }); setActionsMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-600">Split at Cursor</button>
+                                        <button onClick={() => { dispatch({ type: 'SET_STATE', payload: { showFindReplace: !showFindReplace }}); setActionsMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-600">Find/Replace</button>
+                                    </div>
+                                )}
+                            </div>
                             <div className="flex-grow"></div>
                             <button onClick={() => dispatch({ type: 'SET_STATE', payload: { isFullScreen: !isFullScreen }})} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">{isFullScreen ? 'Exit Fullscreen' : 'Fullscreen'}</button>
                         </div>
