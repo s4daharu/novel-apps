@@ -15,7 +15,10 @@ const formatBytes = (bytes: number, decimals = 2) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 };
 
-const formatDate = (date: Date) => date.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+const formatDate = (date: Date) => {
+    if (date.getTime() === 0) return 'No Date Found';
+    return date.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+};
 
 const getSeriesNameFromTitle = (title: string): string => {
     if (!title) return 'Untitled Series';
@@ -185,25 +188,83 @@ export const BackupOrganizer: React.FC = () => {
         const fullPath = zipEntry.name;
         const originalName = fullPath.split('/').pop() || '';
         const folderPath = fullPath.substring(0, fullPath.lastIndexOf('/') + 1) || '/';
-        const fileExt = originalName.split('.').pop()?.toLowerCase() || '';
-
-        const baseInfo: BackupOrganizerFileInfo = { fullPath, originalName, folderPath, zipEntry, size: zipEntry._data.uncompressedSize, dateObject: zipEntry.date, fileType: fileExt };
-
-        if (fileExt === 'nov' || fileExt === 'json' || originalName.toLowerCase().endsWith('.nov.txt')) {
+        
+        const isNovTxt = originalName.toLowerCase().endsWith('.nov.txt');
+        const fileExt = isNovTxt ? 'nov.txt' : (originalName.split('.').pop()?.toLowerCase() || '');
+        const isNovelBackup = fileExt === 'nov' || fileExt === 'json' || isNovTxt;
+    
+        let determinedDate: Date | null = null;
+        let jsonData: BackupData | undefined;
+        let seriesName: string | undefined;
+        let timestamp: number | undefined;
+        let wordCount: number | undefined;
+    
+        if (isNovelBackup) {
             try {
                 const content = await zipEntry.async('string');
                 const data = JSON.parse(content) as BackupData;
+                jsonData = data; // Store data regardless of date presence
+                
+                // Primary method: check for last_backup_date in JSON
                 if (data.title && typeof data.last_backup_date !== 'undefined' && data.revisions) {
-                    const wordCount = data.revisions?.[0]?.scenes ? calculateWordCount(data.revisions[0].scenes) : 0;
-                    const seriesName = getSeriesNameFromTitle(data.title);
-                    const timestamp = data.last_backup_date;
-                    return { ...baseInfo, seriesName, timestamp: timestamp, dateObject: new Date(timestamp), jsonData: data, wordCount };
+                    timestamp = data.last_backup_date;
+                    determinedDate = new Date(timestamp);
+                    seriesName = getSeriesNameFromTitle(data.title);
+                    wordCount = data.revisions?.[0]?.scenes ? calculateWordCount(data.revisions[0].scenes) : 0;
                 }
             } catch {
-                 // Not a valid backup json, fall through to return baseInfo and classify as "Other File"
+                // JSON parsing failed or file is not a valid backup, will proceed to filename check
             }
         }
-        return baseInfo;
+    
+        // Fallback method: check for datetime string in filename if no date from JSON
+        if (!determinedDate) {
+            const match = originalName.match(/(\d{14})/);
+            if (match && match[1]) {
+                const dtString = match[1]; // YYYYMMDDHHMMSS
+                const year = parseInt(dtString.substring(0, 4), 10);
+                const month = parseInt(dtString.substring(4, 6), 10) - 1; // month is 0-indexed
+                const day = parseInt(dtString.substring(6, 8), 10);
+                const hour = parseInt(dtString.substring(8, 10), 10);
+                const minute = parseInt(dtString.substring(10, 12), 10);
+                const second = parseInt(dtString.substring(12, 14), 10);
+                const date = new Date(year, month, day, hour, minute, second);
+                
+                if (!isNaN(date.getTime())) {
+                    determinedDate = date;
+                }
+            }
+        }
+        
+        // Final fallback: if no date is found, use a default epoch date.
+        if (!determinedDate) {
+            determinedDate = new Date(0); // Epoch time
+        }
+    
+        // Special handling for novel backups where seriesName might not have been set yet
+        if (isNovelBackup && !seriesName) {
+            if (jsonData?.title) { // if JSON was parsed but had no date or title was missed
+                 seriesName = getSeriesNameFromTitle(jsonData.title);
+            } else { // if JSON parsing failed, use filename for series
+                 seriesName = getSeriesNameFromTitle(originalName.replace(/\.(nov\.txt|nov|json)$/i, ''));
+            }
+        }
+    
+        const fileInfo: BackupOrganizerFileInfo = {
+            fullPath,
+            originalName,
+            folderPath,
+            zipEntry,
+            size: zipEntry._data.uncompressedSize,
+            dateObject: determinedDate,
+            fileType: fileExt,
+            seriesName,
+            timestamp,
+            jsonData,
+            wordCount
+        };
+    
+        return fileInfo;
     }, []);
 
     const handleFileSelected = async (files: FileList) => {
