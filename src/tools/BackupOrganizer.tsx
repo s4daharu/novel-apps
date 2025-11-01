@@ -193,10 +193,11 @@ export const BackupOrganizer: React.FC = () => {
             try {
                 const content = await zipEntry.async('string');
                 const data = JSON.parse(content) as BackupData;
-                if (data.title && typeof data.last_update_date !== 'undefined' && data.revisions) {
+                if (data.title && typeof data.last_backup_date !== 'undefined' && data.revisions) {
                     const wordCount = data.revisions?.[0]?.scenes ? calculateWordCount(data.revisions[0].scenes) : 0;
                     const seriesName = getSeriesNameFromTitle(data.title);
-                    return { ...baseInfo, seriesName, timestamp: data.last_update_date, dateObject: new Date(data.last_update_date), jsonData: data, wordCount };
+                    const timestamp = data.last_backup_date;
+                    return { ...baseInfo, seriesName, timestamp: timestamp, dateObject: new Date(timestamp), jsonData: data, wordCount };
                 }
             } catch {
                  // Not a valid backup json, fall through to return baseInfo and classify as "Other File"
@@ -263,7 +264,12 @@ export const BackupOrganizer: React.FC = () => {
         }
     };
     
-    const filteredAndSortedData = useMemo(() => {
+    // FIX: Add an explicit type annotation to the useMemo hook to prevent TypeScript from inferring 'any' or 'unknown' types for the returned data structure.
+    // This resolves issues where array methods like '.filter' or '.length' were unavailable and ensures props passed to child components are correctly typed.
+    const filteredAndSortedData = useMemo<{
+        series: { seriesName: string; files: BackupOrganizerFileInfo[] }[];
+        others: BackupOrganizerFileInfo[];
+    }>(() => {
         const query = searchQuery.toLowerCase();
         
         const filterFile = (file: BackupOrganizerFileInfo) => (
