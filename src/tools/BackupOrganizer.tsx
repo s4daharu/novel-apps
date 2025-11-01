@@ -84,7 +84,7 @@ const FilePanel = ({ title, files, selectedFiles, onSelection, onSeriesSelection
                             <input type="checkbox" checked={selectedFiles.has(file)} onChange={e => onSelection(file, e.target.checked)} className="w-5 h-5 rounded mt-1 accent-primary-600 focus:ring-primary-500" />
                             <div className="flex-grow min-w-0">
                                 <div className="flex items-center gap-2">
-                                    <span onClick={() => onPreview(file)} className="truncate cursor-pointer hover:text-primary-500 font-medium text-slate-800 dark:text-slate-200" title={file.originalName}>{file.originalName}</span>
+                                    <span onClick={() => onPreview(file)} className="break-words sm:truncate cursor-pointer hover:text-primary-500 font-medium text-slate-800 dark:text-slate-200" title={file.originalName}>{file.originalName}</span>
                                     {file.timestamp === newestFileTimestamp && file.fileType === 'nov' && <span className="flex-shrink-0 text-xs px-1.5 py-0.5 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full">Latest</span>}
                                 </div>
                                 <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -93,7 +93,7 @@ const FilePanel = ({ title, files, selectedFiles, onSelection, onSeriesSelection
                                     {file.wordCount != null && (
                                         <span>{file.wordCount.toLocaleString()} words</span>
                                     )}
-                                    <span className="truncate" title={file.folderPath}>{file.folderPath}</span>
+                                    <span className="break-words sm:truncate" title={file.folderPath}>{file.folderPath}</span>
                                 </div>
                             </div>
                             <button onClick={() => onDownload(file)} className="flex-shrink-0 p-2 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400" aria-label={`Download ${file.originalName}`}>
