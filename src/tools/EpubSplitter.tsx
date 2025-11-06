@@ -24,7 +24,7 @@ export const EpubSplitter: React.FC = () => {
     const [status, setStatus] = useState<Status | null>(null);
 
     // Form Inputs State
-    const [outputFormat, setOutputFormat] = useState<'zip-txt' | 'zip-pdf' | 'single-txt' | 'single-docx' | 'zip-docx' | 'single-pdf'>('zip-txt');
+    const [outputFormat, setOutputFormat] = useState<'zip-txt' | 'zip-pdf' | 'single-txt' | 'single-pdf'>('zip-txt');
     const [mode, setMode] = useState<'single' | 'grouped'>('single');
     const [chapterPattern, setChapterPattern] = useState('Chapter ');
     const [startNumber, setStartNumber] = useState(1);
@@ -226,12 +226,6 @@ export const EpubSplitter: React.FC = () => {
                 case 'single-txt':
                     await generateSingleTxt(chaptersToProcess);
                     break;
-                case 'single-docx':
-                    await generateSingleDocx(chaptersToProcess);
-                    break;
-                case 'zip-docx':
-                    await generateDocxZip(chaptersToProcess);
-                    break;
                 case 'zip-txt':
                 default:
                     await generateTxtZip(chaptersToProcess);
@@ -241,9 +235,7 @@ export const EpubSplitter: React.FC = () => {
             const outputDescriptions: Record<typeof outputFormat, string> = {
                 'zip-txt': '.txt files in a ZIP archive',
                 'zip-pdf': 'PDFs in a ZIP file',
-                'zip-docx': '.docx files in a ZIP file',
                 'single-txt': 'a single .txt file',
-                'single-docx': 'a single .docx file',
                 'single-pdf': 'a single .pdf file'
             };
 
@@ -366,164 +358,6 @@ export const EpubSplitter: React.FC = () => {
         const fileNameBase = epubFile?.name.replace(/\.epub$/i, '') || 'novel';
         triggerDownload(blob, `${fileNameBase}.txt`);
         hideSpinner();
-    };
-
-    const createDocxBlob = async (chaptersData: { title: string, text: string }[]): Promise<Blob> => {
-        const JSZip = await getJSZip();
-        const zip = new JSZip();
-    
-        let bodyContent = '';
-        chaptersData.forEach((chapter, chapterIndex) => {
-            bodyContent += `<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>${escapeHTML(chapter.title)}</w:t></w:r></w:p>`;
-            bodyContent += `<w:p/>`;
-    
-            const paragraphs = chapter.text.split('\n\n').filter(p => p.trim());
-            paragraphs.forEach(paragraph => {
-                bodyContent += `<w:p><w:r><w:t>${escapeHTML(paragraph.trim())}</w:t></w:r></w:p>`;
-                bodyContent += `<w:p/>`;
-            });
-    
-            if (chapterIndex < chaptersData.length - 1) {
-                bodyContent += `<w:p><w:r><w:br w:type="page"/></w:r></w:p>`;
-            }
-        });
-    
-        const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-    <w:body>${bodyContent}</w:body>
-</w:document>`;
-    
-        const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-    <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-    <Default Extension="xml" ContentType="application/xml"/>
-    <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-    <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
-</Types>`;
-    
-        const relsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
-</Relationships>`;
-
-        const documentRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
-</Relationships>`;
-
-        const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-    <w:style w:type="paragraph" w:styleId="Normal" w:default="1">
-        <w:name w:val="Normal"/>
-        <w:pPr>
-            <w:spacing w:after="0" w:line="240" w:lineRule="auto"/>
-        </w:pPr>
-        <w:rPr>
-            <w:sz w:val="24"/>
-        </w:rPr>
-    </w:style>
-    <w:style w:type="paragraph" w:styleId="Heading1">
-        <w:name w:val="heading 1"/>
-        <w:basedOn w:val="Normal"/>
-        <w:next w:val="Normal"/>
-        <w:pPr>
-            <w:keepNext/>
-            <w:keepLines/>
-            <w:spacing w:before="240" w:after="0"/>
-            <w:outlineLvl w:val="0"/>
-        </w:pPr>
-        <w:rPr>
-            <w:b/>
-            <w:sz w:val="32"/>
-        </w:rPr>
-    </w:style>
-</w:styles>`;
-
-        zip.file("[Content_Types].xml", contentTypesXml);
-        zip.folder("_rels")!.file(".rels", relsXml);
-        const wordFolder = zip.folder("word")!;
-        wordFolder.file("document.xml", documentXml);
-        wordFolder.file("styles.xml", stylesXml);
-        wordFolder.folder("_rels")!.file("document.xml.rels", documentRelsXml);
-
-        return zip.generateAsync({ type: "blob", mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-    };
-
-    const generateSingleDocx = async (chaptersToProcess: typeof parsedChapters) => {
-        showSpinner();
-        const chaptersWithTitles = chaptersToProcess.map((chapter, i) => {
-            if (useFirstLineAsHeading) {
-                const lines = chapter.text.split('\n');
-                const title = lines.shift()?.trim() || chapter.title;
-                const text = lines.join('\n').trim();
-                return { title, text };
-            } else {
-                return {
-                    title: `${chapterPattern}${startNumber + i}`,
-                    text: chapter.text
-                };
-            }
-        });
-    
-        const blob = await createDocxBlob(chaptersWithTitles);
-        const fileNameBase = epubFile?.name.replace(/\.epub$/i, '') || 'novel';
-        triggerDownload(blob, `${fileNameBase}.docx`);
-        hideSpinner();
-    };
-
-    const generateDocxZip = async (chaptersToProcess: typeof parsedChapters) => {
-        const JSZip = await getJSZip();
-        const zip = new JSZip();
-    
-        if (mode === 'single') {
-            for (let i = 0; i < chaptersToProcess.length; i++) {
-                setStatus({ message: `Generating DOCX for chapter ${i + 1} of ${chaptersToProcess.length}...`, type: 'info' });
-                await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI to update
-                const chapter = chaptersToProcess[i];
-                const chapNum = String(startNumber + i).padStart(2, '0');
-                const filenameTitle = `${chapterPattern}${chapNum}`;
-                
-                let contentTitle = chapter.title;
-                let contentText = chapter.text;
-
-                if (useFirstLineAsHeading) {
-                    const lines = chapter.text.split('\n');
-                    contentTitle = lines.shift()?.trim() || chapter.title;
-                    contentText = lines.join('\n').trim();
-                }
-                
-                const docxBlob = await createDocxBlob([{ title: contentTitle, text: contentText }]);
-                zip.file(`${filenameTitle}.docx`, docxBlob);
-            }
-        } else { // grouped
-            for (let i = 0; i < chaptersToProcess.length; i += groupSize) {
-                setStatus({ message: `Generating DOCX for group starting at chapter ${i + 1}...`, type: 'info' });
-                await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI to update
-                const group = chaptersToProcess.slice(i, i + groupSize);
-                const groupStartNum = startNumber + i;
-                const groupEndNum = groupStartNum + group.length - 1;
-                
-                const name = group.length === 1
-                    ? `${chapterPattern}${String(groupStartNum).padStart(2, '0')}`
-                    : `${chapterPattern}${String(groupStartNum).padStart(2, '0')}-${String(groupEndNum).padStart(2, '0')}`;
-                
-                const chaptersForDocx = group.map((chapter) => {
-                    let contentTitle = chapter.title;
-                    let contentText = chapter.text;
-                    if (useFirstLineAsHeading) {
-                        const lines = chapter.text.split('\n');
-                        contentTitle = lines.shift()?.trim() || chapter.title;
-                        contentText = lines.join('\n').trim();
-                    }
-                     return { title: contentTitle, text: contentText };
-                });
-                
-                const docxBlob = await createDocxBlob(chaptersForDocx);
-                zip.file(`${name}.docx`, docxBlob);
-            }
-        }
-        const blob = await zip.generateAsync({ type: 'blob' });
-        triggerDownload(blob, `${chapterPattern.trim()}_chapters_docx.zip`);
     };
 
     const createPdfFromChapters = async (chaptersData: { title: string, text: string }[], fontBytes: { notoFontBytes: ArrayBuffer, latinFontBytes: ArrayBuffer }, baseFontSize: number, onProgress?: (progress: { current: number; total: number }) => void) => {
@@ -767,7 +601,7 @@ export const EpubSplitter: React.FC = () => {
         return await pdfDoc.save();
     }
 
-    const showFormattingOptions = outputFormat.includes('pdf') || outputFormat.includes('docx');
+    const showFormattingOptions = outputFormat.includes('pdf');
 
     return (
         <div id="splitterApp" className="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 animate-fade-in will-change-[transform,opacity]">
@@ -811,9 +645,7 @@ export const EpubSplitter: React.FC = () => {
                         <select id="outputFormat" value={outputFormat} onChange={e => setOutputFormat(e.target.value as any)} className="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full">
                             <option value="zip-txt">ZIP (.txt files)</option>
                             <option value="zip-pdf">ZIP (.pdf files)</option>
-                            <option value="zip-docx">ZIP (.docx files)</option>
                             <option value="single-txt">Single .txt file</option>
-                            <option value="single-docx">Single .docx file</option>
                             <option value="single-pdf">Single .pdf file</option>
                         </select>
                     </div>
