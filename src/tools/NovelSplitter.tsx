@@ -460,14 +460,14 @@ export const NovelSplitter: React.FC = () => {
                                         draggable onDragStart={() => (draggedItem.current = chapter)} onDragEnd={() => handleDragSort(chapter)} onDragOver={e => { e.preventDefault(); const rect = e.currentTarget.getBoundingClientRect(); setDragIndicator({ id: chapter.id, position: e.clientY - rect.top > rect.height / 2 ? 'bottom' : 'top' }); }}>
                                         <div onClick={() => { dispatch({ type: 'SET_STATE', payload: { selectedChapterId: chapter.id, isChapterNavOpen: false } }); }} className="flex items-center">
                                             <div className="flex-grow">
-                                                <input type="text" value={chapter.title} onClick={e => e.stopPropagation()} onChange={e => dispatch({ type: 'UPDATE_CHAPTER', payload: { id: chapter.id, title: e.target.value } })} className="w-full bg-transparent outline-none border-none p-1 rounded focus:bg-white/20" />
+                                                <input type="text" value={chapter.title} onChange={e => dispatch({ type: 'UPDATE_CHAPTER', payload: { id: chapter.id, title: e.target.value } })} className="w-full bg-transparent outline-none border-none p-1 rounded focus:bg-white/20" />
                                             </div>
                                             <div className="flex flex-col ml-1">
                                                 <button onClick={(e) => { e.stopPropagation(); handleMoveChapter(index, 'up'); }} disabled={index === 0} className="p-2 disabled:opacity-20">
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" /></svg>
                                                 </button>
                                                 <button onClick={(e) => { e.stopPropagation(); handleMoveChapter(index, 'down'); }} disabled={index === chapters.length - 1} className="p-2 disabled:opacity-20">
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7 7" /></svg>
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                                                 </button>
                                             </div>
                                         </div>
