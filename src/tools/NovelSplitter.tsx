@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useReducer, useCallback } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { triggerDownload, getJSZip, escapeHTML } from '../utils/helpers';
+import { FileInput } from '../components/FileInput';
 
 // Types
 type Chapter = { id: string; title: string; content: string; };
@@ -15,7 +16,7 @@ type GlobalMatch = {
     text: string;
 };
 type State = {
-    step: 'upload' | 'editor';
+    step: 'upload' | 'config' | 'editor';
     rawText: string | null;
     fileName: string;
     encoding: string;
@@ -93,7 +94,7 @@ const reducer = (state: State, action: Action): State => {
         case 'SET_STATE':
             return { ...state, ...action.payload };
         case 'SET_RAW_TEXT':
-            return { ...state, rawText: action.payload.text, fileName: action.payload.fileName, meta: { ...state.meta, title: action.payload.title } };
+            return { ...state, rawText: action.payload.text, fileName: action.payload.fileName, step: 'config', meta: { ...state.meta, title: action.payload.title } };
         case 'UPDATE_RULE':
             return { ...state, cleanupRules: state.cleanupRules.map(r => r.id === action.payload.id ? { ...r, ...action.payload } : r) };
         case 'ADD_RULE':
@@ -193,6 +194,7 @@ const reducer = (state: State, action: Action): State => {
 };
 
 const TEMPLATES_KEY = 'novelSplitterTemplates';
+const SESSION_KEY = 'novelSplitterSession';
 
 export const NovelSplitter: React.FC = () => {
     const { showToast, showSpinner, hideSpinner } = useAppContext();
@@ -201,9 +203,11 @@ export const NovelSplitter: React.FC = () => {
     
     const [isCleanupOpen, setCleanupOpen] = useState(false);
     const [isSplitPreviewOpen, setSplitPreviewOpen] = useState(false);
-    const [isFabOpen, setFabOpen] = useState(false);
     const [isBatchRenameModalOpen, setBatchRenameModalOpen] = useState(false);
     const [isReviewModalOpen, setReviewModalOpen] = useState(false);
+    const [isBookDetailsModalOpen, setBookDetailsModalOpen] = useState(false);
+    const [isExportModalOpen, setExportModalOpen] = useState(false);
+    const [isChapterActionsOpen, setChapterActionsOpen] = useState(false);
     const [reviewSelection, setReviewSelection] = useState<Set<number>>(new Set());
     const [renamePattern, setRenamePattern] = useState('Chapter {n}');
     const [renameStartNum, setRenameStartNum] = useState(1);
@@ -212,9 +216,6 @@ export const NovelSplitter: React.FC = () => {
     const contentEditableRef = useRef<HTMLTextAreaElement>(null);
     const draggedItem = useRef<Chapter | null>(null);
     const [dragIndicator, setDragIndicator] = useState<{ id: string, position: 'top' | 'bottom' } | null>(null);
-    const touchStartX = useRef(0);
-
-    const SESSION_KEY = 'novelSplitterSession';
 
     const sessionDataToSave = useMemo(() => {
         if (step !== 'editor') return null;
@@ -229,25 +230,22 @@ export const NovelSplitter: React.FC = () => {
         return () => clearTimeout(handler);
     }, [sessionDataToSave]);
     
-    useEffect(() => {
-        const savedSession = localStorage.getItem(SESSION_KEY);
+    const restoreSession = useCallback(() => {
+         const savedSession = localStorage.getItem(SESSION_KEY);
         if (savedSession) {
-            if (confirm('An unfinished session was found. Do you want to restore it?')) {
-                const sessionData = JSON.parse(savedSession);
-                dispatch({ type: 'SET_STATE', payload: { ...sessionData, meta: { ...sessionData.meta, coverFile: null }, selectedChapterIds: new Set() } });
-            } else {
-                localStorage.removeItem(SESSION_KEY);
-            }
+            const sessionData = JSON.parse(savedSession);
+            dispatch({ type: 'SET_STATE', payload: { ...sessionData, meta: { ...sessionData.meta, coverFile: null }, selectedChapterIds: new Set() } });
+            showToast('Previous session restored.');
+        } else {
+            showToast('No session found to restore.', true);
         }
+    }, [showToast]);
+
+    useEffect(() => {
         const savedTemplates = localStorage.getItem(TEMPLATES_KEY);
         if (savedTemplates) setTemplates(JSON.parse(savedTemplates));
     }, []);
 
-    const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault(); e.currentTarget.classList.remove('ring-2', 'ring-primary-500');
-        e.dataTransfer.files?.[0] && handleNovelFile(e.dataTransfer.files[0]);
-    };
-    
     const handleNovelFile = async (file: File) => {
         showSpinner();
         try {
@@ -387,22 +385,6 @@ export const NovelSplitter: React.FC = () => {
         }
     };
     
-    const deleteTemplate = (id: number) => {
-        if (confirm("Are you sure you want to delete this template?")) {
-            const updatedTemplates = templates.filter(t => t.id !== id);
-            setTemplates(updatedTemplates);
-            localStorage.setItem(TEMPLATES_KEY, JSON.stringify(updatedTemplates));
-            showToast(`Template deleted.`);
-        }
-    };
-    
-    const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX; };
-    const handleTouchMove = (e: React.TouchEvent) => {
-        if (touchStartX.current < 20 && e.touches[0].clientX > 50) {
-            dispatch({ type: 'SET_STATE', payload: { isChapterNavOpen: true } });
-        }
-    };
-    
     const performGlobalSearch = useCallback(() => {
         if (!globalFindQuery) {
             dispatch({ type: 'SET_STATE', payload: { globalMatches: [], currentGlobalMatchIndex: -1 } });
@@ -461,7 +443,6 @@ export const NovelSplitter: React.FC = () => {
 
         if (match.chapterId !== selectedChapterId) {
             dispatch({ type: 'SET_STATE', payload: { selectedChapterId: match.chapterId } });
-            // The highlight will be handled by the next render cycle after the chapter is set
         } else {
             highlightMatch();
         }
@@ -479,8 +460,6 @@ export const NovelSplitter: React.FC = () => {
         const newChapters = chapters.map(c => c.id === chapter.id ? updatedChapter : c);
 
         dispatch({ type: 'UPDATE_CHAPTERS', payload: newChapters });
-        // After replacement, re-run the search to get fresh matches and indices
-        // A full re-search is safer than trying to manually update indices
     };
 
     const handleConfirmReplaceAll = () => {
@@ -489,8 +468,6 @@ export const NovelSplitter: React.FC = () => {
             setReviewModalOpen(false);
             return;
         }
-
-        const chaptersToUpdate = new Map<string, string>();
         
         const groupedByChapter = matchesToReplace.reduce((acc, match) => {
             if (!acc[match.chapterId]) acc[match.chapterId] = [];
@@ -502,7 +479,6 @@ export const NovelSplitter: React.FC = () => {
             const matchesInChapter = groupedByChapter[c.id];
             if (!matchesInChapter) return c;
 
-            // Sort matches in descending order of index to replace from the end
             matchesInChapter.sort((a, b) => b.index - a.index);
             let newContent = c.content;
             for (const match of matchesInChapter) {
@@ -519,16 +495,34 @@ export const NovelSplitter: React.FC = () => {
 
     const currentChapter = useMemo(() => chapters.find(c => c.id === selectedChapterId), [chapters, selectedChapterId]);
 
-    if (step === 'upload') return (
-        <div className="max-w-4xl mx-auto p-4 md:p-6">
-             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">Novel Splitter</h1>
+    const renderUploadStep = () => (
+        <div className="flex flex-col items-center justify-center min-h-[70vh] p-4 text-center">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Novel Splitter</h1>
+            <p className="text-slate-600 dark:text-slate-300 mb-8 max-w-md">Upload your novel as a single .txt file, and this tool will help you split it into chapters, clean it up, and export it.</p>
+            <div className="w-full max-w-md space-y-4">
+                <label htmlFor="novel-file-upload" className="w-full inline-flex items-center justify-center px-6 py-4 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer">
+                    Upload .txt Novel
+                </label>
+                <input type="file" id="novel-file-upload" className="hidden" accept=".txt" onChange={e => e.target.files && handleNovelFile(e.target.files[0])} />
+
+                {localStorage.getItem(SESSION_KEY) && (
+                    <button onClick={restoreSession} className="w-full px-6 py-3 rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white transition-colors">
+                        Restore Last Session
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+
+    const renderConfigStep = () => (
+         <div className="max-w-3xl mx-auto p-4 md:p-6 animate-fade-in">
+             <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Configure Split</h1>
+                <button onClick={() => dispatch({ type: 'SET_STATE', payload: { step: 'upload' }})} className="text-sm text-primary-600 hover:underline">Cancel</button>
+             </div>
+
              <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4 mb-4">
-                 <label className="block mb-1.5 font-semibold text-slate-800 dark:text-slate-200">1. Upload Novel File (.txt)</label>
-                 <div onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('ring-2', 'ring-primary-500'); }} onDragLeave={e => e.currentTarget.classList.remove('ring-2', 'ring-primary-500')} onDrop={handleFileDrop}
-                     className="text-center p-4 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg transition-all">
-                     <input type="file" accept=".txt" onChange={e => e.target.files && handleNovelFile(e.target.files[0])} id="novelFile" className="hidden" />
-                     <label htmlFor="novelFile" className="cursor-pointer text-slate-600 dark:text-slate-300">{fileName || "Drag & drop .txt file here, or click to select"}</label>
-                 </div>
+                <p className="font-semibold text-slate-800 dark:text-slate-200">File: <span className="font-normal text-slate-600 dark:text-slate-300">{fileName}</span></p>
                  <div className="flex items-center gap-2 mt-2">
                      <label className="text-sm text-slate-700 dark:text-slate-300" htmlFor="encodingSelect">Encoding:</label>
                      <select id="encodingSelect" value={encoding} onChange={e => dispatch({ type: 'SET_STATE', payload: { encoding: e.target.value }})} className="text-sm bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 focus:border-primary-500 focus:ring-1 focus:ring-primary-500">
@@ -536,10 +530,11 @@ export const NovelSplitter: React.FC = () => {
                      </select>
                  </div>
              </div>
+             
               <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4 mb-4">
                  <div className="flex justify-between items-center font-semibold text-slate-800 dark:text-slate-200">
-                    <button type="button" onClick={() => setCleanupOpen(!isCleanupOpen)} className="flex-grow text-left">2. Cleanup Rules (Regex)</button>
-                    <div className="relative group">
+                    <button type="button" onClick={() => setCleanupOpen(!isCleanupOpen)} className="flex-grow text-left">Cleanup Rules (Regex)</button>
+                     <div className="relative group">
                          <select onChange={(e) => loadTemplate(Number(e.target.value))} className="text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 mr-2"><option>Load Template</option>{templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
                          <button onClick={saveTemplate} className="px-2 py-1 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 mr-2">Save</button>
                     </div>
@@ -558,218 +553,190 @@ export const NovelSplitter: React.FC = () => {
                     </div>
                  )}
              </div>
+
              <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4 mb-4">
                 <button type="button" onClick={() => setSplitPreviewOpen(!isSplitPreviewOpen)} className="w-full flex justify-between items-center font-semibold text-slate-800 dark:text-slate-200">
-                    3. Chapter Splitting (Regex)
+                    Chapter Splitting (Regex)
                     <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform ${isSplitPreviewOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                 </button>
                 {isSplitPreviewOpen && (
                     <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-                        <input type="text" value={splitRegex} onChange={e => dispatch({ type: 'SET_STATE', payload: { splitRegex: e.target.value } })} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 mb-2" />
+                        <input type="text" value={splitRegex} onChange={e => dispatch({ type: 'SET_STATE', payload: { splitRegex: e.target.value } })} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 mb-2 font-mono text-sm" />
                         <button onClick={previewSplit} className="px-4 py-2 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800">Preview Matches</button>
                         {matchedHeadings.length > 0 && <div className="mt-2 p-2 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg max-h-32 overflow-y-auto text-xs font-mono">{matchedHeadings.map((h, i) => <div key={i}>{h}</div>)}</div>}
                     </div>
                 )}
              </div>
-             <div className="mt-6 flex justify-center">
-                 <button onClick={processNovel} disabled={!rawText} className="px-6 py-3 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg disabled:opacity-50">Process Novel</button>
+             <div className="mt-8 flex justify-center">
+                 <button onClick={processNovel} disabled={!rawText} className="w-full max-w-xs px-6 py-3 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg disabled:opacity-50">Process Novel</button>
              </div>
         </div>
     );
-
-    return (
-        <div onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} className="max-w-7xl mx-auto p-2 md:p-4">
-            <div className="flex flex-col min-h-[75vh]">
-                <header className="flex-shrink-0 flex flex-col sm:flex-row sm:flex-wrap items-center justify-between gap-y-2 gap-x-4 p-2 mb-2">
-                    <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-                        <input type="text" placeholder="Book Title" value={meta.title} onChange={e => dispatch({ type: 'SET_META', payload: { title: e.target.value } })} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-1.5 text-lg font-semibold w-full sm:w-48"/>
-                        <input type="text" placeholder="Author" value={meta.author} onChange={e => dispatch({ type: 'SET_META', payload: { author: e.target.value } })} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-1.5 w-full sm:w-48"/>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap justify-center">
-                         <button onClick={() => dispatch({ type: 'SET_STATE', payload: { showGlobalFindReplace: true }})} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Find in Project</button>
-                         <button onClick={exportToZip} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Export ZIP</button>
-                         <button onClick={exportToEpub} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Export EPUB</button>
-                         <button onClick={() => dispatch({ type: 'SET_STATE', payload: { step: 'upload' } })} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Back</button>
-                    </div>
-                </header>
-
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-[300px_1fr] gap-4">
-                    {/* Chapter List */}
-                    <div className={`fixed inset-0 z-40 md:static md:block bg-black/30 md:bg-transparent transition-opacity duration-300 ${isChapterNavOpen ? 'opacity-100' : 'opacity-0 pointer-events-none md:opacity-100 md:pointer-events-auto'}`} onClick={() => dispatch({ type: 'SET_STATE', payload: { isChapterNavOpen: false }})}>
-                        <div className={`absolute top-0 left-0 h-full w-64 md:w-full bg-slate-100 dark:bg-slate-800 md:bg-white/70 md:dark:bg-slate-800/50 backdrop-blur-sm border-r md:border border-slate-200 dark:border-slate-700 rounded-r-lg md:rounded-xl shadow-lg flex flex-col transform transition-transform duration-300 ${isChapterNavOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`} onClick={e => e.stopPropagation()}>
-                            <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                                <span className="font-semibold">Chapters ({chapters.length})</span>
-                                <div className="flex gap-2">
-                                    <button onClick={() => dispatch({ type: 'ADD_NEW_CHAPTER' })} title="Add New Chapter" className="p-2 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-md"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg></button>
-                                    <button onClick={() => dispatch({ type: 'TOGGLE_REORDER_MODE' })} title="Toggle Reorder Mode" className={`p-2 rounded-md ${reorderModeActive ? 'bg-primary-500 text-white' : 'hover:bg-slate-200 dark:hover:bg-slate-600'}`}><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7" /></svg></button>
-                                </div>
-                            </div>
-                            <ul className="flex-1 overflow-y-auto p-2 list-none">
-                                {chapters.map((chapter) => (
-                                    <li key={chapter.id} className={`flex items-center p-1 rounded-md ${selectedChapterId === chapter.id ? 'bg-primary-500 text-white' : 'hover:bg-slate-200 dark:hover:bg-slate-700'} ${dragIndicator?.id === chapter.id ? (dragIndicator.position === 'top' ? 'border-t-2 border-primary-500' : 'border-b-2 border-primary-500') : ''}`}
-                                        onDragOver={e => { e.preventDefault(); if (reorderModeActive) { const rect = e.currentTarget.getBoundingClientRect(); setDragIndicator({ id: chapter.id, position: e.clientY - rect.top > rect.height / 2 ? 'bottom' : 'top' }); }}}>
-                                        {!reorderModeActive ? (
-                                            <input type="checkbox" checked={selectedChapterIds.has(chapter.id)} onChange={e => dispatch({type: 'MULTI_SELECT_CHAPTER', payload: { id: chapter.id, checked: e.target.checked }})} className="w-4 h-4 mr-2 flex-shrink-0" onClick={e => e.stopPropagation()} />
-                                        ) : (
-                                            <div draggable onDragStart={() => (draggedItem.current = chapter)} onDragEnd={() => handleDragSort(chapter)} className="cursor-grab p-2 touch-none flex-shrink-0">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8h16M4 16h16" /></svg>
-                                            </div>
-                                        )}
-                                        <div onClick={() => dispatch({ type: 'SET_STATE', payload: { selectedChapterId: chapter.id, isChapterNavOpen: false } })} className="flex-grow min-w-0 cursor-pointer">
-                                            <input type="text" value={chapter.title} onChange={e => dispatch({ type: 'UPDATE_CHAPTER', payload: { id: chapter.id, title: e.target.value } })} onClick={e => e.stopPropagation()} className="w-full bg-transparent outline-none border-none p-1 rounded focus:bg-white/20" />
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                             {selectedChapterIds.size > 0 && !reorderModeActive && (
-                                <div className="p-2 border-t border-slate-200 dark:border-slate-700 space-y-2">
-                                    <p className="text-sm font-semibold">{selectedChapterIds.size} chapter(s) selected</p>
-                                    <div className="flex gap-2 flex-wrap">
-                                        <button onClick={() => { if(confirm('Merge selected chapters?')) dispatch({ type: 'MERGE_SELECTED_CHAPTERS' }) }} className="px-2 py-1 text-xs rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Merge</button>
-                                        <button onClick={() => setBatchRenameModalOpen(true)} className="px-2 py-1 text-xs rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Rename</button>
-                                        <button onClick={() => dispatch({ type: 'SET_SELECTION', payload: new Set() })} className="px-2 py-1 text-xs rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Clear</button>
-                                    </div>
-                                </div>
-                            )}
+    
+    const renderEditorStep = () => (
+         <div className="flex flex-col h-[calc(100vh-120px)] md:h-[calc(100vh-100px)] animate-fade-in">
+            {/* Header */}
+            <header className="flex-shrink-0 flex items-center justify-between gap-2 p-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700">
+                <button onClick={() => dispatch({type: 'SET_STATE', payload: { isChapterNavOpen: true }})} className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" /></svg>
+                    <span className="hidden md:inline">Chapters</span>
+                </button>
+                <input type="text" value={currentChapter?.title || ''} onChange={e => currentChapter && dispatch({ type: 'UPDATE_CHAPTER', payload: { id: currentChapter.id, title: e.target.value }})} className="flex-grow min-w-0 bg-transparent text-center font-semibold text-lg p-1.5 rounded-md focus:bg-slate-200 dark:focus:bg-slate-700 outline-none" />
+                <div className="relative">
+                    <button onClick={() => setChapterActionsOpen(v => !v)} className="p-2 rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" /></svg>
+                    </button>
+                    {isChapterActionsOpen && (
+                        <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-700 rounded-lg shadow-xl border border-slate-200 dark:border-slate-600 z-10">
+                            <button onClick={() => { dispatch({ type: 'MERGE_CHAPTER_WITH_NEXT' }); setChapterActionsOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-600">Merge with Next</button>
+                            <button onClick={() => { contentEditableRef.current && dispatch({ type: 'SPLIT_CHAPTER', payload: { cursorPosition: contentEditableRef.current.selectionStart } }); setChapterActionsOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-600">Split at Cursor</button>
                         </div>
-                    </div>
-                    
-                    {/* Editor Panel */}
-                    <div className="flex flex-col gap-2">
-                        <div className="flex-shrink-0 flex items-center gap-2">
-                            <div className="hidden md:flex flex-wrap items-center gap-2">
-                                <button onClick={() => dispatch({ type: 'MERGE_CHAPTER_WITH_NEXT' })} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Merge with Next</button>
-                                <button onClick={() => contentEditableRef.current && dispatch({ type: 'SPLIT_CHAPTER', payload: { cursorPosition: contentEditableRef.current.selectionStart } })} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Split at Cursor</button>
-                            </div>
-                            <div className="flex-grow"></div>
-                            <button onClick={() => dispatch({ type: 'SET_STATE', payload: { showFindReplace: !showFindReplace }})} className="p-2 rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500" title="Find/Replace">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                            </button>
-                        </div>
-                        {showFindReplace && (
-                            <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 p-2 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
-                                <input type="text" placeholder="Find" value={findQuery} onChange={e => dispatch({ type: 'SET_STATE', payload: { findQuery: e.target.value }})} className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm" />
-                                <input type="text" placeholder="Replace" value={replaceQuery} onChange={e => dispatch({ type: 'SET_STATE', payload: { replaceQuery: e.target.value }})} className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm" />
-                                <div className="flex gap-2">
-                                    <button onClick={() => handleFindReplace(false)} className="px-3 py-1 text-sm rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Replace</button>
-                                    <button onClick={() => handleFindReplace(true)} className="px-3 py-1 text-sm rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">All</button>
-                                </div>
-                            </div>
-                        )}
-                        <textarea ref={contentEditableRef} value={currentChapter?.content || ''} onChange={e => currentChapter && dispatch({ type: 'UPDATE_CHAPTER', payload: { id: currentChapter.id, content: e.target.value } })} placeholder="Chapter content..." className="flex-1 w-full resize-none p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none font-mono text-base leading-relaxed" />
-                    </div>
+                    )}
                 </div>
-            </div>
+            </header>
 
-            {/* Global Find/Replace Modal */}
-            {showGlobalFindReplace && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => dispatch({ type: 'SET_STATE', payload: { showGlobalFindReplace: false }})}>
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl h-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                        <header className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                            <h2 className="text-xl font-semibold">Find and Replace in Project</h2>
-                            <button onClick={() => dispatch({ type: 'SET_STATE', payload: { showGlobalFindReplace: false } })} className="text-2xl">&times;</button>
-                        </header>
-                        <div className="p-4 space-y-3">
-                            <div className="flex gap-2">
-                                <input type="text" value={globalFindQuery} onChange={e => dispatch({ type: 'SET_STATE', payload: { globalFindQuery: e.target.value }})} placeholder="Find" className="w-full bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded px-3 py-2" />
-                                <input type="text" value={globalReplaceQuery} onChange={e => dispatch({ type: 'SET_STATE', payload: { globalReplaceQuery: e.target.value }})} placeholder="Replace" className="w-full bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded px-3 py-2" />
-                            </div>
-                            <div className="flex flex-wrap gap-2 text-sm">
-                                {Object.entries({useRegex: 'Regex', caseSensitive: 'Match Case', wholeWord: 'Whole Word'}).map(([key, label]) => (
-                                    <button key={key} onClick={() => dispatch({ type: 'SET_STATE', payload: { globalFindOptions: { ...globalFindOptions, [key]: !globalFindOptions[key as keyof typeof globalFindOptions] } } })} className={`px-3 py-1 rounded-md ${globalFindOptions[key as keyof typeof globalFindOptions] ? 'bg-primary-600 text-white' : 'bg-slate-200 dark:bg-slate-700'}`}>{label}</button>
-                                ))}
-                            </div>
+             {/* Editor */}
+            <main className="flex-1 relative">
+                {showFindReplace && (
+                    <div className="absolute top-2 right-2 z-10 grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 p-2 bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-lg border border-slate-300 dark:border-slate-700">
+                        <input type="text" placeholder="Find" value={findQuery} onChange={e => dispatch({ type: 'SET_STATE', payload: { findQuery: e.target.value }})} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm" />
+                        <input type="text" placeholder="Replace" value={replaceQuery} onChange={e => dispatch({ type: 'SET_STATE', payload: { replaceQuery: e.target.value }})} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm" />
+                        <div className="flex gap-2">
+                            <button onClick={() => handleFindReplace(false)} className="px-3 py-1 text-sm rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600">Replace</button>
+                            <button onClick={() => handleFindReplace(true)} className="px-3 py-1 text-sm rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600">All</button>
                         </div>
-                        <div className="px-4 pb-2 text-sm text-slate-600 dark:text-slate-400 flex justify-between items-center">
-                            <span>{globalMatches.length} result(s) found</span>
-                             {globalMatches.length > 0 && <span>{currentGlobalMatchIndex + 1} / {globalMatches.length}</span>}
-                        </div>
-                        <ul className="flex-1 overflow-y-auto border-t border-b border-slate-200 dark:border-slate-700 list-none m-0 p-0">
-                            {globalMatches.map((match, index) => (
-                                <li key={`${match.chapterId}-${match.index}-${index}`} onClick={() => dispatch({ type: 'SET_STATE', payload: { currentGlobalMatchIndex: index }})} className={`p-3 cursor-pointer border-b border-slate-100 dark:border-slate-700 last:border-b-0 ${index === currentGlobalMatchIndex ? 'bg-primary-500/20' : 'hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}>
-                                    <div className="font-semibold truncate">{match.chapterTitle}</div>
-                                    <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                                        ...{match.text}...
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                        <footer className="p-4 flex justify-end gap-2">
-                            <button onClick={handleGlobalReplace} disabled={currentGlobalMatchIndex < 0} className="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500 disabled:opacity-50">Replace</button>
-                            <button onClick={() => { setReviewSelection(new Set(globalMatches.map((_, i) => i))); setReviewModalOpen(true); }} disabled={globalMatches.length === 0} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50">Replace All</button>
-                        </footer>
-                    </div>
-                </div>
-            )}
-            
-            {/* Replace All Review Modal */}
-            {isReviewModalOpen && (
-                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setReviewModalOpen(false)}>
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl h-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                        <header className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                            <h2 className="text-xl font-semibold">Review Replacements</h2>
-                            <button onClick={() => setReviewModalOpen(false)} className="text-2xl">&times;</button>
-                        </header>
-                         <div className="p-3 bg-slate-100 dark:bg-slate-900/50 flex items-center gap-4">
-                            <label className="flex items-center gap-2"><input type="checkbox" checked={reviewSelection.size === globalMatches.length} onChange={e => setReviewSelection(e.target.checked ? new Set(globalMatches.map((_, i) => i)) : new Set())} /> {reviewSelection.size} of {globalMatches.length} selected</label>
-                        </div>
-                        <ul className="flex-1 overflow-y-auto list-none m-0 p-0">
-                            {globalMatches.map((match, index) => {
-                                const chapterContent = chapters.find(c => c.id === match.chapterId)?.content || '';
-                                const contextStart = Math.max(0, match.index - 50);
-                                const preContext = chapterContent.substring(contextStart, match.index);
-                                const postContext = chapterContent.substring(match.index + match.length, match.index + match.length + 50);
-                                return (
-                                <li key={index} className="p-3 border-b border-slate-100 dark:border-slate-700 flex items-start gap-3">
-                                    <input type="checkbox" checked={reviewSelection.has(index)} onChange={e => setReviewSelection(s => { const n = new Set(s); e.target.checked ? n.add(index) : n.delete(index); return n;})} className="mt-1" />
-                                    <div>
-                                        <div className="font-semibold text-sm">{match.chapterTitle}</div>
-                                        <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">...{preContext}<mark className="bg-red-200 dark:bg-red-800/50">{match.text}</mark>{postContext}...</div>
-                                    </div>
-                                </li>
-                            )})}
-                        </ul>
-                        <footer className="p-4 flex justify-end gap-2 border-t border-slate-200 dark:border-slate-700">
-                             <button onClick={() => setReviewModalOpen(false)} className="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Cancel</button>
-                            <button onClick={handleConfirmReplaceAll} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Confirm {reviewSelection.size} Replacements</button>
-                        </footer>
-                    </div>
-                </div>
-            )}
-
-            {/* Mobile FAB */}
-            <div className="md:hidden fixed bottom-5 right-5 z-30 flex flex-col items-center gap-3">
-                {isFabOpen && (
-                    <div className="flex flex-col items-center gap-3 p-2 bg-slate-700/50 backdrop-blur-sm rounded-xl">
-                        <button onClick={() => { contentEditableRef.current && dispatch({ type: 'SPLIT_CHAPTER', payload: { cursorPosition: contentEditableRef.current.selectionStart } }); setFabOpen(false); }} className="bg-white/90 text-slate-800 rounded-full p-3 shadow-md" title="Split at Cursor"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg></button>
-                        <button onClick={() => { dispatch({ type: 'SET_STATE', payload: { showFindReplace: !showFindReplace }}); setFabOpen(false); }} className="bg-white/90 text-slate-800 rounded-full p-3 shadow-md" title="Find/Replace"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></button>
-                        <button onClick={() => { dispatch({ type: 'MERGE_CHAPTER_WITH_NEXT' }); setFabOpen(false); }} className="bg-white/90 text-slate-800 rounded-full p-3 shadow-md" title="Merge with Next"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 8a1 1 0 00-2 0v1H2a1 1 0 000 2h1v1a1 1 0 002 0v-1h1a1 1 0 000-2H5V8z"/><path d="M10.25 4.75a.75.75 0 011.5 0v4.5a.75.75 0 01-1.5 0v-4.5zM12 10a2 2 0 11-4 0 2 2 0 014 0z"/><path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 0h8v12H6V4z" clipRule="evenodd" /></svg></button>
                     </div>
                 )}
-                <button onClick={() => setFabOpen(!isFabOpen)} className="bg-primary-600 text-white rounded-full p-4 shadow-lg transition-transform duration-200 hover:scale-105 active:scale-95">
-                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 transition-transform duration-200 ${isFabOpen ? 'rotate-45' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                <textarea ref={contentEditableRef} value={currentChapter?.content || ''} onChange={e => currentChapter && dispatch({ type: 'UPDATE_CHAPTER', payload: { id: currentChapter.id, content: e.target.value } })} placeholder="Select a chapter to begin editing..." className="w-full h-full resize-none p-4 bg-transparent outline-none font-mono text-base leading-relaxed" />
+            </main>
+
+            {/* Footer Toolbar */}
+            <footer className="flex-shrink-0 flex items-center justify-around gap-2 p-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-t border-slate-200 dark:border-slate-700 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+                 <button onClick={() => setBookDetailsModalOpen(true)} className="flex flex-col items-center p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3z" clipRule="evenodd" /></svg>
+                    <span className="text-xs">Details</span>
                 </button>
+                <button onClick={() => dispatch({ type: 'SET_STATE', payload: { showGlobalFindReplace: true }})} className="flex flex-col items-center p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" /></svg>
+                    <span className="text-xs">Find All</span>
+                </button>
+                 <button onClick={() => setExportModalOpen(true)} className="flex flex-col items-center p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                    <span className="text-xs">Export</span>
+                </button>
+                <button onClick={() => dispatch({type: 'SET_STATE', payload: { step: 'upload'}})} className="flex flex-col items-center p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.707-10.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L9.414 11H13a1 1 0 100-2H9.414l1.293-1.293z" clipRule="evenodd" /></svg>
+                    <span className="text-xs">Start Over</span>
+                </button>
+            </footer>
+
+            {/* Chapter List Drawer */}
+            <div className={`fixed inset-0 z-40 md:static md:block bg-black/30 md:bg-transparent transition-opacity duration-300 ${isChapterNavOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => dispatch({ type: 'SET_STATE', payload: { isChapterNavOpen: false }})}>
+                <div className={`absolute top-0 left-0 h-full w-72 bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shadow-lg flex flex-col transform transition-transform duration-300 ${isChapterNavOpen ? 'translate-x-0' : '-translate-x-full'}`} onClick={e => e.stopPropagation()}>
+                    <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                        <span className="font-semibold">Chapters ({chapters.length})</span>
+                        <div className="flex gap-2">
+                            <button onClick={() => dispatch({ type: 'ADD_NEW_CHAPTER' })} title="Add New Chapter" className="p-2 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-md"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg></button>
+                            <button onClick={() => dispatch({ type: 'TOGGLE_REORDER_MODE' })} title="Toggle Reorder Mode" className={`p-2 rounded-md ${reorderModeActive ? 'bg-primary-500 text-white' : 'hover:bg-slate-200 dark:hover:bg-slate-600'}`}><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7" /></svg></button>
+                        </div>
+                    </div>
+                    <ul className="flex-1 overflow-y-auto p-2 list-none">
+                        {chapters.map((chapter) => (
+                            <li key={chapter.id} className={`flex items-center p-1 rounded-md ${selectedChapterId === chapter.id ? 'bg-primary-600 text-white font-semibold' : 'hover:bg-slate-200 dark:hover:bg-slate-700'} ${dragIndicator?.id === chapter.id ? (dragIndicator.position === 'top' ? 'border-t-2 border-primary-500' : 'border-b-2 border-primary-500') : ''}`}
+                                onDragOver={e => { e.preventDefault(); if (reorderModeActive) { const rect = e.currentTarget.getBoundingClientRect(); setDragIndicator({ id: chapter.id, position: e.clientY - rect.top > rect.height / 2 ? 'bottom' : 'top' }); }}}>
+                                {!reorderModeActive ? (
+                                    <input type="checkbox" checked={selectedChapterIds.has(chapter.id)} onChange={e => dispatch({type: 'MULTI_SELECT_CHAPTER', payload: { id: chapter.id, checked: e.target.checked }})} className="w-4 h-4 mr-2 flex-shrink-0 accent-primary-500" onClick={e => e.stopPropagation()} />
+                                ) : (
+                                    <div draggable onDragStart={() => (draggedItem.current = chapter)} onDragEnd={() => handleDragSort(chapter)} className="cursor-grab p-2 touch-none flex-shrink-0">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8h16M4 16h16" /></svg>
+                                    </div>
+                                )}
+                                <div onClick={() => dispatch({ type: 'SET_STATE', payload: { selectedChapterId: chapter.id, isChapterNavOpen: false } })} className="flex-grow min-w-0 cursor-pointer p-1 text-sm truncate">{chapter.title}</div>
+                            </li>
+                        ))}
+                    </ul>
+                        {selectedChapterIds.size > 0 && !reorderModeActive && (
+                        <div className="p-2 border-t border-slate-200 dark:border-slate-700 space-y-2">
+                            <p className="text-sm font-semibold">{selectedChapterIds.size} chapter(s) selected</p>
+                            <div className="flex gap-2 flex-wrap">
+                                <button onClick={() => { if(confirm('Merge selected chapters?')) dispatch({ type: 'MERGE_SELECTED_CHAPTERS' }) }} className="px-2 py-1 text-xs rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Merge</button>
+                                <button onClick={() => setBatchRenameModalOpen(true)} className="px-2 py-1 text-xs rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Rename</button>
+                                <button onClick={() => dispatch({ type: 'SET_SELECTION', payload: new Set() })} className="px-2 py-1 text-xs rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Clear</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
+        </div>
+    );
+    
+    return (
+        <div className="max-w-7xl mx-auto p-2 md:p-4">
+            {step === 'upload' && renderUploadStep()}
+            {step === 'config' && renderConfigStep()}
+            {step === 'editor' && renderEditorStep()}
+
+            {/* MODALS */}
+            {isBookDetailsModalOpen && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setBookDetailsModalOpen(false)}>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+                        <h3 className="p-4 font-semibold border-b border-slate-200 dark:border-slate-700">Book Details</h3>
+                        <div className="p-4 space-y-4">
+                            <div><label className="text-sm block mb-1">Title:</label><input type="text" value={meta.title} onChange={e => dispatch({type: 'SET_META', payload: {title: e.target.value}})} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5" /></div>
+                            <div><label className="text-sm block mb-1">Author:</label><input type="text" value={meta.author} onChange={e => dispatch({type: 'SET_META', payload: {author: e.target.value}})} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5" /></div>
+                            <FileInput inputId="cover-upload" label="Upload Cover" accept="image/*" onFileSelected={(files) => dispatch({type: 'SET_META', payload: {coverFile: files[0]}})} />
+                        </div>
+                        <div className="p-4 flex justify-end gap-2 border-t border-slate-200 dark:border-slate-700"><button onClick={() => setBookDetailsModalOpen(false)} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Done</button></div>
+                    </div>
+                </div>
+            )}
             
-            {/* Batch Rename Modal */}
+            {isExportModalOpen && (
+                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setExportModalOpen(false)}>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+                        <h3 className="p-4 font-semibold border-b border-slate-200 dark:border-slate-700">Export As...</h3>
+                        <div className="p-4 space-y-3">
+                            <button onClick={() => {exportToZip(); setExportModalOpen(false);}} className="w-full px-4 py-3 text-left rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600">.zip (Text Files)</button>
+                            <button onClick={() => {exportToEpub(); setExportModalOpen(false);}} className="w-full px-4 py-3 text-left rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600">.epub (Ebook)</button>
+                        </div>
+                    </div>
+                 </div>
+            )}
+            
             {isBatchRenameModalOpen && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setBatchRenameModalOpen(false)}>
                     <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
                         <h3 className="p-4 font-semibold border-b border-slate-200 dark:border-slate-700">Batch Rename Chapters</h3>
                         <div className="p-4 space-y-4">
-                            <div>
-                                <label className="text-sm block mb-1">Pattern (use '{'n'}' for number):</label>
-                                <input type="text" value={renamePattern} onChange={e => setRenamePattern(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5" />
-                            </div>
-                            <div>
-                                <label className="text-sm block mb-1">Start Number:</label>
-                                <input type="number" value={renameStartNum} onChange={e => setRenameStartNum(Number(e.target.value))} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5" />
-                            </div>
+                            <div><label className="text-sm block mb-1">Pattern (use '{'n'}' for number):</label><input type="text" value={renamePattern} onChange={e => setRenamePattern(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5" /></div>
+                            <div><label className="text-sm block mb-1">Start Number:</label><input type="number" value={renameStartNum} onChange={e => setRenameStartNum(Number(e.target.value))} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5" /></div>
                         </div>
                         <div className="p-4 flex justify-end gap-2 border-t border-slate-200 dark:border-slate-700">
                             <button onClick={() => setBatchRenameModalOpen(false)} className="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Cancel</button>
                             <button onClick={handleBatchRename} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Rename</button>
                         </div>
+                    </div>
+                </div>
+            )}
+            
+            {showGlobalFindReplace && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => dispatch({ type: 'SET_STATE', payload: { showGlobalFindReplace: false }})}>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl h-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                        <header className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center"><h2 className="text-xl font-semibold">Find and Replace in Project</h2><button onClick={() => dispatch({ type: 'SET_STATE', payload: { showGlobalFindReplace: false } })} className="text-2xl">&times;</button></header>
+                        <div className="p-4 space-y-3"><div className="flex gap-2"><input type="text" value={globalFindQuery} onChange={e => dispatch({ type: 'SET_STATE', payload: { globalFindQuery: e.target.value }})} placeholder="Find" className="w-full bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded px-3 py-2" /><input type="text" value={globalReplaceQuery} onChange={e => dispatch({ type: 'SET_STATE', payload: { globalReplaceQuery: e.target.value }})} placeholder="Replace" className="w-full bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded px-3 py-2" /></div><div className="flex flex-wrap gap-2 text-sm">{Object.entries({useRegex: 'Regex', caseSensitive: 'Match Case', wholeWord: 'Whole Word'}).map(([key, label]) => (<button key={key} onClick={() => dispatch({ type: 'SET_STATE', payload: { globalFindOptions: { ...globalFindOptions, [key]: !globalFindOptions[key as keyof typeof globalFindOptions] } } })} className={`px-3 py-1 rounded-md ${globalFindOptions[key as keyof typeof globalFindOptions] ? 'bg-primary-600 text-white' : 'bg-slate-200 dark:bg-slate-700'}`}>{label}</button>))}</div></div>
+                        <div className="px-4 pb-2 text-sm text-slate-600 dark:text-slate-400 flex justify-between items-center"><span>{globalMatches.length} result(s) found</span>{globalMatches.length > 0 && <span>{currentGlobalMatchIndex + 1} / {globalMatches.length}</span>}</div>
+                        <ul className="flex-1 overflow-y-auto border-t border-b border-slate-200 dark:border-slate-700 list-none m-0 p-0">{globalMatches.map((match, index) => (<li key={`${match.chapterId}-${match.index}-${index}`} onClick={() => dispatch({ type: 'SET_STATE', payload: { currentGlobalMatchIndex: index }})} className={`p-3 cursor-pointer border-b border-slate-100 dark:border-slate-700 last:border-b-0 ${index === currentGlobalMatchIndex ? 'bg-primary-500/20' : 'hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}><div className="font-semibold truncate">{match.chapterTitle}</div><div className="text-sm text-slate-600 dark:text-slate-400 mt-1">...{match.text}...</div></li>))}</ul>
+                        <footer className="p-4 flex justify-end gap-2"><button onClick={handleGlobalReplace} disabled={currentGlobalMatchIndex < 0} className="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500 disabled:opacity-50">Replace</button><button onClick={() => { setReviewSelection(new Set(globalMatches.map((_, i) => i))); setReviewModalOpen(true); }} disabled={globalMatches.length === 0} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50">Replace All</button></footer>
+                    </div>
+                </div>
+            )}
+             {isReviewModalOpen && (
+                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setReviewModalOpen(false)}>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl h-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                        <header className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center"><h2 className="text-xl font-semibold">Review Replacements</h2><button onClick={() => setReviewModalOpen(false)} className="text-2xl">&times;</button></header>
+                         <div className="p-3 bg-slate-100 dark:bg-slate-900/50 flex items-center gap-4"><label className="flex items-center gap-2"><input type="checkbox" checked={reviewSelection.size === globalMatches.length} onChange={e => setReviewSelection(e.target.checked ? new Set(globalMatches.map((_, i) => i)) : new Set())} /> {reviewSelection.size} of {globalMatches.length} selected</label></div>
+                        <ul className="flex-1 overflow-y-auto list-none m-0 p-0">{globalMatches.map((match, index) => {const chapterContent = chapters.find(c => c.id === match.chapterId)?.content || '';const contextStart = Math.max(0, match.index - 50);const preContext = chapterContent.substring(contextStart, match.index);const postContext = chapterContent.substring(match.index + match.length, match.index + match.length + 50);return (<li key={index} className="p-3 border-b border-slate-100 dark:border-slate-700 flex items-start gap-3"><input type="checkbox" checked={reviewSelection.has(index)} onChange={e => setReviewSelection(s => { const n = new Set(s); e.target.checked ? n.add(index) : n.delete(index); return n;})} className="mt-1" /><div><div className="font-semibold text-sm">{match.chapterTitle}</div><div className="text-xs text-slate-600 dark:text-slate-400 mt-1">...{preContext}<mark className="bg-red-200 dark:bg-red-800/50">{match.text}</mark>{postContext}...</div></div></li>)})}</ul>
+                        <footer className="p-4 flex justify-end gap-2 border-t border-slate-200 dark:border-slate-700"><button onClick={() => setReviewModalOpen(false)} className="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Cancel</button><button onClick={handleConfirmReplaceAll} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Confirm {reviewSelection.size} Replacements</button></footer>
                     </div>
                 </div>
             )}
