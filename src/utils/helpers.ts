@@ -39,7 +39,7 @@ export const getJSZip = async (): Promise<any> => {
     }
 };
 
-let FONT_CACHE: { notoFontBytes: ArrayBuffer; latinFontBytes: ArrayBuffer; } | null = null;
+let FONT_CACHE: { cjkFontBytes: ArrayBuffer; latinFontBytes: ArrayBuffer; } | null = null;
 
 async function fetchFont(url: string, fontName: string): Promise<ArrayBuffer> {
     const response = await fetch(url);
@@ -55,15 +55,17 @@ export async function getFonts() {
         // Use a font with broad Latin character support for Pinyin, etc.
         const latinFontUrl = '/fonts/NotoSans-Regular.ttf';
         
-        // Use the local Alibaba PuHuiTi font for Chinese characters.
-        const chineseFontUrl = '/fonts/Alibaba-PuHuiTi-Heavy.otf';
+        // FIX: The Alibaba font for CJK characters was not provided.
+        // Using NotoSans-Regular as a fallback to prevent PDF generation from crashing.
+        // For proper CJK rendering, a suitable font file (like Noto Sans SC) should be added to /public/fonts.
+        const cjkFontUrl = '/fonts/NotoSans-Regular.ttf';
 
-        const [latinFontBytes, chineseFontBytes] = await Promise.all([
-            fetchFont(latinFontUrl, 'Noto Sans'),
-            fetchFont(chineseFontUrl, 'Alibaba PuHuiTi')
+        const [latinFontBytes, cjkFontBytes] = await Promise.all([
+            fetchFont(latinFontUrl, 'Latin Font (Noto Sans)'),
+            fetchFont(cjkFontUrl, 'CJK Font (Fallback)')
         ]);
         
-        FONT_CACHE = { notoFontBytes: chineseFontBytes, latinFontBytes };
+        FONT_CACHE = { cjkFontBytes, latinFontBytes };
         return FONT_CACHE;
     } catch (error: any) {
         console.error("Font load for PDF failed:", error);

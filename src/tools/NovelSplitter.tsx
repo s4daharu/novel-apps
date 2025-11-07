@@ -112,14 +112,6 @@ const reducer = (state: State, action: Action): State => {
     }
 };
 
-const useDebouncedEffect = (effect: () => void, deps: any[], delay: number) => {
-    useEffect(() => {
-        const handler = setTimeout(() => effect(), delay);
-        return () => clearTimeout(handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [JSON.stringify(deps)]);
-};
-
 export const NovelSplitter: React.FC = () => {
     const { showToast, showSpinner, hideSpinner } = useAppContext();
     const [state, dispatch] = useReducer(reducer, initialState);
@@ -133,13 +125,28 @@ export const NovelSplitter: React.FC = () => {
 
     const LOCAL_STORAGE_KEY = 'novelSplitterSession';
 
-    useDebouncedEffect(() => {
-        if (step === 'editor') {
-            const { coverFile, ...metaToSave } = meta;
-            const sessionData = { ...state, meta: metaToSave };
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(sessionData));
+    const sessionDataToSave = useMemo(() => {
+        if (step !== 'editor') return null;
+        
+        const { coverFile, ...metaToSave } = meta; 
+        const sessionData = { ...state, meta: metaToSave };
+        
+        if (sessionData.chapters.length > 0) {
+            sessionData.rawText = null;
         }
-    }, [state], 1000);
+
+        return JSON.stringify(sessionData);
+    }, [state, step, meta]);
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            if (sessionDataToSave) {
+                localStorage.setItem(LOCAL_STORAGE_KEY, sessionDataToSave);
+            }
+        }, 1000);
+
+        return () => clearTimeout(handler);
+    }, [sessionDataToSave]);
 
     useEffect(() => {
         const savedSession = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -202,15 +209,28 @@ export const NovelSplitter: React.FC = () => {
 
             const regex = new RegExp(splitRegex, 'gm');
             const titles = [...processedText.matchAll(regex)];
-            const contents = processedText.split(regex).slice(1);
+            const contents = processedText.split(regex);
             
-            const newChapters: Chapter[] = titles.map((title, i) => ({
-                id: `chap-${Date.now()}-${i}`,
-                title: title[0].trim(),
-                content: (contents[i * 2 + 1] || '').trim(),
-            }));
+            const newChapters: Chapter[] = [];
 
-            if (newChapters.length === 0) {
+            const prefaceContent = contents[0]?.trim();
+            if (prefaceContent) {
+                newChapters.push({
+                    id: `chap-${Date.now()}-preface`,
+                    title: 'Preface',
+                    content: prefaceContent,
+                });
+            }
+
+            titles.forEach((title, i) => {
+                newChapters.push({
+                    id: `chap-${Date.now()}-${i}`,
+                    title: title[0].trim(),
+                    content: (contents[(i * 2) + 2] || '').trim(),
+                });
+            });
+
+            if (newChapters.length === 0 && processedText) {
                 newChapters.push({ id: `chap-${Date.now()}-0`, title: "Chapter 1", content: processedText });
             }
             dispatch({ type: 'SET_CHAPTERS', payload: newChapters });
@@ -303,12 +323,13 @@ export const NovelSplitter: React.FC = () => {
     };
     
     useEffect(() => {
+        const root = document.documentElement;
         if (isFullScreen) {
-            document.body.classList.add('fullscreen-editor');
-            document.documentElement.requestFullscreen?.();
+            root.classList.add('fullscreen-active');
+            root.requestFullscreen?.().catch(err => console.error(err));
         } else {
-            document.body.classList.remove('fullscreen-editor');
-            if(document.fullscreenElement) document.exitFullscreen?.();
+            root.classList.remove('fullscreen-active');
+            if (document.fullscreenElement) document.exitFullscreen?.();
         }
         const handleFullscreenChange = () => {
             if (!document.fullscreenElement) {
@@ -317,7 +338,7 @@ export const NovelSplitter: React.FC = () => {
         };
         document.addEventListener('fullscreenchange', handleFullscreenChange);
         return () => {
-            document.body.classList.remove('fullscreen-editor');
+            root.classList.remove('fullscreen-active');
             document.removeEventListener('fullscreenchange', handleFullscreenChange);
         };
     }, [isFullScreen]);
@@ -408,21 +429,21 @@ export const NovelSplitter: React.FC = () => {
     );
 
     return (
-        <div className={`transition-all duration-300 ${isFullScreen ? 'bg-slate-50 dark:bg-slate-900' : 'max-w-7xl mx-auto p-2 md:p-4'}`}>
-            <div className={`${isFullScreen ? 'h-screen' : 'min-h-[75vh]'} flex flex-col`}>
-                <header className={`flex-shrink-0 flex flex-wrap items-center justify-between gap-4 p-2 mb-2 ${isFullScreen ? 'md:px-6' : ''}`}>
-                    <div className="flex items-center gap-2">
-                        <input type="text" placeholder="Book Title" value={meta.title} onChange={e => dispatch({ type: 'SET_META', payload: { title: e.target.value } })} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-1.5 text-lg font-semibold w-48"/>
-                        <input type="text" placeholder="Author" value={meta.author} onChange={e => dispatch({ type: 'SET_META', payload: { author: e.target.value } })} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-1.5 w-48"/>
+        <div className={`transition-all duration-300 ${isFullScreen ? 'bg-slate-50 dark:bg-slate-900 fixed inset-0 z-50' : 'max-w-7xl mx-auto p-2 md:p-4'}`}>
+            <div className={`flex flex-col ${isFullScreen ? 'h-screen' : 'min-h-[75vh]'}`}>
+                <header className={`flex-shrink-0 flex flex-col sm:flex-row sm:flex-wrap items-center justify-between gap-y-2 gap-x-4 p-2 mb-2 ${isFullScreen ? 'px-4 pt-4' : ''}`}>
+                    <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                        <input type="text" placeholder="Book Title" value={meta.title} onChange={e => dispatch({ type: 'SET_META', payload: { title: e.target.value } })} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-1.5 text-lg font-semibold w-full sm:w-48"/>
+                        <input type="text" placeholder="Author" value={meta.author} onChange={e => dispatch({ type: 'SET_META', payload: { author: e.target.value } })} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-1.5 w-full sm:w-48"/>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap justify-center">
                          <button onClick={exportToZip} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Export ZIP</button>
                          <button onClick={exportToEpub} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Export EPUB</button>
                          <button onClick={() => dispatch({ type: 'SET_STATE', payload: { step: 'upload' } })} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Back</button>
                     </div>
                 </header>
 
-                <div className={`flex-1 grid gap-4 ${isFullScreen ? 'grid-cols-1 md:grid-cols-[350px_1fr]' : 'md:grid-cols-[300px_1fr] grid-cols-1'}`}>
+                <div className={`flex-1 grid grid-cols-1 md:grid-cols-[300px_1fr] gap-4 ${isFullScreen ? 'md:grid-cols-[350px_1fr]' : ''}`}>
                     {/* Mobile Chapter Nav Toggle */}
                      <button onClick={() => dispatch({ type: 'SET_STATE', payload: { isChapterNavOpen: true }})} className="md:hidden fixed bottom-4 right-4 z-30 bg-primary-600 text-white rounded-full p-3 shadow-lg">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
@@ -442,10 +463,10 @@ export const NovelSplitter: React.FC = () => {
                                                 <input type="text" value={chapter.title} onClick={e => e.stopPropagation()} onChange={e => dispatch({ type: 'UPDATE_CHAPTER', payload: { id: chapter.id, title: e.target.value } })} className="w-full bg-transparent outline-none border-none p-1 rounded focus:bg-white/20" />
                                             </div>
                                             <div className="flex flex-col ml-1">
-                                                <button onClick={(e) => { e.stopPropagation(); handleMoveChapter(index, 'up'); }} disabled={index === 0} className="p-1 disabled:opacity-20">
+                                                <button onClick={(e) => { e.stopPropagation(); handleMoveChapter(index, 'up'); }} disabled={index === 0} className="p-2 disabled:opacity-20">
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" /></svg>
                                                 </button>
-                                                <button onClick={(e) => { e.stopPropagation(); handleMoveChapter(index, 'down'); }} disabled={index === chapters.length - 1} className="p-1 disabled:opacity-20">
+                                                <button onClick={(e) => { e.stopPropagation(); handleMoveChapter(index, 'down'); }} disabled={index === chapters.length - 1} className="p-2 disabled:opacity-20">
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7 7" /></svg>
                                                 </button>
                                             </div>
@@ -458,13 +479,7 @@ export const NovelSplitter: React.FC = () => {
                     
                     {/* Editor Panel */}
                     <div className="flex flex-col gap-2">
-                        <div className="flex-shrink-0 flex flex-wrap items-center gap-2">
-                            {/* Desktop Actions */}
-                            <div className="hidden md:flex flex-wrap items-center gap-2">
-                                <button onClick={() => dispatch({ type: 'MERGE_CHAPTER_WITH_NEXT' })} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Merge with Next</button>
-                                <button onClick={() => contentEditableRef.current && dispatch({ type: 'SPLIT_CHAPTER', payload: { cursorPosition: contentEditableRef.current.selectionStart } })} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Split at Cursor</button>
-                                <button onClick={() => dispatch({ type: 'SET_STATE', payload: { showFindReplace: !showFindReplace }})} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Find/Replace</button>
-                            </div>
+                        <div className="flex-shrink-0 flex items-center gap-2">
                             {/* Mobile Actions Dropdown */}
                             <div className="relative md:hidden">
                                 <button onClick={() => setActionsMenuOpen(!isActionsMenuOpen)} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">More Actions</button>
@@ -472,12 +487,24 @@ export const NovelSplitter: React.FC = () => {
                                     <div className="absolute top-full mt-2 left-0 bg-white dark:bg-slate-700 rounded-lg shadow-lg border border-slate-200 dark:border-slate-600 z-10 w-48">
                                         <button onClick={() => { dispatch({ type: 'MERGE_CHAPTER_WITH_NEXT' }); setActionsMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-600">Merge with Next</button>
                                         <button onClick={() => { contentEditableRef.current && dispatch({ type: 'SPLIT_CHAPTER', payload: { cursorPosition: contentEditableRef.current.selectionStart } }); setActionsMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-600">Split at Cursor</button>
-                                        <button onClick={() => { dispatch({ type: 'SET_STATE', payload: { showFindReplace: !showFindReplace }}); setActionsMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-600">Find/Replace</button>
                                     </div>
                                 )}
                             </div>
+                            {/* Desktop Actions */}
+                            <div className="hidden md:flex flex-wrap items-center gap-2">
+                                <button onClick={() => dispatch({ type: 'MERGE_CHAPTER_WITH_NEXT' })} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Merge with Next</button>
+                                <button onClick={() => contentEditableRef.current && dispatch({ type: 'SPLIT_CHAPTER', payload: { cursorPosition: contentEditableRef.current.selectionStart } })} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Split at Cursor</button>
+                            </div>
                             <div className="flex-grow"></div>
-                            <button onClick={() => dispatch({ type: 'SET_STATE', payload: { isFullScreen: !isFullScreen }})} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">{isFullScreen ? 'Exit Fullscreen' : 'Fullscreen'}</button>
+                            <button onClick={() => dispatch({ type: 'SET_STATE', payload: { showFindReplace: !showFindReplace }})} className="p-2 rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500" title="Find/Replace">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                            </button>
+                            <button onClick={() => dispatch({ type: 'SET_STATE', payload: { isFullScreen: !isFullScreen }})} className="p-2 rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500" title={isFullScreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}>
+                                {isFullScreen ? 
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 4H4v4m12 0V4h-4M8 20H4v-4m12 0v4h-4" /></svg> : 
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4h4m12 4V4h-4M4 16v4h4m12-4v4h-4" /></svg>
+                                }
+                            </button>
                         </div>
                         {showFindReplace && (
                             <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 p-2 bg-slate-100 dark:bg-slate-700/50 rounded-lg">

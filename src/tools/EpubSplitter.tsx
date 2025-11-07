@@ -360,10 +360,10 @@ export const EpubSplitter: React.FC = () => {
         hideSpinner();
     };
 
-    const createPdfFromChapters = async (chaptersData: { title: string, text: string }[], fontBytes: { notoFontBytes: ArrayBuffer, latinFontBytes: ArrayBuffer }, baseFontSize: number, onProgress?: (progress: { current: number; total: number }) => void) => {
+    const createPdfFromChapters = async (chaptersData: { title: string, text: string }[], fontBytes: { cjkFontBytes: ArrayBuffer, latinFontBytes: ArrayBuffer }, baseFontSize: number, onProgress?: (progress: { current: number; total: number }) => void) => {
         const pdfDoc = await PDFLibDoc.create() as PDFDocument;
         pdfDoc.registerFontkit(fontkit);
-        const chineseFont = await pdfDoc.embedFont(fontBytes.notoFontBytes);
+        const chineseFont = await pdfDoc.embedFont(fontBytes.cjkFontBytes);
         const englishFont = await pdfDoc.embedFont(fontBytes.latinFontBytes);
         
         const tocEntries: { title: string, page: any }[] = [];
