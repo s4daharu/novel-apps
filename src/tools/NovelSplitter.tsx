@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useReducer } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useReducer, useCallback } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { triggerDownload, getJSZip, escapeHTML } from '../utils/helpers';
 
@@ -7,6 +7,13 @@ type Chapter = { id: string; title: string; content: string; };
 type Meta = { title: string; author: string; coverFile: File | null; coverURL: string | null; language: string; };
 type CleanupRule = { id: number; find: string; replace: string; };
 type Template = { id: number; name: string; splitRegex: string; cleanupRules: CleanupRule[] };
+type GlobalMatch = {
+    chapterId: string;
+    chapterTitle: string;
+    index: number;
+    length: number;
+    text: string;
+};
 type State = {
     step: 'upload' | 'editor';
     rawText: string | null;
@@ -18,13 +25,23 @@ type State = {
     chapters: Chapter[];
     selectedChapterId: string | null;
     meta: Meta;
-    isFullScreen: boolean;
     showFindReplace: boolean;
     findQuery: string;
     replaceQuery: string;
     isChapterNavOpen: boolean;
     reorderModeActive: boolean;
     selectedChapterIds: Set<string>;
+    // New state for global find/replace
+    showGlobalFindReplace: boolean;
+    globalFindQuery: string;
+    globalReplaceQuery: string;
+    globalFindOptions: {
+        useRegex: boolean;
+        caseSensitive: boolean;
+        wholeWord: boolean;
+    };
+    globalMatches: GlobalMatch[];
+    currentGlobalMatchIndex: number;
 };
 type Action =
     | { type: 'SET_STATE'; payload: Partial<State> }
@@ -34,6 +51,7 @@ type Action =
     | { type: 'DELETE_RULE'; payload: number }
     | { type: 'SET_CHAPTERS'; payload: Chapter[] }
     | { type: 'UPDATE_CHAPTER'; payload: { id: string; title?: string; content?: string } }
+    | { type: 'UPDATE_CHAPTERS'; payload: Chapter[] }
     | { type: 'REORDER_CHAPTERS', payload: Chapter[] }
     | { type: 'SET_META'; payload: Partial<Meta> }
     | { type: 'MERGE_CHAPTER_WITH_NEXT' }
@@ -56,13 +74,18 @@ const initialState: State = {
     chapters: [],
     selectedChapterId: null,
     meta: { title: '', author: '', coverFile: null, coverURL: null, language: 'en' },
-    isFullScreen: false,
     showFindReplace: false,
     findQuery: '',
     replaceQuery: '',
     isChapterNavOpen: false,
     reorderModeActive: false,
     selectedChapterIds: new Set(),
+    showGlobalFindReplace: false,
+    globalFindQuery: '',
+    globalReplaceQuery: '',
+    globalFindOptions: { useRegex: false, caseSensitive: false, wholeWord: false },
+    globalMatches: [],
+    currentGlobalMatchIndex: -1,
 };
 
 const reducer = (state: State, action: Action): State => {
@@ -83,6 +106,8 @@ const reducer = (state: State, action: Action): State => {
             const { id, title, content } = action.payload;
             return { ...state, chapters: state.chapters.map(c => c.id === id ? { ...c, title: title ?? c.title, content: content ?? c.content } : c) };
         }
+        case 'UPDATE_CHAPTERS':
+             return { ...state, chapters: action.payload };
         case 'REORDER_CHAPTERS':
             return { ...state, chapters: action.payload };
         case 'SET_META':
@@ -172,13 +197,14 @@ const TEMPLATES_KEY = 'novelSplitterTemplates';
 export const NovelSplitter: React.FC = () => {
     const { showToast, showSpinner, hideSpinner } = useAppContext();
     const [state, dispatch] = useReducer(reducer, initialState);
-    const { step, rawText, fileName, encoding, splitRegex, matchedHeadings, cleanupRules, chapters, selectedChapterId, meta, isFullScreen, showFindReplace, findQuery, replaceQuery, isChapterNavOpen, reorderModeActive, selectedChapterIds } = state;
+    const { step, rawText, fileName, encoding, splitRegex, matchedHeadings, cleanupRules, chapters, selectedChapterId, meta, showFindReplace, findQuery, replaceQuery, isChapterNavOpen, reorderModeActive, selectedChapterIds, showGlobalFindReplace, globalFindQuery, globalReplaceQuery, globalFindOptions, globalMatches, currentGlobalMatchIndex } = state;
     
     const [isCleanupOpen, setCleanupOpen] = useState(false);
     const [isSplitPreviewOpen, setSplitPreviewOpen] = useState(false);
-    const [isActionsMenuOpen, setActionsMenuOpen] = useState(false);
     const [isFabOpen, setFabOpen] = useState(false);
     const [isBatchRenameModalOpen, setBatchRenameModalOpen] = useState(false);
+    const [isReviewModalOpen, setReviewModalOpen] = useState(false);
+    const [reviewSelection, setReviewSelection] = useState<Set<number>>(new Set());
     const [renamePattern, setRenamePattern] = useState('Chapter {n}');
     const [renameStartNum, setRenameStartNum] = useState(1);
     const [templates, setTemplates] = useState<Template[]>([]);
@@ -322,22 +348,6 @@ export const NovelSplitter: React.FC = () => {
         } catch (e: any) { showToast(`Failed to generate EPUB: ${e.message}`, true);
         } finally { hideSpinner(); }
     };
-    
-    useEffect(() => {
-        const root = document.documentElement;
-        const handleFullscreenChange = () => !document.fullscreenElement && dispatch({ type: 'SET_STATE', payload: { isFullScreen: false } });
-        if (isFullScreen) {
-            root.classList.add('fullscreen-active');
-            // FIX: The `requestFullscreen` method must be called to return a Promise before `.catch` can be used.
-            // The original code was attempting to call `.catch` on the function itself.
-            root.requestFullscreen?.().catch(err => console.error(err));
-        } else {
-            root.classList.remove('fullscreen-active');
-            if (document.fullscreenElement) document.exitFullscreen?.();
-        }
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        return () => { root.classList.remove('fullscreen-active'); document.removeEventListener('fullscreenchange', handleFullscreenChange); };
-    }, [isFullScreen]);
 
     const handleDragSort = (draggedOverItem: Chapter) => {
         if (!draggedItem.current || !draggedOverItem || draggedItem.current.id === draggedOverItem.id) {
@@ -391,6 +401,120 @@ export const NovelSplitter: React.FC = () => {
         if (touchStartX.current < 20 && e.touches[0].clientX > 50) {
             dispatch({ type: 'SET_STATE', payload: { isChapterNavOpen: true } });
         }
+    };
+    
+    const performGlobalSearch = useCallback(() => {
+        if (!globalFindQuery) {
+            dispatch({ type: 'SET_STATE', payload: { globalMatches: [], currentGlobalMatchIndex: -1 } });
+            return;
+        }
+
+        try {
+            const flags = globalFindOptions.caseSensitive ? 'g' : 'gi';
+            let finalPattern = globalFindOptions.useRegex ? globalFindQuery : globalFindQuery.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+            if (globalFindOptions.wholeWord) {
+                finalPattern = `\\b(${finalPattern})\\b`;
+            }
+            const regex = new RegExp(finalPattern, flags);
+            
+            const allMatches: GlobalMatch[] = [];
+            chapters.forEach(chapter => {
+                let match;
+                while ((match = regex.exec(chapter.content)) !== null) {
+                    allMatches.push({
+                        chapterId: chapter.id,
+                        chapterTitle: chapter.title,
+                        index: match.index,
+                        length: match[0].length,
+                        text: match[0]
+                    });
+                }
+            });
+            dispatch({ type: 'SET_STATE', payload: { globalMatches: allMatches, currentGlobalMatchIndex: allMatches.length > 0 ? 0 : -1 } });
+        } catch (e) {
+            showToast("Invalid Regular Expression", true);
+            dispatch({ type: 'SET_STATE', payload: { globalMatches: [], currentGlobalMatchIndex: -1 } });
+        }
+    }, [globalFindQuery, globalFindOptions, chapters, showToast]);
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            if (showGlobalFindReplace) performGlobalSearch();
+        }, 300);
+        return () => clearTimeout(handler);
+    }, [performGlobalSearch, showGlobalFindReplace]);
+
+    useEffect(() => {
+        if (!contentEditableRef.current || currentGlobalMatchIndex === -1 || globalMatches.length === 0) return;
+        const match = globalMatches[currentGlobalMatchIndex];
+
+        const highlightMatch = () => {
+            const editor = contentEditableRef.current;
+            if (!editor) return;
+            editor.focus();
+            editor.setSelectionRange(match.index, match.index + match.length);
+            const text = editor.value;
+            const lineHeight = parseInt(window.getComputedStyle(editor).lineHeight) || 20;
+            const lines = text.substring(0, match.index).split('\n').length;
+            editor.scrollTop = Math.max(0, (lines - 5) * lineHeight);
+        };
+
+        if (match.chapterId !== selectedChapterId) {
+            dispatch({ type: 'SET_STATE', payload: { selectedChapterId: match.chapterId } });
+            // The highlight will be handled by the next render cycle after the chapter is set
+        } else {
+            highlightMatch();
+        }
+    }, [currentGlobalMatchIndex, globalMatches, selectedChapterId]);
+
+
+    const handleGlobalReplace = () => {
+        if (currentGlobalMatchIndex < 0) return;
+        const match = globalMatches[currentGlobalMatchIndex];
+        const chapter = chapters.find(c => c.id === match.chapterId);
+        if (!chapter) return;
+
+        const newContent = chapter.content.substring(0, match.index) + globalReplaceQuery + chapter.content.substring(match.index + match.length);
+        const updatedChapter = { ...chapter, content: newContent };
+        const newChapters = chapters.map(c => c.id === chapter.id ? updatedChapter : c);
+
+        dispatch({ type: 'UPDATE_CHAPTERS', payload: newChapters });
+        // After replacement, re-run the search to get fresh matches and indices
+        // A full re-search is safer than trying to manually update indices
+    };
+
+    const handleConfirmReplaceAll = () => {
+        const matchesToReplace = globalMatches.filter((_, index) => reviewSelection.has(index));
+        if (matchesToReplace.length === 0) {
+            setReviewModalOpen(false);
+            return;
+        }
+
+        const chaptersToUpdate = new Map<string, string>();
+        
+        const groupedByChapter = matchesToReplace.reduce((acc, match) => {
+            if (!acc[match.chapterId]) acc[match.chapterId] = [];
+            acc[match.chapterId].push(match);
+            return acc;
+        }, {} as Record<string, GlobalMatch[]>);
+
+        const newChapters = chapters.map(c => {
+            const matchesInChapter = groupedByChapter[c.id];
+            if (!matchesInChapter) return c;
+
+            // Sort matches in descending order of index to replace from the end
+            matchesInChapter.sort((a, b) => b.index - a.index);
+            let newContent = c.content;
+            for (const match of matchesInChapter) {
+                newContent = newContent.substring(0, match.index) + globalReplaceQuery + newContent.substring(match.index + match.length);
+            }
+            return { ...c, content: newContent };
+        });
+
+        dispatch({ type: 'UPDATE_CHAPTERS', payload: newChapters });
+        showToast(`${matchesToReplace.length} replacements made.`);
+        setReviewModalOpen(false);
+        dispatch({ type: 'SET_STATE', payload: { showGlobalFindReplace: false } });
     };
 
     const currentChapter = useMemo(() => chapters.find(c => c.id === selectedChapterId), [chapters, selectedChapterId]);
@@ -454,21 +578,22 @@ export const NovelSplitter: React.FC = () => {
     );
 
     return (
-        <div onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} className={`transition-all duration-300 ${isFullScreen ? 'bg-slate-50 dark:bg-slate-900 fixed inset-0 z-50' : 'max-w-7xl mx-auto p-2 md:p-4'}`}>
-            <div className={`flex flex-col ${isFullScreen ? 'h-screen' : 'min-h-[75vh]'}`}>
-                <header className={`flex-shrink-0 flex flex-col sm:flex-row sm:flex-wrap items-center justify-between gap-y-2 gap-x-4 p-2 mb-2 ${isFullScreen ? 'px-4 pt-4' : ''}`}>
+        <div onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} className="max-w-7xl mx-auto p-2 md:p-4">
+            <div className="flex flex-col min-h-[75vh]">
+                <header className="flex-shrink-0 flex flex-col sm:flex-row sm:flex-wrap items-center justify-between gap-y-2 gap-x-4 p-2 mb-2">
                     <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
                         <input type="text" placeholder="Book Title" value={meta.title} onChange={e => dispatch({ type: 'SET_META', payload: { title: e.target.value } })} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-1.5 text-lg font-semibold w-full sm:w-48"/>
                         <input type="text" placeholder="Author" value={meta.author} onChange={e => dispatch({ type: 'SET_META', payload: { author: e.target.value } })} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-1.5 w-full sm:w-48"/>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap justify-center">
+                         <button onClick={() => dispatch({ type: 'SET_STATE', payload: { showGlobalFindReplace: true }})} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Find in Project</button>
                          <button onClick={exportToZip} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Export ZIP</button>
                          <button onClick={exportToEpub} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Export EPUB</button>
                          <button onClick={() => dispatch({ type: 'SET_STATE', payload: { step: 'upload' } })} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500">Back</button>
                     </div>
                 </header>
 
-                <div className={`flex-1 grid grid-cols-1 md:grid-cols-[300px_1fr] gap-4 ${isFullScreen ? 'md:grid-cols-[350px_1fr]' : ''}`}>
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-[300px_1fr] gap-4">
                     {/* Chapter List */}
                     <div className={`fixed inset-0 z-40 md:static md:block bg-black/30 md:bg-transparent transition-opacity duration-300 ${isChapterNavOpen ? 'opacity-100' : 'opacity-0 pointer-events-none md:opacity-100 md:pointer-events-auto'}`} onClick={() => dispatch({ type: 'SET_STATE', payload: { isChapterNavOpen: false }})}>
                         <div className={`absolute top-0 left-0 h-full w-64 md:w-full bg-slate-100 dark:bg-slate-800 md:bg-white/70 md:dark:bg-slate-800/50 backdrop-blur-sm border-r md:border border-slate-200 dark:border-slate-700 rounded-r-lg md:rounded-xl shadow-lg flex flex-col transform transition-transform duration-300 ${isChapterNavOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`} onClick={e => e.stopPropagation()}>
@@ -520,9 +645,6 @@ export const NovelSplitter: React.FC = () => {
                             <button onClick={() => dispatch({ type: 'SET_STATE', payload: { showFindReplace: !showFindReplace }})} className="p-2 rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500" title="Find/Replace">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                             </button>
-                            <button onClick={() => dispatch({ type: 'SET_STATE', payload: { isFullScreen: !isFullScreen }})} className="p-2 rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:text-white dark:hover:bg-slate-500" title={isFullScreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}>
-                                {isFullScreen ? <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 4H4v4m12 0V4h-4M8 20H4v-4m12 0v4h-4" /></svg> : <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4h4m12 4V4h-4M4 16v4h4m12-4v4h-4" /></svg>}
-                            </button>
                         </div>
                         {showFindReplace && (
                             <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 p-2 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
@@ -538,6 +660,82 @@ export const NovelSplitter: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Global Find/Replace Modal */}
+            {showGlobalFindReplace && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => dispatch({ type: 'SET_STATE', payload: { showGlobalFindReplace: false }})}>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl h-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                        <header className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                            <h2 className="text-xl font-semibold">Find and Replace in Project</h2>
+                            <button onClick={() => dispatch({ type: 'SET_STATE', payload: { showGlobalFindReplace: false } })} className="text-2xl">&times;</button>
+                        </header>
+                        <div className="p-4 space-y-3">
+                            <div className="flex gap-2">
+                                <input type="text" value={globalFindQuery} onChange={e => dispatch({ type: 'SET_STATE', payload: { globalFindQuery: e.target.value }})} placeholder="Find" className="w-full bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded px-3 py-2" />
+                                <input type="text" value={globalReplaceQuery} onChange={e => dispatch({ type: 'SET_STATE', payload: { globalReplaceQuery: e.target.value }})} placeholder="Replace" className="w-full bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded px-3 py-2" />
+                            </div>
+                            <div className="flex flex-wrap gap-2 text-sm">
+                                {Object.entries({useRegex: 'Regex', caseSensitive: 'Match Case', wholeWord: 'Whole Word'}).map(([key, label]) => (
+                                    <button key={key} onClick={() => dispatch({ type: 'SET_STATE', payload: { globalFindOptions: { ...globalFindOptions, [key]: !globalFindOptions[key as keyof typeof globalFindOptions] } } })} className={`px-3 py-1 rounded-md ${globalFindOptions[key as keyof typeof globalFindOptions] ? 'bg-primary-600 text-white' : 'bg-slate-200 dark:bg-slate-700'}`}>{label}</button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="px-4 pb-2 text-sm text-slate-600 dark:text-slate-400 flex justify-between items-center">
+                            <span>{globalMatches.length} result(s) found</span>
+                             {globalMatches.length > 0 && <span>{currentGlobalMatchIndex + 1} / {globalMatches.length}</span>}
+                        </div>
+                        <ul className="flex-1 overflow-y-auto border-t border-b border-slate-200 dark:border-slate-700 list-none m-0 p-0">
+                            {globalMatches.map((match, index) => (
+                                <li key={`${match.chapterId}-${match.index}-${index}`} onClick={() => dispatch({ type: 'SET_STATE', payload: { currentGlobalMatchIndex: index }})} className={`p-3 cursor-pointer border-b border-slate-100 dark:border-slate-700 last:border-b-0 ${index === currentGlobalMatchIndex ? 'bg-primary-500/20' : 'hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}>
+                                    <div className="font-semibold truncate">{match.chapterTitle}</div>
+                                    <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                        ...{match.text}...
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                        <footer className="p-4 flex justify-end gap-2">
+                            <button onClick={handleGlobalReplace} disabled={currentGlobalMatchIndex < 0} className="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500 disabled:opacity-50">Replace</button>
+                            <button onClick={() => { setReviewSelection(new Set(globalMatches.map((_, i) => i))); setReviewModalOpen(true); }} disabled={globalMatches.length === 0} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50">Replace All</button>
+                        </footer>
+                    </div>
+                </div>
+            )}
+            
+            {/* Replace All Review Modal */}
+            {isReviewModalOpen && (
+                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setReviewModalOpen(false)}>
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl h-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                        <header className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                            <h2 className="text-xl font-semibold">Review Replacements</h2>
+                            <button onClick={() => setReviewModalOpen(false)} className="text-2xl">&times;</button>
+                        </header>
+                         <div className="p-3 bg-slate-100 dark:bg-slate-900/50 flex items-center gap-4">
+                            <label className="flex items-center gap-2"><input type="checkbox" checked={reviewSelection.size === globalMatches.length} onChange={e => setReviewSelection(e.target.checked ? new Set(globalMatches.map((_, i) => i)) : new Set())} /> {reviewSelection.size} of {globalMatches.length} selected</label>
+                        </div>
+                        <ul className="flex-1 overflow-y-auto list-none m-0 p-0">
+                            {globalMatches.map((match, index) => {
+                                const chapterContent = chapters.find(c => c.id === match.chapterId)?.content || '';
+                                const contextStart = Math.max(0, match.index - 50);
+                                const preContext = chapterContent.substring(contextStart, match.index);
+                                const postContext = chapterContent.substring(match.index + match.length, match.index + match.length + 50);
+                                return (
+                                <li key={index} className="p-3 border-b border-slate-100 dark:border-slate-700 flex items-start gap-3">
+                                    <input type="checkbox" checked={reviewSelection.has(index)} onChange={e => setReviewSelection(s => { const n = new Set(s); e.target.checked ? n.add(index) : n.delete(index); return n;})} className="mt-1" />
+                                    <div>
+                                        <div className="font-semibold text-sm">{match.chapterTitle}</div>
+                                        <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">...{preContext}<mark className="bg-red-200 dark:bg-red-800/50">{match.text}</mark>{postContext}...</div>
+                                    </div>
+                                </li>
+                            )})}
+                        </ul>
+                        <footer className="p-4 flex justify-end gap-2 border-t border-slate-200 dark:border-slate-700">
+                             <button onClick={() => setReviewModalOpen(false)} className="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Cancel</button>
+                            <button onClick={handleConfirmReplaceAll} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Confirm {reviewSelection.size} Replacements</button>
+                        </footer>
+                    </div>
+                </div>
+            )}
 
             {/* Mobile FAB */}
             <div className="md:hidden fixed bottom-5 right-5 z-30 flex flex-col items-center gap-3">
