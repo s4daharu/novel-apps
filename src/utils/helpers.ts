@@ -55,14 +55,13 @@ export async function getFonts() {
         // Use a font with broad Latin character support for Pinyin, etc.
         const latinFontUrl = '/fonts/NotoSans-Regular.ttf';
         
-        // FIX: The Alibaba font for CJK characters was not provided.
-        // Using NotoSans-Regular as a fallback to prevent PDF generation from crashing.
-        // For proper CJK rendering, a suitable font file (like Noto Sans SC) should be added to /public/fonts.
-        const cjkFontUrl = '/fonts/NotoSans-Regular.ttf';
+        // Fetch Noto Sans SC for CJK character support in PDFs, matching the UI font.
+        // This ensures proper rendering of Chinese, Japanese, and Korean characters.
+        const cjkFontUrl = 'https://fonts.gstatic.com/s/notosanssc/v36/k3kJo84MPvpLmixcA63oeALZTYKL2g.woff2';
 
         const [latinFontBytes, cjkFontBytes] = await Promise.all([
             fetchFont(latinFontUrl, 'Latin Font (Noto Sans)'),
-            fetchFont(cjkFontUrl, 'CJK Font (Fallback)')
+            fetchFont(cjkFontUrl, 'CJK Font (Noto Sans SC)')
         ]);
         
         FONT_CACHE = { cjkFontBytes, latinFontBytes };
