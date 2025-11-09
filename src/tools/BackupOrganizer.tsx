@@ -70,8 +70,7 @@ const FilePanel = ({ title, files, selectedFiles, onSelection, onSeriesSelection
     return (
         <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
             <header onClick={() => setCollapsedSeries((p: Set<string>) => { const s = new Set(p); isCollapsed ? s.delete(title) : s.add(title); return s; })} className="p-3 flex items-center gap-3 cursor-pointer select-none">
-                {/* FIX: The `ref` callback for setting the indeterminate state was implicitly returning a boolean.
-                    This has been corrected to a function block that returns void, resolving the TypeScript error. */}
+                {/* FIX: The `ref` callback for setting the indeterminate state was implicitly returning a value, which is not allowed for this prop. It has been corrected to a function block that explicitly returns void. */}
                 <input type="checkbox" checked={allVisibleSelected} ref={el => { if (el) { el.indeterminate = !allVisibleSelected && someVisibleSelected; } }} onClick={e => e.stopPropagation()} onChange={e => onSeriesSelection(visibleFiles, e.target.checked)} className="w-5 h-5 rounded accent-primary-600 focus:ring-primary-500" />
                 <h2 className="font-semibold text-lg flex-grow text-slate-800 dark:text-slate-200">{title}</h2>
                 <span className="text-sm px-2 py-1 bg-slate-200 dark:bg-slate-700 rounded-full">{files.length}</span>
@@ -325,8 +324,7 @@ export const BackupOrganizer: React.FC = () => {
         }
     };
     
-    // FIX: Add an explicit type annotation to the useMemo hook to prevent TypeScript from inferring 'any' or 'unknown' types for the returned data structure.
-    // This resolves issues where array methods like '.filter' or '.length' were unavailable and ensures props passed to child components are correctly typed.
+    // FIX: Add an explicit type annotation to the useMemo hook. This prevents TypeScript from inferring an 'unknown' type when the dependencies are complex, resolving subsequent errors related to missing properties like '.filter' and '.length' on the memoized value.
     const filteredAndSortedData = useMemo<{
         series: { seriesName: string; files: BackupOrganizerFileInfo[] }[];
         others: BackupOrganizerFileInfo[];

@@ -302,6 +302,7 @@ const ZipToEpub: React.FC = () => {
         try {
             const JSZip = await getJSZip();
             const epubZip = new JSZip();
+            const bookUUID = crypto.randomUUID();
             epubZip.file("mimetype", "application/epub+zip", { compression: "STORE" });
             epubZip.folder("META-INF")!.file("container.xml", `<?xml version="1.0" encoding="UTF-8"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>`);
             
@@ -335,10 +336,33 @@ const ZipToEpub: React.FC = () => {
                 spineItems.push({ idref: itemId });
             });
             
+            // Add NCX for EPUB 2 compatibility
+            const ncxNavPoints = chapters.map((chapter, i) => `
+                <navPoint id="navPoint-${i + 1}" playOrder="${i + 1}">
+                    <navLabel><text>${escapeHTML(chapter.title)}</text></navLabel>
+                    <content src="text/chapter_${i + 1}.xhtml"/>
+                </navPoint>`).join('');
+
+            const ncxContent = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ncx PUBLIC "-//NISO//DTD ncx 2005-1//EN" "http://www.daisy.org/z3986/2005/ncx-2005-1.dtd">
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+<head>
+    <meta name="dtb:uid" content="urn:uuid:${bookUUID}"/>
+    <meta name="dtb:depth" content="1"/>
+    <meta name="dtb:totalPageCount" content="0"/>
+    <meta name="dtb:maxPageNumber" content="0"/>
+</head>
+<docTitle><text>${escapeHTML(epubTitle)}</text></docTitle>
+<navMap>${ncxNavPoints}</navMap>
+</ncx>`;
+
+            oebps.file("toc.ncx", ncxContent);
+            manifestItems.push({ id: "ncx", href: "toc.ncx", "media-type": "application/x-dtbncx+xml" });
+
             const navLiItems = chapters.map((c, i) => `<li><a href="text/chapter_${i+1}.xhtml">${escapeHTML(c.title)}</a></li>`).join("\n");
             oebps.file("nav.xhtml", `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Contents</title></head><body><nav epub:type="toc"><h1>Contents</h1><ol>${navLiItems}</ol></nav></body></html>`);
 
-            const contentOPF = `<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookId" version="3.0"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="BookId">urn:uuid:${crypto.randomUUID()}</dc:identifier><dc:title>${escapeHTML(epubTitle)}</dc:title><dc:language>${escapeHTML(epubLang)}</dc:language><dc:creator>${escapeHTML(epubAuthor)}</dc:creator><meta property="dcterms:modified">${new Date().toISOString()}</meta>${coverFile ? '<meta name="cover" content="cover-image"/>' : ''}</metadata><manifest>${manifestItems.map(item => `<item id="${item.id}" href="${item.href}" media-type="${item["media-type"]}" ${item.properties ? `properties="${item.properties}"` : ''}/>`).join("")}</manifest><spine>${spineItems.map(item => `<itemref idref="${item.idref}" ${item.linear ? `linear="${item.linear}"` : ''}/>`).join("")}</spine></package>`;
+            const contentOPF = `<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookId" version="3.0"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="BookId">urn:uuid:${bookUUID}</dc:identifier><dc:title>${escapeHTML(epubTitle)}</dc:title><dc:language>${escapeHTML(epubLang)}</dc:language><dc:creator>${escapeHTML(epubAuthor)}</dc:creator><meta property="dcterms:modified">${new Date().toISOString()}</meta>${coverFile ? '<meta name="cover" content="cover-image"/>' : ''}</metadata><manifest>${manifestItems.map(item => `<item id="${item.id}" href="${item.href}" media-type="${item["media-type"]}" ${item.properties ? `properties="${item.properties}"` : ''}/>`).join("")}</manifest><spine toc="ncx">${spineItems.map(item => `<itemref idref="${item.idref}" ${item.linear ? `linear="${item.linear}"` : ''}/>`).join("")}</spine></package>`;
             oebps.file("content.opf", contentOPF);
 
             const epubBlob = await epubZip.generateAsync({ type: "blob", mimeType: "application/epub+zip" });
