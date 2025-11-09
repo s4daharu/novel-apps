@@ -240,8 +240,7 @@ const ZipToEpub: React.FC = () => {
     const { showToast, showSpinner, hideSpinner } = useAppContext();
     const [zipFile, setZipFile] = useState<File | null>(null);
     const [coverFile, setCoverFile] = useState<File | null>(null);
-    const [epubTitle, setEpubTitle] = useState('My Novel');
-    const [epubAuthor, setEpubAuthor] = useState('Unknown Author');
+    const [epubTitle, setEpubTitle] = useState('');
     const [epubLang, setEpubLang] = useState('en');
     type Chapter = { name: string; content: string; title: string; };
     const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -259,6 +258,7 @@ const ZipToEpub: React.FC = () => {
         resetUI();
         const file = files[0];
         setZipFile(file);
+        setEpubTitle(file.name.replace(/\.zip$/i, ''));
         setStatus({ message: `Reading ${file.name}...`, type: 'info' });
         showSpinner();
         try {
@@ -296,7 +296,6 @@ const ZipToEpub: React.FC = () => {
         setStatus(null);
         if (chapters.length === 0) return setStatus({ message: "No chapters loaded.", type: 'error' });
         if (!epubTitle) return setStatus({ message: "EPUB Title is required.", type: 'error' });
-        if (!epubAuthor) return setStatus({ message: "Author is required.", type: 'error' });
 
         showSpinner();
         try {
@@ -362,7 +361,7 @@ const ZipToEpub: React.FC = () => {
             const navLiItems = chapters.map((c, i) => `<li><a href="text/chapter_${i+1}.xhtml">${escapeHTML(c.title)}</a></li>`).join("\n");
             oebps.file("nav.xhtml", `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Contents</title></head><body><nav epub:type="toc"><h1>Contents</h1><ol>${navLiItems}</ol></nav></body></html>`);
 
-            const contentOPF = `<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookId" version="3.0"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="BookId">urn:uuid:${bookUUID}</dc:identifier><dc:title>${escapeHTML(epubTitle)}</dc:title><dc:language>${escapeHTML(epubLang)}</dc:language><dc:creator>${escapeHTML(epubAuthor)}</dc:creator><meta property="dcterms:modified">${new Date().toISOString()}</meta>${coverFile ? '<meta name="cover" content="cover-image"/>' : ''}</metadata><manifest>${manifestItems.map(item => `<item id="${item.id}" href="${item.href}" media-type="${item["media-type"]}" ${item.properties ? `properties="${item.properties}"` : ''}/>`).join("")}</manifest><spine toc="ncx">${spineItems.map(item => `<itemref idref="${item.idref}" ${item.linear ? `linear="${item.linear}"` : ''}/>`).join("")}</spine></package>`;
+            const contentOPF = `<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookId" version="3.0"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="BookId">urn:uuid:${bookUUID}</dc:identifier><dc:title>${escapeHTML(epubTitle)}</dc:title><dc:language>${escapeHTML(epubLang)}</dc:language><dc:creator>${escapeHTML('')}</dc:creator><meta property="dcterms:modified">${new Date().toISOString()}</meta>${coverFile ? '<meta name="cover" content="cover-image"/>' : ''}</metadata><manifest>${manifestItems.map(item => `<item id="${item.id}" href="${item.href}" media-type="${item["media-type"]}" ${item.properties ? `properties="${item.properties}"` : ''}/>`).join("")}</manifest><spine toc="ncx">${spineItems.map(item => `<itemref idref="${item.idref}" ${item.linear ? `linear="${item.linear}"` : ''}/>`).join("")}</spine></package>`;
             oebps.file("content.opf", contentOPF);
 
             const epubBlob = await epubZip.generateAsync({ type: "blob", mimeType: "application/epub+zip" });
@@ -409,10 +408,6 @@ const ZipToEpub: React.FC = () => {
                      <div>
                         <label htmlFor="epubTitle" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">EPUB Title:</label>
                         <input type="text" id="epubTitle" value={epubTitle} onChange={e => setEpubTitle(e.target.value)} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 w-full" />
-                    </div>
-                    <div>
-                        <label htmlFor="epubAuthor" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Author:</label>
-                        <input type="text" id="epubAuthor" value={epubAuthor} onChange={e => setEpubAuthor(e.target.value)} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 w-full" />
                     </div>
                     <div>
                          <label htmlFor="epubLang" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Language Code:</label>
