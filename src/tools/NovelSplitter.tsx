@@ -326,7 +326,7 @@ export const NovelSplitter: React.FC = () => {
         showSpinner();
         try {
             const zip = (await getJSZip())();
-            chapters.forEach((c, i) => zip.file(`${String(i + 1).padStart(4, '0')}_${c.title.replace(/[^\w\s.-]/g, '').slice(0, 50)}.txt`, c.content));
+            chapters.forEach((c, i) => zip.file(`${String(i + 1).padStart(4, '0')}_${c.title.replace(/[^\p{L}\p{N}\s._-]/gu, '').slice(0, 50)}.txt`, c.content));
             triggerDownload(await zip.generateAsync({ type: 'blob' }), `${meta.title || 'novel'}.zip`);
         } catch (e: any) { showToast(`Failed to generate ZIP: ${e.message}`, true);
         } finally { hideSpinner(); }
