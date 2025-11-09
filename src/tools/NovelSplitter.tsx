@@ -196,6 +196,21 @@ const reducer = (state: State, action: Action): State => {
 const TEMPLATES_KEY = 'novelSplitterTemplates';
 const SESSION_KEY = 'novelSplitterSession';
 
+const DEFAULT_TEMPLATES: Template[] = [
+    {
+      id: 1,
+      name: 'Chinese Chapters (通用)',
+      splitRegex: '^\\s*(第?\\s*[〇一二三四五六七八九十百千万零\\d]+\\s*[章章节回部卷])',
+      cleanupRules: [{ id: 1, find: '', replace: '' }],
+    },
+    {
+      id: 2,
+      name: 'Chinese Chapters 2 (备用)',
+      splitRegex: '^[\\u3000\\s]*第[〇零一二三四五六七八九十百千万\\d]+(?:章|节|回|部|卷)[\\u3000\\s]*',
+      cleanupRules: [{ id: 1, find: '', replace: '' }],
+    }
+];
+
 export const NovelSplitter: React.FC = () => {
     const { showToast, showSpinner, hideSpinner } = useAppContext();
     const [state, dispatch] = useReducer(reducer, initialState);
@@ -243,7 +258,16 @@ export const NovelSplitter: React.FC = () => {
 
     useEffect(() => {
         const savedTemplates = localStorage.getItem(TEMPLATES_KEY);
-        if (savedTemplates) setTemplates(JSON.parse(savedTemplates));
+        try {
+            const parsed = JSON.parse(savedTemplates || '[]');
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                setTemplates(parsed);
+            } else {
+                setTemplates(DEFAULT_TEMPLATES);
+            }
+        } catch {
+            setTemplates(DEFAULT_TEMPLATES);
+        }
     }, []);
 
     const handleNovelFile = async (file: File) => {
@@ -302,7 +326,7 @@ export const NovelSplitter: React.FC = () => {
         showSpinner();
         try {
             const zip = (await getJSZip())();
-            chapters.forEach((c, i) => zip.file(`${String(i + 1).padStart(3, '0')}-${c.title.replace(/[^\w\s.-]/g, '').slice(0, 50)}.txt`, c.content));
+            chapters.forEach((c, i) => zip.file(`${String(i + 1).padStart(4, '0')}_${c.title.replace(/[^\w\s.-]/g, '').slice(0, 50)}.txt`, c.content));
             triggerDownload(await zip.generateAsync({ type: 'blob' }), `${meta.title || 'novel'}.zip`);
         } catch (e: any) { showToast(`Failed to generate ZIP: ${e.message}`, true);
         } finally { hideSpinner(); }
@@ -312,6 +336,7 @@ export const NovelSplitter: React.FC = () => {
         showSpinner();
         try {
             const zip = (await getJSZip())();
+            const bookUUID = crypto.randomUUID();
             zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
             zip.folder("META-INF")!.file("container.xml", `<?xml version="1.0" encoding="UTF-8"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>`);
             const oebps = zip.folder("OEBPS")!;
@@ -337,9 +362,31 @@ export const NovelSplitter: React.FC = () => {
                 spineItems.push({ idref: `chapter-${i + 1}` });
             });
             
+            // Add NCX for EPUB 2 compatibility
+            const ncxNavPoints = chapters.map((chapter, i) => `
+                <navPoint id="navPoint-${i + 1}" playOrder="${i + 1}">
+                    <navLabel><text>${escapeHTML(chapter.title)}</text></navLabel>
+                    <content src="text/chapter_${i + 1}.xhtml"/>
+                </navPoint>`).join('');
+
+            const ncxContent = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ncx PUBLIC "-//NISO//DTD ncx 2005-1//EN" "http://www.daisy.org/z3986/2005/ncx-2005-1.dtd">
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+<head>
+    <meta name="dtb:uid" content="urn:uuid:${bookUUID}"/>
+    <meta name="dtb:depth" content="1"/>
+    <meta name="dtb:totalPageCount" content="0"/>
+    <meta name="dtb:maxPageNumber" content="0"/>
+</head>
+<docTitle><text>${escapeHTML(meta.title)}</text></docTitle>
+<navMap>${ncxNavPoints}</navMap>
+</ncx>`;
+            oebps.file("toc.ncx", ncxContent);
+            manifestItems.push({ id: "ncx", href: "toc.ncx", "media-type": "application/x-dtbncx+xml" });
+            
             const navLiItems = chapters.map((c, i) => `<li><a href="text/chapter_${i+1}.xhtml">${escapeHTML(c.title)}</a></li>`).join("\n");
             oebps.file("nav.xhtml", `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Contents</title></head><body><nav epub:type="toc"><h1>Contents</h1><ol>${navLiItems}</ol></nav></body></html>`);
-            oebps.file("content.opf", `<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookId" version="3.0"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="BookId">urn:uuid:${crypto.randomUUID()}</dc:identifier><dc:title>${escapeHTML(meta.title)}</dc:title><dc:language>${escapeHTML(meta.language)}</dc:language><dc:creator>${escapeHTML(meta.author)}</dc:creator><meta property="dcterms:modified">${new Date().toISOString()}</meta>${meta.coverFile ? '<meta name="cover" content="cover-image"/>' : ''}</metadata><manifest>${manifestItems.map(item => `<item id="${item.id}" href="${item.href}" media-type="${item["media-type"]}" ${item.properties ? `properties="${item.properties}"` : ''}/>`).join("")}</manifest><spine>${spineItems.map(item => `<itemref idref="${item.idref}" ${item.linear ? `linear="${item.linear}"` : ''}/>`).join("")}</spine></package>`);
+            oebps.file("content.opf", `<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookId" version="3.0"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="BookId">urn:uuid:${bookUUID}</dc:identifier><dc:title>${escapeHTML(meta.title)}</dc:title><dc:language>${escapeHTML(meta.language)}</dc:language><dc:creator>${escapeHTML(meta.author)}</dc:creator><meta property="dcterms:modified">${new Date().toISOString()}</meta>${meta.coverFile ? '<meta name="cover" content="cover-image"/>' : ''}</metadata><manifest>${manifestItems.map(item => `<item id="${item.id}" href="${item.href}" media-type="${item["media-type"]}" ${item.properties ? `properties="${item.properties}"` : ''}/>`).join("")}</manifest><spine toc="ncx">${spineItems.map(item => `<itemref idref="${item.idref}" ${item.linear ? `linear="${item.linear}"` : ''}/>`).join("")}</spine></package>`);
             
             triggerDownload(await zip.generateAsync({ type: "blob", mimeType: "application/epub+zip" }), `${meta.title.replace(/[^a-z0-9]/gi, '_')}.epub`);
             showToast('EPUB created successfully!');
@@ -534,10 +581,6 @@ export const NovelSplitter: React.FC = () => {
               <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4 mb-4">
                  <div className="flex justify-between items-center font-semibold text-slate-800 dark:text-slate-200">
                     <button type="button" onClick={() => setCleanupOpen(!isCleanupOpen)} className="flex-grow text-left">Cleanup Rules (Regex)</button>
-                     <div className="relative group">
-                         <select onChange={(e) => loadTemplate(Number(e.target.value))} className="text-sm bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 mr-2"><option>Load Template</option>{templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
-                         <button onClick={saveTemplate} className="px-2 py-1 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 mr-2">Save</button>
-                    </div>
                     <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform ${isCleanupOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                  </div>
                  {isCleanupOpen && (
@@ -561,6 +604,13 @@ export const NovelSplitter: React.FC = () => {
                 </button>
                 {isSplitPreviewOpen && (
                     <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                        <div className="flex flex-col sm:flex-row gap-2 mb-2">
+                            <select onChange={(e) => { if (e.target.value) loadTemplate(Number(e.target.value)); }} value="" className="flex-grow bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm">
+                                <option value="" disabled>Load a template...</option>
+                                {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                            </select>
+                            <button onClick={saveTemplate} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white">Save as Template</button>
+                        </div>
                         <input type="text" value={splitRegex} onChange={e => dispatch({ type: 'SET_STATE', payload: { splitRegex: e.target.value } })} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 mb-2 font-mono text-sm" />
                         <button onClick={previewSplit} className="px-4 py-2 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800">Preview Matches</button>
                         {matchedHeadings.length > 0 && <div className="mt-2 p-2 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg max-h-32 overflow-y-auto text-xs font-mono">{matchedHeadings.map((h, i) => <div key={i}>{h}</div>)}</div>}
