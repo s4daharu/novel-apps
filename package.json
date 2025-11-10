@@ -1,6 +1,6 @@
 {
   "name": "novel-apps",
-  "version": "1.7.0",
+  "version": "2.4.9",
   "private": true,
   "description": "A mobile-first suite of tools for novelists, including EPUB utilities and backup management with offline support.",
   "type": "module",

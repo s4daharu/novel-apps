@@ -69,7 +69,7 @@ const initialState: State = {
     rawText: null,
     fileName: '',
     encoding: 'utf-8',
-    splitRegex: '^\\s*(第?\\s*[〇一二三四五六七八九十百千万零\\d]+\\s*[章章节回部卷])',
+    splitRegex: '^\\s*第?\\s*[〇一二三四五六七八九十百千万零\\d]+\\s*[章章节回部卷].*',
     matchedHeadings: [],
     cleanupRules: [{ id: 1, find: '', replace: '' }],
     chapters: [],
@@ -200,13 +200,13 @@ const DEFAULT_TEMPLATES: Template[] = [
     {
       id: 1,
       name: 'Chinese Chapters (通用)',
-      splitRegex: '^\\s*(第?\\s*[〇一二三四五六七八九十百千万零\\d]+\\s*[章章节回部卷])',
+      splitRegex: '^\\s*第?\\s*[〇一二三四五六七八九十百千万零\\d]+\\s*[章章节回部卷].*',
       cleanupRules: [{ id: 1, find: '', replace: '' }],
     },
     {
       id: 2,
       name: 'Chinese Chapters 2 (备用)',
-      splitRegex: '^[\\u3000\\s]*第[〇零一二三四五六七八九十百千万\\d]+(?:章|节|回|部|卷)[\\u3000\\s]*',
+      splitRegex: '^[\\u3000\\s]*第[〇零一二三四五六七八九十百千万\\d]+(?:章|节|回|部|卷)[\\u3000\\s]*.*',
       cleanupRules: [{ id: 1, find: '', replace: '' }],
     }
 ];
@@ -298,13 +298,49 @@ export const NovelSplitter: React.FC = () => {
         if (!rawText) return;
         showSpinner();
         try {
-            let processedText = cleanupRules.reduce((text, rule) => rule.find ? text.replace(new RegExp(rule.find, 'g'), rule.replace) : text, rawText);
+            let processedText = cleanupRules.reduce((text, rule) => {
+                if (!rule.find) return text;
+                try {
+                    return text.replace(new RegExp(rule.find, 'g'), rule.replace);
+                } catch (e) {
+                    console.warn(`Skipping invalid cleanup rule regex: ${rule.find}`);
+                    return text;
+                }
+            }, rawText);
+
             const titles = [...processedText.matchAll(new RegExp(splitRegex, 'gm'))];
-            const contents = processedText.split(new RegExp(splitRegex, 'gm'));
             const newChapters: Chapter[] = [];
-            if (contents[0]?.trim()) newChapters.push({ id: `chap-${Date.now()}-preface`, title: 'Preface', content: contents[0].trim() });
-            titles.forEach((title, i) => newChapters.push({ id: `chap-${Date.now()}-${i}`, title: title[0].trim(), content: (contents[i + 1] || '').trim() }));
-            if (newChapters.length === 0 && processedText) newChapters.push({ id: `chap-${Date.now()}-0`, title: "Chapter 1", content: processedText });
+            
+            // Handle case where no titles were found, treat the whole text as one chapter.
+            if (titles.length === 0) {
+                if (processedText.trim()) {
+                    newChapters.push({ id: `chap-${Date.now()}-0`, title: "Chapter 1", content: processedText.trim() });
+                }
+                dispatch({ type: 'SET_CHAPTERS', payload: newChapters });
+                hideSpinner(); // Make sure to hide spinner before returning
+                return;
+            }
+
+            // Handle preface (content before the first chapter title)
+            const firstMatchIndex = titles[0].index ?? 0;
+            if (firstMatchIndex > 0) {
+                const prefaceContent = processedText.substring(0, firstMatchIndex).trim();
+                if (prefaceContent) {
+                    newChapters.push({ id: `chap-${Date.now()}-preface`, title: 'Preface', content: prefaceContent });
+                }
+            }
+
+            // Handle chapters
+            titles.forEach((titleMatch, i) => {
+                const title = titleMatch[0].trim();
+                const startIndex = (titleMatch.index ?? 0) + titleMatch[0].length;
+                const nextTitleMatch = titles[i + 1];
+                const endIndex = nextTitleMatch ? (nextTitleMatch.index ?? processedText.length) : processedText.length;
+                const content = processedText.substring(startIndex, endIndex).trim();
+
+                newChapters.push({ id: `chap-${Date.now()}-${i}`, title: title, content: content });
+            });
+
             dispatch({ type: 'SET_CHAPTERS', payload: newChapters });
         } catch (e: any) {
             showToast(`Error processing novel: ${e.message}`, true);
