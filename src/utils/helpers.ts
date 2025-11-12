@@ -55,13 +55,12 @@ export async function getFonts() {
         // Use a font with broad Latin character support for Pinyin, etc.
         const latinFontUrl = '/fonts/NotoSans-Regular.ttf';
         
-        // Fetch Noto Sans SC for CJK character support in PDFs, matching the UI font.
-        // This ensures proper rendering of Chinese, Japanese, and Korean characters.
-        const cjkFontUrl = 'https://fonts.gstatic.com/s/notosanssc/v36/k3kJo84MPvpLmixcA63oeALZTYKL2g.woff2';
+        // Use Alibaba PuHuiTi Heavy for CJK character support in PDFs.
+        const cjkFontUrl = '/fonts/Alibaba-PuHuiTi-Heavy.otf';
 
         const [latinFontBytes, cjkFontBytes] = await Promise.all([
             fetchFont(latinFontUrl, 'Latin Font (Noto Sans)'),
-            fetchFont(cjkFontUrl, 'CJK Font (Noto Sans SC)')
+            fetchFont(cjkFontUrl, 'CJK Font (Alibaba PuHuiTi Heavy)')
         ]);
         
         FONT_CACHE = { cjkFontBytes, latinFontBytes };
