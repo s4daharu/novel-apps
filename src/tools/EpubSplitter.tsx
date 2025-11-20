@@ -7,12 +7,9 @@ import { StatusMessage } from '../components/StatusMessage';
 import { triggerDownload, getJSZip, getFonts, escapeHTML } from '../utils/helpers';
 import { Status } from '../utils/types';
 
-// Minimal type definitions to avoid @ts-ignore and enhance type safety
-type Fontkit = { [key: string]: any; };
-// FIX: The original `interface PDFDocument extends PDFLibDoc` was causing type errors where methods from the base class were not found.
-// Using an intersection type correctly combines the base `PDFLibDoc` type with our custom `registerFontkit` method, resolving the issue.
+// Extended type definition for PDFDocument to include registerFontkit
 type PDFDocument = PDFLibDoc & {
-    registerFontkit: (fk: Fontkit) => void;
+    registerFontkit: (fk: any) => void;
 };
 
 export const EpubSplitter: React.FC = () => {
@@ -68,15 +65,6 @@ export const EpubSplitter: React.FC = () => {
         setEndChapterIndex(0);
     };
     
-    const readFileAsArrayBuffer = (file: File): Promise<ArrayBuffer> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as ArrayBuffer);
-            reader.onerror = () => reject(new Error('Failed to read file'));
-            reader.readAsArrayBuffer(file);
-        });
-    }
-
     const handleFileSelected = async (files: FileList) => {
         const file = files[0];
         setEpubFile(file);
@@ -87,7 +75,7 @@ export const EpubSplitter: React.FC = () => {
 
         showSpinner();
         try {
-            const buffer = await readFileAsArrayBuffer(file);
+            const buffer = await file.arrayBuffer();
             const JSZip = await getJSZip();
             const epub = await JSZip.loadAsync(buffer);
             
@@ -231,16 +219,18 @@ export const EpubSplitter: React.FC = () => {
                     await generateTxtZip(chaptersToProcess);
                     break;
             }
+            
+            if (!status || status.type !== 'error') {
+                const outputDescriptions: Record<typeof outputFormat, string> = {
+                    'zip-txt': '.txt files in a ZIP archive',
+                    'zip-pdf': 'PDFs in a ZIP file',
+                    'single-txt': 'a single .txt file',
+                    'single-pdf': 'a single .pdf file'
+                };
 
-            const outputDescriptions: Record<typeof outputFormat, string> = {
-                'zip-txt': '.txt files in a ZIP archive',
-                'zip-pdf': 'PDFs in a ZIP file',
-                'single-txt': 'a single .txt file',
-                'single-pdf': 'a single .pdf file'
-            };
-
-            setStatus({ message: `Extracted ${chaptersToProcess.length} chapter(s) as ${outputDescriptions[outputFormat]}. Download started.`, type: 'success' });
-            showToast(`Extracted ${chaptersToProcess.length} chapter(s).`);
+                setStatus({ message: `Extracted ${chaptersToProcess.length} chapter(s) as ${outputDescriptions[outputFormat]}. Download started.`, type: 'success' });
+                showToast(`Extracted ${chaptersToProcess.length} chapter(s).`);
+            }
 
         } catch (err: any) {
             console.error("EPUB Splitter Error:", err);
@@ -279,7 +269,7 @@ export const EpubSplitter: React.FC = () => {
     };
     
     const generatePdfZip = async (chaptersToProcess: typeof parsedChapters, fontSize: number) => {
-        setStatus({ message: 'Preparing PDF generation...', type: 'info' });
+        setStatus({ message: 'Loading fonts...', type: 'info' });
         const fontBytes = await getFonts();
         const JSZip = await getJSZip();
         const zip = new JSZip();
@@ -324,7 +314,7 @@ export const EpubSplitter: React.FC = () => {
     };
 
     const generateSinglePdf = async (chaptersToProcess: typeof parsedChapters, fontSize: number) => {
-        setStatus({ message: 'Generating single PDF...', type: 'info' });
+        setStatus({ message: 'Loading fonts...', type: 'info' });
         const fontBytes = await getFonts();
 
         const chaptersForPdf = chaptersToProcess.map(chapter => {
@@ -337,6 +327,7 @@ export const EpubSplitter: React.FC = () => {
             return chapter;
         });
         
+        setStatus({ message: 'Generating single PDF (this may take a moment)...', type: 'info' });
         const pdfBytes = await createPdfFromChapters(chaptersForPdf, fontBytes, fontSize, (progress) => {
             setStatus({ message: `Processing chapter ${progress.current} of ${progress.total} for PDF...`, type: 'info' });
         });
@@ -362,7 +353,10 @@ export const EpubSplitter: React.FC = () => {
 
     const createPdfFromChapters = async (chaptersData: { title: string, text: string }[], fontBytes: { cjkFontBytes: ArrayBuffer, latinFontBytes: ArrayBuffer }, baseFontSize: number, onProgress?: (progress: { current: number; total: number }) => void) => {
         const pdfDoc = await PDFLibDoc.create() as PDFDocument;
+        
+        // Register fontkit instance
         pdfDoc.registerFontkit(fontkit);
+        
         const chineseFont = await pdfDoc.embedFont(fontBytes.cjkFontBytes);
         const englishFont = await pdfDoc.embedFont(fontBytes.latinFontBytes);
         

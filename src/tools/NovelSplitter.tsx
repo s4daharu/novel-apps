@@ -228,7 +228,7 @@ export const NovelSplitter: React.FC = () => {
     const [renameStartNum, setRenameStartNum] = useState(1);
     const [templates, setTemplates] = useState<Template[]>([]);
 
-    const contentEditableRef = useRef<HTMLTextAreaElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const draggedItem = useRef<Chapter | null>(null);
     const [dragIndicator, setDragIndicator] = useState<{ id: string, position: 'top' | 'bottom' } | null>(null);
 
@@ -510,11 +510,11 @@ export const NovelSplitter: React.FC = () => {
     }, [performGlobalSearch, showGlobalFindReplace]);
 
     useEffect(() => {
-        if (!contentEditableRef.current || currentGlobalMatchIndex === -1 || globalMatches.length === 0) return;
+        if (!textareaRef.current || currentGlobalMatchIndex === -1 || globalMatches.length === 0) return;
         const match = globalMatches[currentGlobalMatchIndex];
 
         const highlightMatch = () => {
-            const editor = contentEditableRef.current;
+            const editor = textareaRef.current;
             if (!editor) return;
             editor.focus();
             editor.setSelectionRange(match.index, match.index + match.length);
@@ -675,7 +675,7 @@ export const NovelSplitter: React.FC = () => {
                     {isChapterActionsOpen && (
                         <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-700 rounded-lg shadow-xl border border-slate-200 dark:border-slate-600 z-10">
                             <button onClick={() => { dispatch({ type: 'MERGE_CHAPTER_WITH_NEXT' }); setChapterActionsOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-600">Merge with Next</button>
-                            <button onClick={() => { contentEditableRef.current && dispatch({ type: 'SPLIT_CHAPTER', payload: { cursorPosition: contentEditableRef.current.selectionStart } }); setChapterActionsOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-600">Split at Cursor</button>
+                            <button onClick={() => { textareaRef.current && dispatch({ type: 'SPLIT_CHAPTER', payload: { cursorPosition: textareaRef.current.selectionStart } }); setChapterActionsOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-600">Split at Cursor</button>
                         </div>
                     )}
                 </div>
@@ -693,7 +693,7 @@ export const NovelSplitter: React.FC = () => {
                         </div>
                     </div>
                 )}
-                <textarea ref={contentEditableRef} value={currentChapter?.content || ''} onChange={e => currentChapter && dispatch({ type: 'UPDATE_CHAPTER', payload: { id: currentChapter.id, content: e.target.value } })} placeholder="Select a chapter to begin editing..." className="w-full h-full resize-none p-4 bg-transparent outline-none font-mono text-base leading-relaxed" />
+                <textarea ref={textareaRef} value={currentChapter?.content || ''} onChange={e => currentChapter && dispatch({ type: 'UPDATE_CHAPTER', payload: { id: currentChapter.id, content: e.target.value } })} placeholder="Select a chapter to begin editing..." className="w-full h-full resize-none p-4 bg-transparent outline-none font-mono text-base leading-relaxed" />
             </main>
 
             {/* Footer Toolbar */}
@@ -755,75 +755,127 @@ export const NovelSplitter: React.FC = () => {
             </div>
         </div>
     );
-    
+
     return (
-        <div className="max-w-7xl mx-auto p-2 md:p-4">
+        <div id="novelSplitterApp" className="h-full min-h-[calc(100vh-80px)]">
             {step === 'upload' && renderUploadStep()}
             {step === 'config' && renderConfigStep()}
             {step === 'editor' && renderEditorStep()}
 
-            {/* MODALS */}
-            {isBookDetailsModalOpen && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setBookDetailsModalOpen(false)}>
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-                        <h3 className="p-4 font-semibold border-b border-slate-200 dark:border-slate-700">Book Details</h3>
-                        <div className="p-4 space-y-4">
-                            <div><label className="text-sm block mb-1">Title:</label><input type="text" value={meta.title} onChange={e => dispatch({type: 'SET_META', payload: {title: e.target.value}})} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5" /></div>
-                            <div><label className="text-sm block mb-1">Author:</label><input type="text" value={meta.author} onChange={e => dispatch({type: 'SET_META', payload: {author: e.target.value}})} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5" /></div>
-                            <FileInput inputId="cover-upload" label="Upload Cover" accept="image/*" onFileSelected={(files) => dispatch({type: 'SET_META', payload: {coverFile: files[0]}})} />
-                        </div>
-                        <div className="p-4 flex justify-end gap-2 border-t border-slate-200 dark:border-slate-700"><button onClick={() => setBookDetailsModalOpen(false)} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Done</button></div>
-                    </div>
-                </div>
-            )}
-            
-            {isExportModalOpen && (
-                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setExportModalOpen(false)}>
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
-                        <h3 className="p-4 font-semibold border-b border-slate-200 dark:border-slate-700">Export As...</h3>
-                        <div className="p-4 space-y-3">
-                            <button onClick={() => {exportToZip(); setExportModalOpen(false);}} className="w-full px-4 py-3 text-left rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600">.zip (Text Files)</button>
-                            <button onClick={() => {exportToEpub(); setExportModalOpen(false);}} className="w-full px-4 py-3 text-left rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600">.epub (Ebook)</button>
-                        </div>
-                    </div>
-                 </div>
-            )}
-            
+            {/* Batch Rename Modal */}
             {isBatchRenameModalOpen && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setBatchRenameModalOpen(false)}>
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
-                        <h3 className="p-4 font-semibold border-b border-slate-200 dark:border-slate-700">Batch Rename Chapters</h3>
-                        <div className="p-4 space-y-4">
-                            <div><label className="text-sm block mb-1">Pattern (use '{'n'}' for number):</label><input type="text" value={renamePattern} onChange={e => setRenamePattern(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5" /></div>
-                            <div><label className="text-sm block mb-1">Start Number:</label><input type="number" value={renameStartNum} onChange={e => setRenameStartNum(Number(e.target.value))} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5" /></div>
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-md">
+                        <h3 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">Batch Rename Chapters</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Pattern ({'{n}'} for number)</label>
+                                <input type="text" value={renamePattern} onChange={e => setRenamePattern(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-3 py-2" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Start Number</label>
+                                <input type="number" value={renameStartNum} onChange={e => setRenameStartNum(parseInt(e.target.value))} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-3 py-2" />
+                            </div>
                         </div>
-                        <div className="p-4 flex justify-end gap-2 border-t border-slate-200 dark:border-slate-700">
-                            <button onClick={() => setBatchRenameModalOpen(false)} className="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Cancel</button>
-                            <button onClick={handleBatchRename} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Rename</button>
+                        <div className="mt-6 flex justify-end gap-3">
+                            <button onClick={() => setBatchRenameModalOpen(false)} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">Cancel</button>
+                            <button onClick={handleBatchRename} className="px-4 py-2 rounded bg-primary-600 text-white">Rename</button>
                         </div>
                     </div>
                 </div>
             )}
-            
-            {showGlobalFindReplace && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => dispatch({ type: 'SET_STATE', payload: { showGlobalFindReplace: false }})}>
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl h-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                        <header className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center"><h2 className="text-xl font-semibold">Find and Replace in Project</h2><button onClick={() => dispatch({ type: 'SET_STATE', payload: { showGlobalFindReplace: false } })} className="text-2xl">&times;</button></header>
-                        <div className="p-4 space-y-3"><div className="flex gap-2"><input type="text" value={globalFindQuery} onChange={e => dispatch({ type: 'SET_STATE', payload: { globalFindQuery: e.target.value }})} placeholder="Find" className="w-full bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded px-3 py-2" /><input type="text" value={globalReplaceQuery} onChange={e => dispatch({ type: 'SET_STATE', payload: { globalReplaceQuery: e.target.value }})} placeholder="Replace" className="w-full bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600 rounded px-3 py-2" /></div><div className="flex flex-wrap gap-2 text-sm">{Object.entries({useRegex: 'Regex', caseSensitive: 'Match Case', wholeWord: 'Whole Word'}).map(([key, label]) => (<button key={key} onClick={() => dispatch({ type: 'SET_STATE', payload: { globalFindOptions: { ...globalFindOptions, [key]: !globalFindOptions[key as keyof typeof globalFindOptions] } } })} className={`px-3 py-1 rounded-md ${globalFindOptions[key as keyof typeof globalFindOptions] ? 'bg-primary-600 text-white' : 'bg-slate-200 dark:bg-slate-700'}`}>{label}</button>))}</div></div>
-                        <div className="px-4 pb-2 text-sm text-slate-600 dark:text-slate-400 flex justify-between items-center"><span>{globalMatches.length} result(s) found</span>{globalMatches.length > 0 && <span>{currentGlobalMatchIndex + 1} / {globalMatches.length}</span>}</div>
-                        <ul className="flex-1 overflow-y-auto border-t border-b border-slate-200 dark:border-slate-700 list-none m-0 p-0">{globalMatches.map((match, index) => (<li key={`${match.chapterId}-${match.index}-${index}`} onClick={() => dispatch({ type: 'SET_STATE', payload: { currentGlobalMatchIndex: index }})} className={`p-3 cursor-pointer border-b border-slate-100 dark:border-slate-700 last:border-b-0 ${index === currentGlobalMatchIndex ? 'bg-primary-500/20' : 'hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}><div className="font-semibold truncate">{match.chapterTitle}</div><div className="text-sm text-slate-600 dark:text-slate-400 mt-1">...{match.text}...</div></li>))}</ul>
-                        <footer className="p-4 flex justify-end gap-2"><button onClick={handleGlobalReplace} disabled={currentGlobalMatchIndex < 0} className="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500 disabled:opacity-50">Replace</button><button onClick={() => { setReviewSelection(new Set(globalMatches.map((_, i) => i))); setReviewModalOpen(true); }} disabled={globalMatches.length === 0} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50">Replace All</button></footer>
+
+            {/* Book Details Modal */}
+            {isBookDetailsModalOpen && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-md">
+                        <h3 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">Book Details</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Title</label>
+                                <input type="text" value={meta.title} onChange={e => dispatch({ type: 'SET_META', payload: { title: e.target.value } })} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-3 py-2" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Author</label>
+                                <input type="text" value={meta.author} onChange={e => dispatch({ type: 'SET_META', payload: { author: e.target.value } })} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-3 py-2" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Language (e.g. en, zh)</label>
+                                <input type="text" value={meta.language} onChange={e => dispatch({ type: 'SET_META', payload: { language: e.target.value } })} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-3 py-2" />
+                            </div>
+                             <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cover Image</label>
+                                <FileInput inputId="coverUpload" label="Choose Cover" accept="image/*" onFileSelected={files => dispatch({ type: 'SET_META', payload: { coverFile: files[0] } })} />
+                                {meta.coverFile && <p className="text-xs mt-1 text-slate-500">{meta.coverFile.name}</p>}
+                            </div>
+                        </div>
+                        <div className="mt-6 flex justify-end gap-3">
+                            <button onClick={() => setBookDetailsModalOpen(false)} className="px-4 py-2 rounded bg-primary-600 text-white">Done</button>
+                        </div>
                     </div>
                 </div>
             )}
-             {isReviewModalOpen && (
-                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setReviewModalOpen(false)}>
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl h-full max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                        <header className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center"><h2 className="text-xl font-semibold">Review Replacements</h2><button onClick={() => setReviewModalOpen(false)} className="text-2xl">&times;</button></header>
-                         <div className="p-3 bg-slate-100 dark:bg-slate-900/50 flex items-center gap-4"><label className="flex items-center gap-2"><input type="checkbox" checked={reviewSelection.size === globalMatches.length} onChange={e => setReviewSelection(e.target.checked ? new Set(globalMatches.map((_, i) => i)) : new Set())} /> {reviewSelection.size} of {globalMatches.length} selected</label></div>
-                        <ul className="flex-1 overflow-y-auto list-none m-0 p-0">{globalMatches.map((match, index) => {const chapterContent = chapters.find(c => c.id === match.chapterId)?.content || '';const contextStart = Math.max(0, match.index - 50);const preContext = chapterContent.substring(contextStart, match.index);const postContext = chapterContent.substring(match.index + match.length, match.index + match.length + 50);return (<li key={index} className="p-3 border-b border-slate-100 dark:border-slate-700 flex items-start gap-3"><input type="checkbox" checked={reviewSelection.has(index)} onChange={e => setReviewSelection(s => { const n = new Set(s); e.target.checked ? n.add(index) : n.delete(index); return n;})} className="mt-1" /><div><div className="font-semibold text-sm">{match.chapterTitle}</div><div className="text-xs text-slate-600 dark:text-slate-400 mt-1">...{preContext}<mark className="bg-red-200 dark:bg-red-800/50">{match.text}</mark>{postContext}...</div></div></li>)})}</ul>
-                        <footer className="p-4 flex justify-end gap-2 border-t border-slate-200 dark:border-slate-700"><button onClick={() => setReviewModalOpen(false)} className="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Cancel</button><button onClick={handleConfirmReplaceAll} className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700">Confirm {reviewSelection.size} Replacements</button></footer>
+
+            {/* Export Modal */}
+             {isExportModalOpen && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-sm">
+                        <h3 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">Export Novel</h3>
+                        <div className="space-y-3">
+                            <button onClick={() => { exportToEpub(); setExportModalOpen(false); }} className="w-full py-3 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium">Export as EPUB</button>
+                            <button onClick={() => { exportToZip(); setExportModalOpen(false); }} className="w-full py-3 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-white font-medium">Export as ZIP (txt)</button>
+                        </div>
+                        <div className="mt-6 flex justify-center">
+                            <button onClick={() => setExportModalOpen(false)} className="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">Cancel</button>
+                        </div>
                     </div>
+                </div>
+            )}
+
+            {/* Review Replace All Modal */}
+            {isReviewModalOpen && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                     <div className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+                        <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Review Replacements</h3>
+                            <button onClick={() => setReviewModalOpen(false)} className="text-2xl">&times;</button>
+                        </div>
+                        <div className="p-2 bg-slate-100 dark:bg-slate-900/50">
+                             <label className="flex items-center gap-2 text-sm px-2">
+                                <input type="checkbox" checked={reviewSelection.size === globalMatches.length} onChange={e => {
+                                    if (e.target.checked) {
+                                        const all = new Set<number>();
+                                        globalMatches.forEach((_, i) => all.add(i));
+                                        setReviewSelection(all);
+                                    } else {
+                                        setReviewSelection(new Set());
+                                    }
+                                }} />
+                                Select All
+                            </label>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                            {globalMatches.map((match, idx) => (
+                                <div key={idx} className="flex items-start gap-3 p-2 border rounded border-slate-200 dark:border-slate-700">
+                                    <input type="checkbox" checked={reviewSelection.has(idx)} onChange={e => {
+                                        const newSet = new Set(reviewSelection);
+                                        e.target.checked ? newSet.add(idx) : newSet.delete(idx);
+                                        setReviewSelection(newSet);
+                                    }} className="mt-1" />
+                                    <div className="text-sm">
+                                        <div className="font-semibold text-slate-700 dark:text-slate-300">{match.chapterTitle}</div>
+                                        <div className="text-slate-500 dark:text-slate-400 break-all">
+                                            ...{match.text}...
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
+                            <button onClick={() => setReviewModalOpen(false)} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700">Cancel</button>
+                            <button onClick={handleConfirmReplaceAll} className="px-4 py-2 rounded bg-primary-600 text-white">Replace Selected</button>
+                        </div>
+                     </div>
                 </div>
             )}
         </div>

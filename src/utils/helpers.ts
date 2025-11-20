@@ -1,3 +1,4 @@
+
 declare global {
     interface Window {
         JSZip: any;
@@ -42,11 +43,16 @@ export const getJSZip = async (): Promise<any> => {
 let FONT_CACHE: { cjkFontBytes: ArrayBuffer; latinFontBytes: ArrayBuffer; } | null = null;
 
 async function fetchFont(url: string, fontName: string): Promise<ArrayBuffer> {
-    const response = await fetch(url);
-    if (!response.ok) {
-        throw new Error(`Failed to fetch ${fontName} font from ${url}: ${response.status} ${response.statusText}`);
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch ${fontName} from ${url}: ${response.status} ${response.statusText}`);
+        }
+        return await response.arrayBuffer();
+    } catch (error: any) {
+        // Propagate error with context
+        throw new Error(`Could not load ${fontName}. ${error.message}`);
     }
-    return response.arrayBuffer();
 }
 
 export async function getFonts() {
@@ -67,6 +73,7 @@ export async function getFonts() {
         return FONT_CACHE;
     } catch (error: any) {
         console.error("Font load for PDF failed:", error);
-        throw new Error(`Font load for PDF failed: ${error.message}`);
+        // We throw here so the UI can catch it and display a specific error message about missing fonts
+        throw new Error(`Font loading failed. PDF generation requires local font files. Details: ${error.message}`);
     }
 }

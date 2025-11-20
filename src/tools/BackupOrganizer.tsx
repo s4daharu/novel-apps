@@ -70,7 +70,6 @@ const FilePanel = ({ title, files, selectedFiles, onSelection, onSeriesSelection
     return (
         <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
             <header onClick={() => setCollapsedSeries((p: Set<string>) => { const s = new Set(p); isCollapsed ? s.delete(title) : s.add(title); return s; })} className="p-3 flex items-center gap-3 cursor-pointer select-none">
-                {/* FIX: The `ref` callback for setting the indeterminate state was implicitly returning a value, which is not allowed for this prop. It has been corrected to a function block that explicitly returns void. */}
                 <input type="checkbox" checked={allVisibleSelected} ref={el => { if (el) { el.indeterminate = !allVisibleSelected && someVisibleSelected; } }} onClick={e => e.stopPropagation()} onChange={e => onSeriesSelection(visibleFiles, e.target.checked)} className="w-5 h-5 rounded accent-primary-600 focus:ring-primary-500" />
                 <h2 className="font-semibold text-lg flex-grow text-slate-800 dark:text-slate-200">{title}</h2>
                 <span className="text-sm px-2 py-1 bg-slate-200 dark:bg-slate-700 rounded-full">{files.length}</span>
@@ -227,34 +226,30 @@ export const BackupOrganizer: React.FC = () => {
                 const hour = parseInt(dtString.substring(8, 10), 10);
                 const minute = parseInt(dtString.substring(10, 12), 10);
                 const second = parseInt(dtString.substring(12, 14), 10);
-                const date = new Date(year, month, day, hour, minute, second);
-                
-                if (!isNaN(date.getTime())) {
-                    determinedDate = date;
-                }
+                determinedDate = new Date(year, month, day, hour, minute, second);
             }
+        }
+
+        // If still no date, use ZIP date
+        if (!determinedDate) {
+            determinedDate = zipEntry.date;
+        }
+
+        if (!seriesName) {
+            seriesName = getSeriesNameFromTitle(originalName.replace(/\.[^/.]+$/, ""));
         }
         
-        // Final fallback: if no date is found, use a default epoch date.
-        if (!determinedDate) {
-            determinedDate = new Date(0); // Epoch time
+        // Fallback for timestamp
+        if (!timestamp) {
+            timestamp = determinedDate.getTime();
         }
-    
-        // Special handling for novel backups where seriesName might not have been set yet
-        if (isNovelBackup && !seriesName) {
-            if (jsonData?.title) { // if JSON was parsed but had no date or title was missed
-                 seriesName = getSeriesNameFromTitle(jsonData.title);
-            } else { // if JSON parsing failed, use filename for series
-                 seriesName = getSeriesNameFromTitle(originalName.replace(/\.(nov\.txt|nov|json)$/i, ''));
-            }
-        }
-    
-        const fileInfo: BackupOrganizerFileInfo = {
+
+        return {
             fullPath,
             originalName,
             folderPath,
             zipEntry,
-            size: zipEntry._data.uncompressedSize,
+            size: zipEntry._data ? zipEntry._data.uncompressedSize : 0,
             dateObject: determinedDate,
             fileType: fileExt,
             seriesName,
@@ -262,304 +257,243 @@ export const BackupOrganizer: React.FC = () => {
             jsonData,
             wordCount
         };
-    
-        return fileInfo;
     }, []);
 
     const handleFileSelected = async (files: FileList) => {
-        resetState();
         const file = files[0];
-        const isZipFile = file && (
-            file.type === 'application/zip' ||
-            file.type === 'application/x-zip-compressed' ||
-            file.name.toLowerCase().endsWith('.zip')
-        );
-
-        if (!isZipFile) {
-            showToast('Please upload a valid .zip file.', true);
-            return;
-        }
         setZipFile(file);
+        setStatus(null);
         showSpinner();
-        setStatus({ type: 'info', message: 'Processing ZIP file...' });
-        
+
         try {
             const JSZip = await getJSZip();
             const zip = await JSZip.loadAsync(file);
-            const filePromises: Promise<BackupOrganizerFileInfo>[] = [];
-            zip.forEach((_: string, zipEntry: any) => {
-                if (!zipEntry.dir) {
-                    filePromises.push(parseFileContent(zipEntry));
-                }
+            const entries: any[] = [];
+            zip.forEach((relativePath: string, zipEntry: any) => {
+                if (!zipEntry.dir) entries.push(zipEntry);
             });
 
-            const allFiles = await Promise.all(filePromises);
-            const series: Record<string, BackupOrganizerFileInfo[]> = {};
+            const fileInfos = await Promise.all(entries.map(parseFileContent));
+            
+            const folders = new Set<string>();
+            const seriesMap: Record<string, BackupOrganizerFileInfo[]> = {};
             const others: BackupOrganizerFileInfo[] = [];
-            let novFileCount = 0;
 
-            allFiles.forEach(fileInfo => {
-                if (fileInfo.seriesName) {
-                    novFileCount++;
-                    if (!series[fileInfo.seriesName]) series[fileInfo.seriesName] = [];
-                    series[fileInfo.seriesName].push(fileInfo);
+            fileInfos.forEach(info => {
+                folders.add(info.folderPath);
+                // Logic to categorize into series or others
+                // If it looks like a backup file
+                if (['nov', 'json', 'nov.txt', 'txt'].includes(info.fileType)) {
+                    const sName = info.seriesName || 'Uncategorized';
+                    if (!seriesMap[sName]) seriesMap[sName] = [];
+                    seriesMap[sName].push(info);
                 } else {
-                    others.push(fileInfo);
+                    others.push(info);
                 }
             });
 
-            if (novFileCount === 0 && others.length === 0) {
-                setStatus({ type: 'warning', message: 'No processable files found in the zip archive.' });
-            } else {
-                setProcessedSeries(series);
-                setOtherFiles(others);
-                const uniqueFolders = [...new Set(allFiles.map(f => f.folderPath))];
-                setAllFolders(uniqueFolders.sort());
-                setStatus({ type: 'success', message: `Found ${novFileCount} metadata files across ${Object.keys(series).length} series, and ${others.length} other files.`});
-            }
+            setAllFolders(Array.from(folders).sort());
+            setProcessedSeries(seriesMap);
+            setOtherFiles(others);
+            setStatus({ message: `Loaded ${fileInfos.length} files from archive.`, type: 'success' });
+
         } catch (err: any) {
-            setStatus({ type: 'error', message: `Error reading ZIP file: ${err.message}` });
+             setStatus({ message: `Error reading ZIP: ${err.message}`, type: 'error' });
         } finally {
             hideSpinner();
         }
     };
-    
-    // FIX: Add an explicit type annotation to the useMemo hook. This prevents TypeScript from inferring an 'unknown' type when the dependencies are complex, resolving subsequent errors related to missing properties like '.filter' and '.length' on the memoized value.
-    const filteredAndSortedData = useMemo<{
-        series: { seriesName: string; files: BackupOrganizerFileInfo[] }[];
-        others: BackupOrganizerFileInfo[];
-    }>(() => {
-        const query = searchQuery.toLowerCase();
-        
-        const filterFile = (file: BackupOrganizerFileInfo) => (
-            (folderFilter === 'all' || file.folderPath === folderFilter) &&
-            (file.originalName.toLowerCase().includes(query) ||
-             (file.seriesName && file.seriesName.toLowerCase().includes(query)) ||
-             (file.jsonData?.description && file.jsonData.description.toLowerCase().includes(query)))
-        );
-        
-        const fileSorter = (a: BackupOrganizerFileInfo, b: BackupOrganizerFileInfo) => {
+
+    // ... Sorting and Filtering Logic ...
+    const getFilteredFiles = useCallback((files: BackupOrganizerFileInfo[]) => {
+        let result = files;
+        if (folderFilter !== 'all') {
+            result = result.filter(f => f.folderPath === folderFilter);
+        }
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            result = result.filter(f => f.originalName.toLowerCase().includes(q));
+        }
+        return result.sort((a, b) => {
             switch (fileSort) {
-                case 'date-asc': return (a.timestamp ?? a.dateObject.getTime()) - (b.timestamp ?? b.dateObject.getTime());
-                case 'date-desc': return (b.timestamp ?? b.dateObject.getTime()) - (a.timestamp ?? a.dateObject.getTime());
-                case 'size-asc': return a.size - b.size;
-                case 'size-desc': return b.size - a.size;
-                case 'word-count-asc': return (a.wordCount ?? -1) - (b.wordCount ?? -1);
-                case 'word-count-desc': return (b.wordCount ?? -1) - (a.wordCount ?? -1);
+                case 'date-desc': return b.timestamp! - a.timestamp!;
+                case 'date-asc': return a.timestamp! - b.timestamp!;
                 case 'name-asc': return a.originalName.localeCompare(b.originalName);
                 case 'name-desc': return b.originalName.localeCompare(a.originalName);
+                case 'size-desc': return b.size - a.size;
+                case 'size-asc': return a.size - b.size;
+                case 'word-count-desc': return (b.wordCount || 0) - (a.wordCount || 0);
+                case 'word-count-asc': return (a.wordCount || 0) - (b.wordCount || 0);
                 default: return 0;
             }
-        };
+        });
+    }, [folderFilter, searchQuery, fileSort]);
 
-        const sortedSeries = Object.entries(processedSeries).map(([seriesName, files]) => ({
-            seriesName,
-            files: files.filter(filterFile).sort(fileSorter)
-        })).filter(s => s.files.length > 0);
+    const sortedSeriesKeys = useMemo(() => {
+        return Object.keys(processedSeries).sort((a, b) => {
+            const filesA = processedSeries[a];
+            const filesB = processedSeries[b];
+             switch (seriesSort) {
+                case 'name-asc': return a.localeCompare(b);
+                case 'file-count-desc': return filesB.length - filesA.length;
+                case 'updated-desc': 
+                    const maxA = Math.max(...filesA.map(f => f.timestamp || 0));
+                    const maxB = Math.max(...filesB.map(f => f.timestamp || 0));
+                    return maxB - maxA;
+                default: return 0;
+            }
+        });
+    }, [processedSeries, seriesSort]);
 
-        if (seriesSort === 'name-asc') sortedSeries.sort((a, b) => a.seriesName.localeCompare(b.seriesName));
-        else if (seriesSort === 'file-count-desc') sortedSeries.sort((a, b) => b.files.length - a.files.length);
-        else if (seriesSort === 'updated-desc') sortedSeries.sort((a, b) => Math.max(...b.files.map(f => f.timestamp ?? 0)) - Math.max(...a.files.map(f => f.timestamp ?? 0)));
-        
-        return { series: sortedSeries, others: otherFiles.filter(filterFile).sort(fileSorter) };
-    }, [searchQuery, folderFilter, seriesSort, fileSort, processedSeries, otherFiles]);
-    
-    const handleSelection = useCallback((file: BackupOrganizerFileInfo, isSelected: boolean) => {
-        setSelectedFiles(prev => { const newSet = new Set(prev); isSelected ? newSet.add(file) : newSet.delete(file); return newSet; });
-    }, []);
-
-    const handleSeriesSelection = useCallback((files: BackupOrganizerFileInfo[], isSelected: boolean) => {
+    const handleSelection = (file: BackupOrganizerFileInfo, isSelected: boolean) => {
         setSelectedFiles(prev => {
-            const newSet = new Set(prev);
-            files.forEach(file => isSelected ? newSet.add(file) : newSet.delete(file));
-            return newSet;
+            const next = new Set(prev);
+            if (isSelected) next.add(file); else next.delete(file);
+            return next;
         });
-    }, []);
-
-    const handleSelectLatest = (type: 'newest' | 'oldest') => {
-        const newSelections = new Set<BackupOrganizerFileInfo>();
-        Object.values(processedSeries).forEach(files => {
-            if (files.length === 0) return;
-            const sorted = [...files].sort((a,b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
-            const fileToSelect = type === 'newest' ? sorted[sorted.length - 1] : sorted[0];
-            if (fileToSelect) newSelections.add(fileToSelect);
-        });
-        setSelectedFiles(newSelections);
-    };
-    
-    const handleSelectAll = (select: boolean) => {
-        if (select) {
-            const allVisibleFiles = new Set([...filteredAndSortedData.series.flatMap(s => s.files), ...filteredAndSortedData.others]);
-            setSelectedFiles(allVisibleFiles);
-        } else {
-            setSelectedFiles(new Set());
-        }
     };
 
-    const downloadSelected = async () => {
+    const handleSeriesSelection = (files: BackupOrganizerFileInfo[], isSelected: boolean) => {
+        setSelectedFiles(prev => {
+            const next = new Set(prev);
+            files.forEach(f => { if (isSelected) next.add(f); else next.delete(f); });
+            return next;
+        });
+    };
+
+    const handleDownload = async (file: BackupOrganizerFileInfo) => {
+         if (!file.zipEntry) return;
+         const blob = await file.zipEntry.async('blob');
+         triggerDownload(blob, file.originalName);
+    };
+
+    const handleDownloadSelected = async () => {
         if (selectedFiles.size === 0) return;
         showSpinner();
         try {
             const JSZip = await getJSZip();
-            const zip = new JSZip();
-            for (const fileInfo of selectedFiles) {
-                const content = await fileInfo.zipEntry.async('blob');
-                const path = preserveStructure ? fileInfo.fullPath : fileInfo.originalName;
-                zip.file(path, content);
-            }
-            const blob = await zip.generateAsync({ type: "blob" });
-            triggerDownload(blob, "Backup_Selection.zip");
-        } catch (err: any) {
-            showToast(`Error creating ZIP: ${err.message}`, true);
+            const newZip = new JSZip();
+            
+            // Helper to process files
+            const processFile = async (file: BackupOrganizerFileInfo) => {
+                 const content = await file.zipEntry.async('blob');
+                 const path = preserveStructure ? file.fullPath : file.originalName;
+                 newZip.file(path, content);
+            };
+            
+            await Promise.all(Array.from(selectedFiles).map(processFile));
+            
+            const blob = await newZip.generateAsync({ type: 'blob' });
+            triggerDownload(blob, 'organized_backup.zip');
+            showToast(`Downloaded ${selectedFiles.size} files.`);
+        } catch (e: any) {
+            showToast(`Error creating zip: ${e.message}`, true);
         } finally {
             hideSpinner();
         }
     };
-    
-     const downloadSingleFile = async (fileInfo: BackupOrganizerFileInfo) => {
-        showToast(`Downloading ${fileInfo.originalName}...`);
-        showSpinner();
-        try {
-            const content = await fileInfo.zipEntry.async('blob');
-            triggerDownload(content, fileInfo.originalName);
-        } catch (err: any) {
-            showToast(`Error downloading file: ${err.message}`, true);
-        } finally {
-            hideSpinner();
-        }
-    };
-    
-    const resetState = () => { setZipFile(null); setStatus(null); setProcessedSeries({}); setOtherFiles([]); setSelectedFiles(new Set()); setAllFolders([]); setSearchQuery(''); setFolderFilter('all'); };
 
-    if (!zipFile) {
-        return (
-            <div id="backupOrganizerApp" className="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 animate-fade-in">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">Backup Organizer</h1>
-                <div className="max-w-md mx-auto">
-                    <FileInput inputId="organizerZipUpload" label="Upload ZIP Archive" accept=".zip" onFileSelected={handleFileSelected} />
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Upload a .zip file to inspect its contents.</p>
-                </div>
-            </div>
-        );
-    }
-    
     return (
-        <div id="backupOrganizerApp" className="max-w-5xl mx-auto p-4 md:p-6 space-y-5 animate-fade-in pb-28">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">Backup Organizer</h1>
-
-            <div className="p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 items-end">
-                    <div>
-                        <label htmlFor="searchInput" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Filter by Name/Description:</label>
-                        <input type="text" id="searchInput" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="e.g., Chapter 1, draft..." className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-gray-900 dark:text-white"/>
-                    </div>
-                     <button onClick={() => setFilterModalOpen(true)} className="w-full sm:w-auto px-4 py-2 text-sm rounded-lg font-medium bg-white hover:bg-slate-50 dark:bg-slate-600 dark:hover:bg-slate-500">Filters &amp; Sort</button>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <button onClick={() => handleSelectLatest('newest')} className="px-3 py-2 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Select Newest</button>
-                    <button onClick={() => handleSelectLatest('oldest')} className="px-3 py-2 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Select Oldest</button>
-                    <button onClick={() => handleSelectAll(true)} className="px-3 py-2 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Select All</button>
-                    <button onClick={() => handleSelectAll(false)} className="px-3 py-2 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Select None</button>
-                </div>
-            </div>
-
-            <FilterModal 
-                isOpen={isFilterModalOpen}
-                onClose={() => setFilterModalOpen(false)}
-                allFolders={allFolders}
-                filters={{ folderFilter, fileSort, seriesSort }}
-                setFilters={(key, value) => {
-                    if (key === 'folderFilter') setFolderFilter(value);
-                    if (key === 'fileSort') setFileSort(value);
-                    if (key === 'seriesSort') setSeriesSort(value);
-                }}
-            />
-
-            <StatusMessage status={status} />
-
-            <div className="space-y-4">
-                {filteredAndSortedData.series.map(({ seriesName, files }) => (
-                    <FilePanel key={seriesName} title={seriesName} files={files} selectedFiles={selectedFiles} onSelection={handleSelection} onSeriesSelection={handleSeriesSelection} onPreview={setModalContent} onDownload={downloadSingleFile} collapsedSeries={collapsedSeries} setCollapsedSeries={setCollapsedSeries} newestFileTimestamp={Math.max(...files.map(f => f.timestamp ?? 0))} fileSort={fileSort} />
-                ))}
-                {filteredAndSortedData.others.length > 0 && (
-                     <FilePanel title="Other Files" files={filteredAndSortedData.others} selectedFiles={selectedFiles} onSelection={handleSelection} onSeriesSelection={handleSeriesSelection} onPreview={setModalContent} onDownload={downloadSingleFile} collapsedSeries={collapsedSeries} setCollapsedSeries={setCollapsedSeries} newestFileTimestamp={0} fileSort={fileSort} />
-                )}
-            </div>
-
-            {selectedFiles.size > 0 && (
-                <div className="fixed bottom-0 left-0 right-0 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:bottom-4 z-40 sm:w-full sm:max-w-md animate-slide-in">
-                    <div className="bg-slate-800/90 dark:bg-slate-900/90 backdrop-blur-sm text-white sm:rounded-xl p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4 shadow-2xl flex items-center justify-between gap-4">
-                        <div>
-                            <p className="font-bold">{selectedFiles.size} file(s) selected</p>
-                            <label className="text-xs flex items-center gap-2 text-slate-300 mt-1 cursor-pointer">
-                                <input type="checkbox" checked={preserveStructure} onChange={e => setPreserveStructure(e.target.checked)} className="accent-primary-500"/>
-                                Preserve folder structure
-                            </label>
+        <div className="max-w-5xl mx-auto p-4 md:p-6 min-h-screen animate-fade-in">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6 text-center">Backup Organizer</h1>
+            
+            {!zipFile ? (
+                 <div className="max-w-xl mx-auto bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl p-8 text-center shadow-sm">
+                    <p className="text-slate-600 dark:text-slate-300 mb-6">Upload a large ZIP archive containing multiple novel backups (e.g. from WebDav). This tool helps you group them by series, identify the latest versions, and extract what you need.</p>
+                    <FileInput inputId="organizerZip" label="Upload Archive (ZIP)" accept=".zip" onFileSelected={handleFileSelected} />
+                 </div>
+            ) : (
+                <>
+                    <div className="flex flex-col md:flex-row gap-4 mb-6 sticky top-4 z-10">
+                         <div className="flex-grow relative">
+                            <input type="text" placeholder="Search files..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-3 rounded-xl border-none shadow-md bg-white/90 dark:bg-slate-800/90 backdrop-blur-md focus:ring-2 focus:ring-primary-500" />
+                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         </div>
-                        <button onClick={downloadSelected} className="px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg">Download</button>
+                        <button onClick={() => setFilterModalOpen(true)} className="px-4 py-3 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md rounded-xl shadow-md font-medium hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2">
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                            Filters
+                        </button>
+                        {selectedFiles.size > 0 && (
+                             <button onClick={handleDownloadSelected} className="px-6 py-3 bg-primary-600 text-white rounded-xl shadow-md font-medium hover:bg-primary-700 flex items-center gap-2 animate-bounce-in">
+                                <span>Download ({selectedFiles.size})</span>
+                            </button>
+                        )}
                     </div>
-                </div>
+
+                    <div className="space-y-6">
+                        {sortedSeriesKeys.map(seriesName => {
+                             const files = getFilteredFiles(processedSeries[seriesName]);
+                             if (files.length === 0) return null;
+                             const timestamps = files.map(f => f.timestamp || 0);
+                             const maxTs = Math.max(...timestamps);
+
+                             return (
+                                 <FilePanel 
+                                    key={seriesName} 
+                                    title={seriesName} 
+                                    files={files} 
+                                    selectedFiles={selectedFiles}
+                                    onSelection={handleSelection}
+                                    onSeriesSelection={handleSeriesSelection}
+                                    onPreview={file => setModalContent(file)}
+                                    onDownload={handleDownload}
+                                    collapsedSeries={collapsedSeries}
+                                    setCollapsedSeries={setCollapsedSeries}
+                                    newestFileTimestamp={maxTs}
+                                    fileSort={fileSort}
+                                />
+                             );
+                        })}
+                        
+                        {getFilteredFiles(otherFiles).length > 0 && (
+                             <FilePanel 
+                                title="Other Files" 
+                                files={getFilteredFiles(otherFiles)} 
+                                selectedFiles={selectedFiles}
+                                onSelection={handleSelection}
+                                onSeriesSelection={handleSeriesSelection}
+                                onPreview={file => setModalContent(file)}
+                                onDownload={handleDownload}
+                                collapsedSeries={collapsedSeries}
+                                setCollapsedSeries={setCollapsedSeries}
+                                newestFileTimestamp={0}
+                                fileSort={fileSort}
+                            />
+                        )}
+                    </div>
+                </>
             )}
             
-            {modalContent && <PreviewModal file={modalContent} onClose={() => setModalContent(null)} />}
-        </div>
-    );
-};
+            <FilterModal isOpen={isFilterModalOpen} onClose={() => setFilterModalOpen(false)} allFolders={allFolders} filters={{ folderFilter, fileSort, seriesSort }} setFilters={(k, v) => {
+                if (k === 'folderFilter') setFolderFilter(v);
+                if (k === 'fileSort') setFileSort(v);
+                if (k === 'seriesSort') setSeriesSort(v);
+            }} />
 
-const PreviewModal = ({ file, onClose }: { file: BackupOrganizerFileInfo, onClose: () => void }) => {
-    const [content, setContent] = useState<string | null>('Loading...');
-    const [imageUrl, setImageUrl] = useState<string | null>(null);
-
-    useEffect(() => {
-        let active = true;
-        const loadContent = async () => {
-            if (file.fileType === 'nov' && file.jsonData) {
-                const data = file.jsonData;
-                const wordCount = data.revisions?.[0]?.book_progresses?.slice(-1)[0]?.word_count?.toLocaleString() || 'N/A';
-                const sceneCount = data.revisions?.[0]?.scenes?.length || 'N/A';
-                if (active) setContent(`<div class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-                    <strong class="text-right text-slate-500 dark:text-slate-400">Title:</strong> <span>${data.title || 'N/A'}</span>
-                    <strong class="text-right text-slate-500 dark:text-slate-400">Description:</strong> <pre class="whitespace-pre-wrap font-sans">${data.description || 'N/A'}</pre>
-                    <strong class="text-right text-slate-500 dark:text-slate-400">Path:</strong> <span>${file.folderPath}</span>
-                    <strong class="text-right text-slate-500 dark:text-slate-400">Updated:</strong> <span>${formatDate(file.dateObject)}</span>
-                    <strong class="text-right text-slate-500 dark:text-slate-400">Words:</strong> <span>${wordCount}</span>
-                    <strong class="text-right text-slate-500 dark:text-slate-400">Scenes:</strong> <span>${sceneCount}</span>
-                    <strong class="text-right text-slate-500 dark:text-slate-400">Size:</strong> <span>${formatBytes(file.size)}</span>
-                </div>`);
-            } else if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(file.fileType)) {
-                const blob = await file.zipEntry.async('blob');
-                const url = URL.createObjectURL(blob);
-                if (active) { setImageUrl(url); setContent(null); }
-            } else {
-                try {
-                    const text = await file.zipEntry.async('string');
-                    if (active) setContent(`<pre class="whitespace-pre-wrap text-sm">${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>`);
-                } catch {
-                    if (active) setContent('Preview not available for this binary file.');
-                }
-            }
-        };
-        
-        loadContent();
-
-        return () => {
-            active = false;
-            if (imageUrl) URL.revokeObjectURL(imageUrl);
-        };
-    }, [file, imageUrl]);
-
-    return (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                <header className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                    <h3 className="font-semibold text-lg truncate text-slate-800 dark:text-slate-200" title={file.originalName}>{file.originalName}</h3>
-                    <button onClick={onClose} className="text-2xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white">&times;</button>
-                </header>
-                <div className="p-4 overflow-y-auto">
-                    {imageUrl && <img src={imageUrl} alt="Preview" className="max-w-full max-h-[60vh] mx-auto" />}
-                    {content && <div dangerouslySetInnerHTML={{ __html: content }} />}
+            {modalContent && (
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setModalContent(null)}>
+                     <div className="bg-white dark:bg-slate-800 rounded-xl max-w-lg w-full p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-xl font-bold mb-4 break-words">{modalContent.originalName}</h3>
+                        <div className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
+                            <p><strong>Path:</strong> {modalContent.fullPath}</p>
+                            <p><strong>Size:</strong> {formatBytes(modalContent.size)}</p>
+                            <p><strong>Date:</strong> {formatDate(modalContent.dateObject)}</p>
+                             {modalContent.jsonData && (
+                                <div className="bg-slate-100 dark:bg-slate-900 p-3 rounded-lg mt-4">
+                                    <p><strong>Title:</strong> {modalContent.jsonData.title}</p>
+                                    {modalContent.wordCount !== undefined && <p><strong>Word Count:</strong> {modalContent.wordCount.toLocaleString()}</p>}
+                                    {modalContent.jsonData.description && <p className="mt-2 italic opacity-80 line-clamp-3">{modalContent.jsonData.description}</p>}
+                                </div>
+                            )}
+                        </div>
+                        <div className="mt-6 flex justify-end gap-3">
+                            <button onClick={() => setModalContent(null)} className="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-700">Close</button>
+                            <button onClick={() => handleDownload(modalContent)} className="px-4 py-2 rounded-lg bg-primary-600 text-white">Download</button>
+                        </div>
+                     </div>
                 </div>
-            </div>
+            )}
+            <StatusMessage status={status} />
         </div>
     );
 };
