@@ -1,18 +1,19 @@
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, Suspense } from 'react';
 import { useNavigate, Link, useParams } from 'react-router-dom';
 
-import { NovelSplitter } from '../tools/NovelSplitter';
-import { EpubSplitter } from '../tools/EpubSplitter';
-import { ZipEpub } from '../tools/ZipEpub';
-import { CreateBackupFromZip } from '../tools/CreateBackupFromZip';
-import { MergeBackup } from '../tools/MergeBackup';
-import { AugmentBackupWithZip } from '../tools/AugmentBackupWithZip';
-import { FindReplaceBackup } from '../tools/FindReplaceBackup';
-import { BackupOrganizer } from '../tools/BackupOrganizer';
+// Lazy load tools to improve initial bundle size and performance
+const NovelSplitter = React.lazy(() => import('../tools/NovelSplitter').then(m => ({ default: m.NovelSplitter })));
+const EpubSplitter = React.lazy(() => import('../tools/EpubSplitter').then(m => ({ default: m.EpubSplitter })));
+const ZipEpub = React.lazy(() => import('../tools/ZipEpub').then(m => ({ default: m.ZipEpub })));
+const CreateBackupFromZip = React.lazy(() => import('../tools/CreateBackupFromZip').then(m => ({ default: m.CreateBackupFromZip })));
+const MergeBackup = React.lazy(() => import('../tools/MergeBackup').then(m => ({ default: m.MergeBackup })));
+const AugmentBackupWithZip = React.lazy(() => import('../tools/AugmentBackupWithZip').then(m => ({ default: m.AugmentBackupWithZip })));
+const FindReplaceBackup = React.lazy(() => import('../tools/FindReplaceBackup').then(m => ({ default: m.FindReplaceBackup })));
+const BackupOrganizer = React.lazy(() => import('../tools/BackupOrganizer').then(m => ({ default: m.BackupOrganizer })));
 
 // Tool mapping for the router
-export const toolSectionsMap: Record<string, { component: React.FC; title: string }> = {
+export const toolSectionsMap: Record<string, { component: React.LazyExoticComponent<React.FC> | React.FC; title: string }> = {
     'splitter': { component: EpubSplitter, title: 'EPUB Chapter Splitter' },
     'augmentBackupWithZip': { component: AugmentBackupWithZip, title: 'Augment Backup with ZIP' },
     'zipEpub': { component: ZipEpub, title: 'ZIP ↔ EPUB' },
@@ -49,12 +50,21 @@ export const ToolWrapper = () => {
 
     if (!ToolComponent) {
         return (
-            <div className="p-8 text-center">
+            <div className="p-8 text-center animate-fade-in">
                 <h2 className="text-xl font-semibold mb-4">Tool not found</h2>
                 <Link to="/" className="text-primary-600 hover:underline">Return to Dashboard</Link>
             </div>
         );
     }
     
-    return <ToolComponent />;
+    return (
+        <Suspense fallback={
+            <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
+                <div className="w-12 h-12 border-4 border-slate-200 border-t-primary-600 rounded-full animate-spin"></div>
+                <p className="text-slate-500 dark:text-slate-400 animate-pulse">Loading Tool...</p>
+            </div>
+        }>
+            <ToolComponent />
+        </Suspense>
+    );
 };

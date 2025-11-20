@@ -1,8 +1,9 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+
+import React, { useState, useMemo, useCallback } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { FileInput } from '../components/FileInput';
 import { StatusMessage } from '../components/StatusMessage';
-import { getJSZip, triggerDownload } from '../utils/helpers';
+import { getJSZip, triggerDownload, pMap } from '../utils/helpers';
 import { Status, BackupData, BackupOrganizerFileInfo } from '../utils/types';
 import { calculateWordCount } from '../utils/backupHelpers';
 
@@ -273,7 +274,8 @@ export const BackupOrganizer: React.FC = () => {
                 if (!zipEntry.dir) entries.push(zipEntry);
             });
 
-            const fileInfos = await Promise.all(entries.map(parseFileContent));
+            // Use pMap to limit concurrency to 5 files at a time to prevent memory issues
+            const fileInfos = await pMap(entries, parseFileContent, 5);
             
             const folders = new Set<string>();
             const seriesMap: Record<string, BackupOrganizerFileInfo[]> = {};

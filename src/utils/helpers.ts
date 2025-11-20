@@ -1,4 +1,5 @@
 
+
 declare global {
     interface Window {
         JSZip: any;
@@ -39,6 +40,23 @@ export const getJSZip = async (): Promise<any> => {
         throw new Error('JSZip not available.');
     }
 };
+
+export async function pMap<T, R>(
+    array: T[],
+    mapper: (item: T, index: number) => Promise<R>,
+    concurrency: number
+  ): Promise<R[]> {
+    const results = new Array<R>(array.length);
+    let index = 0;
+    const next = async (): Promise<void> => {
+      while (index < array.length) {
+        const i = index++;
+        results[i] = await mapper(array[i], i);
+      }
+    };
+    await Promise.all(Array.from({ length: concurrency }, next));
+    return results;
+  }
 
 let FONT_CACHE: { cjkFontBytes: ArrayBuffer; latinFontBytes: ArrayBuffer; } | null = null;
 
