@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo, useReducer, useCallback } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { triggerDownload, getJSZip, escapeHTML } from '../utils/helpers';
@@ -660,7 +661,7 @@ export const NovelSplitter: React.FC = () => {
     );
     
     const renderEditorStep = () => (
-         <div className="flex flex-col h-[calc(100vh-120px)] md:h-[calc(100vh-100px)] animate-fade-in">
+         <div className="flex flex-col h-[calc(100dvh-120px)] md:h-[calc(100dvh-100px)] animate-fade-in">
             {/* Header */}
             <header className="flex-shrink-0 flex items-center justify-between gap-2 p-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700">
                 <button onClick={() => dispatch({type: 'SET_STATE', payload: { isChapterNavOpen: true }})} className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white">
@@ -757,7 +758,7 @@ export const NovelSplitter: React.FC = () => {
     );
 
     return (
-        <div id="novelSplitterApp" className="h-full min-h-[calc(100vh-80px)]">
+        <div id="novelSplitterApp" className="h-full min-h-[calc(100dvh-80px)]">
             {step === 'upload' && renderUploadStep()}
             {step === 'config' && renderConfigStep()}
             {step === 'editor' && renderEditorStep()}

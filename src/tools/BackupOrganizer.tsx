@@ -65,8 +65,8 @@ const FilePanel = ({ title, files, selectedFiles, onSelection, onSeriesSelection
 }) => {
     const isCollapsed = collapsedSeries.has(title);
     const visibleFiles = files;
-    const allVisibleSelected = visibleFiles.length > 0 && visibleFiles.every((f:any) => selectedFiles.has(f));
-    const someVisibleSelected = visibleFiles.some((f:any) => selectedFiles.has(f));
+    const allVisibleSelected = visibleFiles.length > 0 && visibleFiles.every((f) => selectedFiles.has(f));
+    const someVisibleSelected = visibleFiles.some((f) => selectedFiles.has(f));
     
     return (
         <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
@@ -231,9 +231,19 @@ export const BackupOrganizer: React.FC = () => {
             }
         }
 
-        // If still no date, use ZIP date
-        if (!determinedDate) {
-            determinedDate = zipEntry.date;
+        // If still no date, use ZIP date or current time
+        let finalDate: Date;
+        if (determinedDate) {
+            finalDate = determinedDate;
+        } else if (zipEntry.date) {
+             finalDate = zipEntry.date;
+        } else {
+             finalDate = new Date();
+        }
+        
+        // Additional safety check in case zipEntry.date is invalid
+        if (isNaN(finalDate.getTime())) {
+            finalDate = new Date();
         }
 
         if (!seriesName) {
@@ -242,7 +252,7 @@ export const BackupOrganizer: React.FC = () => {
         
         // Fallback for timestamp
         if (!timestamp) {
-            timestamp = determinedDate.getTime();
+            timestamp = finalDate.getTime();
         }
 
         return {
@@ -251,7 +261,7 @@ export const BackupOrganizer: React.FC = () => {
             folderPath,
             zipEntry,
             size: zipEntry._data ? zipEntry._data.uncompressedSize : 0,
-            dateObject: determinedDate,
+            dateObject: finalDate,
             fileType: fileExt,
             seriesName,
             timestamp,
