@@ -109,7 +109,7 @@ const reducer = (state: State, action: Action): State => {
             return { ...state, chapters: state.chapters.map(c => c.id === id ? { ...c, title: title ?? c.title, content: content ?? c.content } : c) };
         }
         case 'UPDATE_CHAPTERS':
-             return { ...state, chapters: action.payload };
+            return { ...state, chapters: action.payload };
         case 'REORDER_CHAPTERS':
             return { ...state, chapters: action.payload };
         case 'SET_META':
@@ -142,7 +142,7 @@ const reducer = (state: State, action: Action): State => {
             const newChapters = [...state.chapters];
             newChapters[currentIndex] = { ...currentChapter, content: content1 };
             newChapters.splice(currentIndex + 1, 0, newChapter);
-            
+
             return { ...state, chapters: newChapters, selectedChapterId: newChapter.id };
         }
         case 'TOGGLE_REORDER_MODE':
@@ -180,7 +180,7 @@ const reducer = (state: State, action: Action): State => {
             const { pattern, startNumber } = action.payload;
             let counter = startNumber;
             const orderedSelectedIds = state.chapters.filter(c => state.selectedChapterIds.has(c.id)).map(c => c.id);
-            
+
             const newChapters = state.chapters.map(c => {
                 if (orderedSelectedIds.includes(c.id)) {
                     return { ...c, title: pattern.replace('{n}', String(counter++)) };
@@ -199,16 +199,16 @@ const SESSION_KEY = 'novelSplitterSession';
 
 const DEFAULT_TEMPLATES: Template[] = [
     {
-      id: 1,
-      name: 'Chinese Chapters (通用)',
-      splitRegex: '^\\s*第?\\s*[〇一二三四五六七八九十百千万零\\d]+\\s*[章章节回部卷].*',
-      cleanupRules: [{ id: 1, find: '', replace: '' }],
+        id: 1,
+        name: 'Chinese Chapters (通用)',
+        splitRegex: '^\\s*第?\\s*[〇一二三四五六七八九十百千万零\\d]+\\s*[章章节回部卷].*',
+        cleanupRules: [{ id: 1, find: '', replace: '' }],
     },
     {
-      id: 2,
-      name: 'Chinese Chapters 2 (备用)',
-      splitRegex: '^[\\u3000\\s]*第[〇零一二三四五六七八九十百千万\\d]+(?:章|节|回|部|卷)[\\u3000\\s]*.*',
-      cleanupRules: [{ id: 1, find: '', replace: '' }],
+        id: 2,
+        name: 'Chinese Chapters 2 (备用)',
+        splitRegex: '^[\\u3000\\s]*第[〇零一二三四五六七八九十百千万\\d]+(?:章|节|回|部|卷)[\\u3000\\s]*.*',
+        cleanupRules: [{ id: 1, find: '', replace: '' }],
     }
 ];
 
@@ -216,7 +216,7 @@ export const NovelSplitter: React.FC = () => {
     const { showToast, showSpinner, hideSpinner } = useAppContext();
     const [state, dispatch] = useReducer(reducer, initialState);
     const { step, rawText, fileName, encoding, splitRegex, matchedHeadings, cleanupRules, chapters, selectedChapterId, meta, showFindReplace, findQuery, replaceQuery, isChapterNavOpen, reorderModeActive, selectedChapterIds, showGlobalFindReplace, globalFindQuery, globalReplaceQuery, globalFindOptions, globalMatches, currentGlobalMatchIndex } = state;
-    
+
     const [isCleanupOpen, setCleanupOpen] = useState(false);
     const [isSplitPreviewOpen, setSplitPreviewOpen] = useState(false);
     const [isBatchRenameModalOpen, setBatchRenameModalOpen] = useState(false);
@@ -235,7 +235,7 @@ export const NovelSplitter: React.FC = () => {
 
     const sessionDataToSave = useMemo(() => {
         if (step !== 'editor') return null;
-        const { coverFile, ...metaToSave } = meta; 
+        const { coverFile, ...metaToSave } = meta;
         const sessionData = { ...state, meta: metaToSave, selectedChapterIds: [] }; // Don't save selection set
         if (sessionData.chapters.length > 0) sessionData.rawText = null;
         return JSON.stringify(sessionData);
@@ -245,9 +245,9 @@ export const NovelSplitter: React.FC = () => {
         const handler = setTimeout(() => { sessionDataToSave && localStorage.setItem(SESSION_KEY, sessionDataToSave); }, 1000);
         return () => clearTimeout(handler);
     }, [sessionDataToSave]);
-    
+
     const restoreSession = useCallback(() => {
-         const savedSession = localStorage.getItem(SESSION_KEY);
+        const savedSession = localStorage.getItem(SESSION_KEY);
         if (savedSession) {
             const sessionData = JSON.parse(savedSession);
             dispatch({ type: 'SET_STATE', payload: { ...sessionData, meta: { ...sessionData.meta, coverFile: null }, selectedChapterIds: new Set() } });
@@ -311,7 +311,7 @@ export const NovelSplitter: React.FC = () => {
 
             const titles = [...processedText.matchAll(new RegExp(splitRegex, 'gm'))];
             const newChapters: Chapter[] = [];
-            
+
             // Handle case where no titles were found, treat the whole text as one chapter.
             if (titles.length === 0) {
                 if (processedText.trim()) {
@@ -365,7 +365,8 @@ export const NovelSplitter: React.FC = () => {
             const zip = (await getJSZip())();
             chapters.forEach((c, i) => zip.file(`${String(i + 1).padStart(4, '0')}_${c.title.replace(/[^\p{L}\p{N}\s._-]/gu, '').slice(0, 50)}.txt`, c.content));
             triggerDownload(await zip.generateAsync({ type: 'blob' }), `${meta.title || 'novel'}.zip`);
-        } catch (e: any) { showToast(`Failed to generate ZIP: ${e.message}`, true);
+        } catch (e: any) {
+            showToast(`Failed to generate ZIP: ${e.message}`, true);
         } finally { hideSpinner(); }
     };
 
@@ -378,10 +379,10 @@ export const NovelSplitter: React.FC = () => {
             zip.folder("META-INF")!.file("container.xml", `<?xml version="1.0" encoding="UTF-8"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>`);
             const oebps = zip.folder("OEBPS")!;
             oebps.folder("css")!.file("style.css", "body{font-family:sans-serif;line-height:1.6;} h2{text-align:center;font-weight:bold;} p{text-indent:1.5em; margin-top:0; margin-bottom:0; text-align:justify;} p+p{margin-top: 1em;}");
-            
+
             const manifestItems: any[] = [{ id: "css", href: "css/style.css", "media-type": "text/css" }, { id: "nav", href: "nav.xhtml", "media-type": "application/xhtml+xml", properties: "nav" }];
             const spineItems: any[] = [];
-            
+
             if (meta.coverFile) {
                 const ext = meta.coverFile.name.split('.').pop()?.toLowerCase() || 'jpg';
                 oebps.folder("images")!.file(`cover.${ext}`, await meta.coverFile.arrayBuffer());
@@ -390,7 +391,7 @@ export const NovelSplitter: React.FC = () => {
                 manifestItems.push({ id: "cover-page", href: "text/cover.xhtml", "media-type": "application/xhtml+xml" });
                 spineItems.push({ idref: "cover-page", linear: "no" });
             }
-            
+
             chapters.forEach((c, i) => {
                 const filename = `chapter_${i + 1}.xhtml`;
                 const bodyContent = c.content.split('\n').filter(l => l.trim()).map(l => `<p>${escapeHTML(l)}</p>`).join('\n');
@@ -398,7 +399,7 @@ export const NovelSplitter: React.FC = () => {
                 manifestItems.push({ id: `chapter-${i + 1}`, href: `text/${filename}`, "media-type": "application/xhtml+xml" });
                 spineItems.push({ idref: `chapter-${i + 1}` });
             });
-            
+
             // Add NCX for EPUB 2 compatibility
             const ncxNavPoints = chapters.map((chapter, i) => `
                 <navPoint id="navPoint-${i + 1}" playOrder="${i + 1}">
@@ -420,14 +421,15 @@ export const NovelSplitter: React.FC = () => {
 </ncx>`;
             oebps.file("toc.ncx", ncxContent);
             manifestItems.push({ id: "ncx", href: "toc.ncx", "media-type": "application/x-dtbncx+xml" });
-            
-            const navLiItems = chapters.map((c, i) => `<li><a href="text/chapter_${i+1}.xhtml">${escapeHTML(c.title)}</a></li>`).join("\n");
+
+            const navLiItems = chapters.map((c, i) => `<li><a href="text/chapter_${i + 1}.xhtml">${escapeHTML(c.title)}</a></li>`).join("\n");
             oebps.file("nav.xhtml", `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Contents</title></head><body><nav epub:type="toc"><h1>Contents</h1><ol>${navLiItems}</ol></nav></body></html>`);
             oebps.file("content.opf", `<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookId" version="3.0"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="BookId">urn:uuid:${bookUUID}</dc:identifier><dc:title>${escapeHTML(meta.title)}</dc:title><dc:language>${escapeHTML(meta.language)}</dc:language><dc:creator>${escapeHTML(meta.author)}</dc:creator><meta property="dcterms:modified">${new Date().toISOString()}</meta>${meta.coverFile ? '<meta name="cover" content="cover-image"/>' : ''}</metadata><manifest>${manifestItems.map(item => `<item id="${item.id}" href="${item.href}" media-type="${item["media-type"]}" ${item.properties ? `properties="${item.properties}"` : ''}/>`).join("")}</manifest><spine toc="ncx">${spineItems.map(item => `<itemref idref="${item.idref}" ${item.linear ? `linear="${item.linear}"` : ''}/>`).join("")}</spine></package>`);
-            
+
             triggerDownload(await zip.generateAsync({ type: "blob", mimeType: "application/epub+zip" }), `${meta.title.replace(/[^a-z0-9]/gi, '_')}.epub`);
             showToast('EPUB created successfully!');
-        } catch (e: any) { showToast(`Failed to generate EPUB: ${e.message}`, true);
+        } catch (e: any) {
+            showToast(`Failed to generate EPUB: ${e.message}`, true);
         } finally { hideSpinner(); }
     };
 
@@ -449,7 +451,7 @@ export const NovelSplitter: React.FC = () => {
         dispatch({ type: 'BATCH_RENAME', payload: { pattern: renamePattern, startNumber: renameStartNum } });
         setBatchRenameModalOpen(false);
     };
-    
+
     const saveTemplate = () => {
         const name = prompt("Enter a name for this template:");
         if (name) {
@@ -468,7 +470,7 @@ export const NovelSplitter: React.FC = () => {
             showToast(`Template "${template.name}" loaded.`);
         }
     };
-    
+
     const performGlobalSearch = useCallback(() => {
         if (!globalFindQuery) {
             dispatch({ type: 'SET_STATE', payload: { globalMatches: [], currentGlobalMatchIndex: -1 } });
@@ -482,7 +484,7 @@ export const NovelSplitter: React.FC = () => {
                 finalPattern = `\\b(${finalPattern})\\b`;
             }
             const regex = new RegExp(finalPattern, flags);
-            
+
             const allMatches: GlobalMatch[] = [];
             chapters.forEach(chapter => {
                 let match;
@@ -552,7 +554,7 @@ export const NovelSplitter: React.FC = () => {
             setReviewModalOpen(false);
             return;
         }
-        
+
         const groupedByChapter = matchesToReplace.reduce((acc, match) => {
             if (!acc[match.chapterId]) acc[match.chapterId] = [];
             acc[match.chapterId].push(match);
@@ -579,6 +581,22 @@ export const NovelSplitter: React.FC = () => {
 
     const currentChapter = useMemo(() => chapters.find(c => c.id === selectedChapterId), [chapters, selectedChapterId]);
 
+    // Helper to get context around a match with highlighted text
+    const getMatchContext = useCallback((match: GlobalMatch, contextLength: number = 30) => {
+        const chapter = chapters.find(c => c.id === match.chapterId);
+        if (!chapter) return { before: '', match: match.text, after: '' };
+
+        const content = chapter.content;
+        const beforeStart = Math.max(0, match.index - contextLength);
+        const afterEnd = Math.min(content.length, match.index + match.length + contextLength);
+
+        return {
+            before: (beforeStart > 0 ? '...' : '') + content.substring(beforeStart, match.index),
+            match: match.text,
+            after: content.substring(match.index + match.length, afterEnd) + (afterEnd < content.length ? '...' : '')
+        };
+    }, [chapters]);
+
     const renderUploadStep = () => (
         <div className="flex flex-col items-center justify-center min-h-[70vh] p-4 text-center">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Novel Splitter</h1>
@@ -599,28 +617,28 @@ export const NovelSplitter: React.FC = () => {
     );
 
     const renderConfigStep = () => (
-         <div className="max-w-3xl mx-auto p-4 md:p-6 animate-fade-in">
-             <div className="flex justify-between items-center mb-6">
+        <div className="max-w-3xl mx-auto p-4 md:p-6 animate-fade-in">
+            <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Configure Split</h1>
-                <button onClick={() => dispatch({ type: 'SET_STATE', payload: { step: 'upload' }})} className="text-sm text-primary-600 hover:underline">Cancel</button>
-             </div>
+                <button onClick={() => dispatch({ type: 'SET_STATE', payload: { step: 'upload' } })} className="text-sm text-primary-600 hover:underline">Cancel</button>
+            </div>
 
-             <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4 mb-4">
+            <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4 mb-4">
                 <p className="font-semibold text-slate-800 dark:text-slate-200">File: <span className="font-normal text-slate-600 dark:text-slate-300">{fileName}</span></p>
-                 <div className="flex items-center gap-2 mt-2">
-                     <label className="text-sm text-slate-700 dark:text-slate-300" htmlFor="encodingSelect">Encoding:</label>
-                     <select id="encodingSelect" value={encoding} onChange={e => dispatch({ type: 'SET_STATE', payload: { encoding: e.target.value }})} className="text-sm bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 focus:border-primary-500 focus:ring-1 focus:ring-primary-500">
-                         <option value="utf-8">UTF-8</option><option value="gbk">GBK</option><option value="big5">Big5</option>
-                     </select>
-                 </div>
-             </div>
-             
-              <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4 mb-4">
-                 <div className="flex justify-between items-center font-semibold text-slate-800 dark:text-slate-200">
+                <div className="flex items-center gap-2 mt-2">
+                    <label className="text-sm text-slate-700 dark:text-slate-300" htmlFor="encodingSelect">Encoding:</label>
+                    <select id="encodingSelect" value={encoding} onChange={e => dispatch({ type: 'SET_STATE', payload: { encoding: e.target.value } })} className="text-sm bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 focus:border-primary-500 focus:ring-1 focus:ring-primary-500">
+                        <option value="utf-8">UTF-8</option><option value="gbk">GBK</option><option value="big5">Big5</option>
+                    </select>
+                </div>
+            </div>
+
+            <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4 mb-4">
+                <div className="flex justify-between items-center font-semibold text-slate-800 dark:text-slate-200">
                     <button type="button" onClick={() => setCleanupOpen(!isCleanupOpen)} className="flex-grow text-left">Cleanup Rules (Regex)</button>
                     <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform ${isCleanupOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                 </div>
-                 {isCleanupOpen && (
+                </div>
+                {isCleanupOpen && (
                     <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
                         {cleanupRules.map((rule) => (
                             <div key={rule.id} className="flex gap-2 items-center mb-1.5">
@@ -631,10 +649,10 @@ export const NovelSplitter: React.FC = () => {
                         ))}
                         <button onClick={() => dispatch({ type: 'ADD_RULE' })} className="px-3 py-1 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800">+</button>
                     </div>
-                 )}
-             </div>
+                )}
+            </div>
 
-             <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4 mb-4">
+            <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4 mb-4">
                 <button type="button" onClick={() => setSplitPreviewOpen(!isSplitPreviewOpen)} className="w-full flex justify-between items-center font-semibold text-slate-800 dark:text-slate-200">
                     Chapter Splitting (Regex)
                     <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform ${isSplitPreviewOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
@@ -653,22 +671,22 @@ export const NovelSplitter: React.FC = () => {
                         {matchedHeadings.length > 0 && <div className="mt-2 p-2 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg max-h-32 overflow-y-auto text-xs font-mono">{matchedHeadings.map((h, i) => <div key={i}>{h}</div>)}</div>}
                     </div>
                 )}
-             </div>
-             <div className="mt-8 flex justify-center">
-                 <button onClick={processNovel} disabled={!rawText} className="w-full max-w-xs px-6 py-3 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg disabled:opacity-50">Process Novel</button>
-             </div>
+            </div>
+            <div className="mt-8 flex justify-center">
+                <button onClick={processNovel} disabled={!rawText} className="w-full max-w-xs px-6 py-3 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg disabled:opacity-50">Process Novel</button>
+            </div>
         </div>
     );
-    
+
     const renderEditorStep = () => (
-         <div className="flex flex-col h-[calc(100dvh-120px)] md:h-[calc(100dvh-100px)] animate-fade-in">
+        <div className="flex flex-col h-[calc(100dvh-120px)] md:h-[calc(100dvh-100px)] animate-fade-in">
             {/* Header */}
             <header className="flex-shrink-0 flex items-center justify-between gap-2 p-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700">
-                <button onClick={() => dispatch({type: 'SET_STATE', payload: { isChapterNavOpen: true }})} className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white">
+                <button onClick={() => dispatch({ type: 'SET_STATE', payload: { isChapterNavOpen: true } })} className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" /></svg>
                     <span className="hidden md:inline">Chapters</span>
                 </button>
-                <input type="text" value={currentChapter?.title || ''} onChange={e => currentChapter && dispatch({ type: 'UPDATE_CHAPTER', payload: { id: currentChapter.id, title: e.target.value }})} className="flex-grow min-w-0 bg-transparent text-center font-semibold text-lg p-1.5 rounded-md focus:bg-slate-200 dark:focus:bg-slate-700 outline-none" />
+                <input type="text" value={currentChapter?.title || ''} onChange={e => currentChapter && dispatch({ type: 'UPDATE_CHAPTER', payload: { id: currentChapter.id, title: e.target.value } })} className="flex-grow min-w-0 bg-transparent text-center font-semibold text-lg p-1.5 rounded-md focus:bg-slate-200 dark:focus:bg-slate-700 outline-none" />
                 <div className="relative">
                     <button onClick={() => setChapterActionsOpen(v => !v)} className="p-2 rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" /></svg>
@@ -682,12 +700,12 @@ export const NovelSplitter: React.FC = () => {
                 </div>
             </header>
 
-             {/* Editor */}
+            {/* Editor */}
             <main className="flex-1 relative">
                 {showFindReplace && (
                     <div className="absolute top-2 right-2 z-10 grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 p-2 bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-lg border border-slate-300 dark:border-slate-700">
-                        <input type="text" placeholder="Find" value={findQuery} onChange={e => dispatch({ type: 'SET_STATE', payload: { findQuery: e.target.value }})} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm" />
-                        <input type="text" placeholder="Replace" value={replaceQuery} onChange={e => dispatch({ type: 'SET_STATE', payload: { replaceQuery: e.target.value }})} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm" />
+                        <input type="text" placeholder="Find" value={findQuery} onChange={e => dispatch({ type: 'SET_STATE', payload: { findQuery: e.target.value } })} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm" />
+                        <input type="text" placeholder="Replace" value={replaceQuery} onChange={e => dispatch({ type: 'SET_STATE', payload: { replaceQuery: e.target.value } })} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm" />
                         <div className="flex gap-2">
                             <button onClick={() => handleFindReplace(false)} className="px-3 py-1 text-sm rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600">Replace</button>
                             <button onClick={() => handleFindReplace(true)} className="px-3 py-1 text-sm rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600">All</button>
@@ -699,26 +717,26 @@ export const NovelSplitter: React.FC = () => {
 
             {/* Footer Toolbar */}
             <footer className="flex-shrink-0 flex items-center justify-around gap-2 p-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-t border-slate-200 dark:border-slate-700 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
-                 <button onClick={() => setBookDetailsModalOpen(true)} className="flex flex-col items-center p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
+                <button onClick={() => setBookDetailsModalOpen(true)} className="flex flex-col items-center p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3z" clipRule="evenodd" /></svg>
                     <span className="text-xs">Details</span>
                 </button>
-                <button onClick={() => dispatch({ type: 'SET_STATE', payload: { showGlobalFindReplace: true }})} className="flex flex-col items-center p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
+                <button onClick={() => dispatch({ type: 'SET_STATE', payload: { showGlobalFindReplace: true } })} className="flex flex-col items-center p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" /></svg>
                     <span className="text-xs">Find All</span>
                 </button>
-                 <button onClick={() => setExportModalOpen(true)} className="flex flex-col items-center p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
+                <button onClick={() => setExportModalOpen(true)} className="flex flex-col items-center p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                     <span className="text-xs">Export</span>
                 </button>
-                <button onClick={() => dispatch({type: 'SET_STATE', payload: { step: 'upload'}})} className="flex flex-col items-center p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
+                <button onClick={() => dispatch({ type: 'SET_STATE', payload: { step: 'upload' } })} className="flex flex-col items-center p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.707-10.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L9.414 11H13a1 1 0 100-2H9.414l1.293-1.293z" clipRule="evenodd" /></svg>
                     <span className="text-xs">Start Over</span>
                 </button>
             </footer>
 
             {/* Chapter List Drawer */}
-            <div className={`fixed inset-0 z-40 md:static md:block bg-black/30 md:bg-transparent transition-opacity duration-300 ${isChapterNavOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => dispatch({ type: 'SET_STATE', payload: { isChapterNavOpen: false }})}>
+            <div className={`fixed inset-0 z-40 md:static md:block bg-black/30 md:bg-transparent transition-opacity duration-300 ${isChapterNavOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => dispatch({ type: 'SET_STATE', payload: { isChapterNavOpen: false } })}>
                 <div className={`absolute top-0 left-0 h-full w-72 bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shadow-lg flex flex-col transform transition-transform duration-300 ${isChapterNavOpen ? 'translate-x-0' : '-translate-x-full'}`} onClick={e => e.stopPropagation()}>
                     <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
                         <span className="font-semibold">Chapters ({chapters.length})</span>
@@ -730,9 +748,9 @@ export const NovelSplitter: React.FC = () => {
                     <ul className="flex-1 overflow-y-auto p-2 list-none">
                         {chapters.map((chapter) => (
                             <li key={chapter.id} className={`flex items-center p-1 rounded-md ${selectedChapterId === chapter.id ? 'bg-primary-600 text-white font-semibold' : 'hover:bg-slate-200 dark:hover:bg-slate-700'} ${dragIndicator?.id === chapter.id ? (dragIndicator.position === 'top' ? 'border-t-2 border-primary-500' : 'border-b-2 border-primary-500') : ''}`}
-                                onDragOver={e => { e.preventDefault(); if (reorderModeActive) { const rect = e.currentTarget.getBoundingClientRect(); setDragIndicator({ id: chapter.id, position: e.clientY - rect.top > rect.height / 2 ? 'bottom' : 'top' }); }}}>
+                                onDragOver={e => { e.preventDefault(); if (reorderModeActive) { const rect = e.currentTarget.getBoundingClientRect(); setDragIndicator({ id: chapter.id, position: e.clientY - rect.top > rect.height / 2 ? 'bottom' : 'top' }); } }}>
                                 {!reorderModeActive ? (
-                                    <input type="checkbox" checked={selectedChapterIds.has(chapter.id)} onChange={e => dispatch({type: 'MULTI_SELECT_CHAPTER', payload: { id: chapter.id, checked: e.target.checked }})} className="w-4 h-4 mr-2 flex-shrink-0 accent-primary-500" onClick={e => e.stopPropagation()} />
+                                    <input type="checkbox" checked={selectedChapterIds.has(chapter.id)} onChange={e => dispatch({ type: 'MULTI_SELECT_CHAPTER', payload: { id: chapter.id, checked: e.target.checked } })} className="w-4 h-4 mr-2 flex-shrink-0 accent-primary-500" onClick={e => e.stopPropagation()} />
                                 ) : (
                                     <div draggable onDragStart={() => (draggedItem.current = chapter)} onDragEnd={() => handleDragSort(chapter)} className="cursor-grab p-2 touch-none flex-shrink-0">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8h16M4 16h16" /></svg>
@@ -742,11 +760,11 @@ export const NovelSplitter: React.FC = () => {
                             </li>
                         ))}
                     </ul>
-                        {selectedChapterIds.size > 0 && !reorderModeActive && (
+                    {selectedChapterIds.size > 0 && !reorderModeActive && (
                         <div className="p-2 border-t border-slate-200 dark:border-slate-700 space-y-2">
                             <p className="text-sm font-semibold">{selectedChapterIds.size} chapter(s) selected</p>
                             <div className="flex gap-2 flex-wrap">
-                                <button onClick={() => { if(confirm('Merge selected chapters?')) dispatch({ type: 'MERGE_SELECTED_CHAPTERS' }) }} className="px-2 py-1 text-xs rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Merge</button>
+                                <button onClick={() => { if (confirm('Merge selected chapters?')) dispatch({ type: 'MERGE_SELECTED_CHAPTERS' }) }} className="px-2 py-1 text-xs rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Merge</button>
                                 <button onClick={() => setBatchRenameModalOpen(true)} className="px-2 py-1 text-xs rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Rename</button>
                                 <button onClick={() => dispatch({ type: 'SET_SELECTION', payload: new Set() })} className="px-2 py-1 text-xs rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Clear</button>
                             </div>
@@ -804,7 +822,7 @@ export const NovelSplitter: React.FC = () => {
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Language (e.g. en, zh)</label>
                                 <input type="text" value={meta.language} onChange={e => dispatch({ type: 'SET_META', payload: { language: e.target.value } })} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-3 py-2" />
                             </div>
-                             <div>
+                            <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cover Image</label>
                                 <FileInput inputId="coverUpload" label="Choose Cover" accept="image/*" onFileSelected={files => dispatch({ type: 'SET_META', payload: { coverFile: files[0] } })} />
                                 {meta.coverFile && <p className="text-xs mt-1 text-slate-500">{meta.coverFile.name}</p>}
@@ -818,7 +836,7 @@ export const NovelSplitter: React.FC = () => {
             )}
 
             {/* Export Modal */}
-             {isExportModalOpen && (
+            {isExportModalOpen && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-sm">
                         <h3 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">Export Novel</h3>
@@ -836,13 +854,13 @@ export const NovelSplitter: React.FC = () => {
             {/* Review Replace All Modal */}
             {isReviewModalOpen && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                     <div className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
                         <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
                             <h3 className="text-lg font-bold text-slate-900 dark:text-white">Review Replacements</h3>
                             <button onClick={() => setReviewModalOpen(false)} className="text-2xl">&times;</button>
                         </div>
                         <div className="p-2 bg-slate-100 dark:bg-slate-900/50">
-                             <label className="flex items-center gap-2 text-sm px-2">
+                            <label className="flex items-center gap-2 text-sm px-2">
                                 <input type="checkbox" checked={reviewSelection.size === globalMatches.length} onChange={e => {
                                     if (e.target.checked) {
                                         const all = new Set<number>();
@@ -856,27 +874,40 @@ export const NovelSplitter: React.FC = () => {
                             </label>
                         </div>
                         <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                            {globalMatches.map((match, idx) => (
-                                <div key={idx} className="flex items-start gap-3 p-2 border rounded border-slate-200 dark:border-slate-700">
-                                    <input type="checkbox" checked={reviewSelection.has(idx)} onChange={e => {
-                                        const newSet = new Set(reviewSelection);
-                                        e.target.checked ? newSet.add(idx) : newSet.delete(idx);
-                                        setReviewSelection(newSet);
-                                    }} className="mt-1" />
-                                    <div className="text-sm">
-                                        <div className="font-semibold text-slate-700 dark:text-slate-300">{match.chapterTitle}</div>
-                                        <div className="text-slate-500 dark:text-slate-400 break-all">
-                                            ...{match.text}...
+                            {globalMatches.map((match, idx) => {
+                                const ctx = getMatchContext(match);
+                                return (
+                                    <div key={idx} className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${reviewSelection.has(idx) ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-slate-200 dark:border-slate-700'}`}>
+                                        <input type="checkbox" checked={reviewSelection.has(idx)} onChange={e => {
+                                            const newSet = new Set(reviewSelection);
+                                            e.target.checked ? newSet.add(idx) : newSet.delete(idx);
+                                            setReviewSelection(newSet);
+                                        }} className="mt-1 w-4 h-4 accent-primary-600" />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-xs px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300">#{idx + 1}</span>
+                                                <span className="font-medium text-sm text-slate-700 dark:text-slate-300 truncate">{match.chapterTitle}</span>
+                                            </div>
+                                            <div className="text-sm font-mono bg-slate-50 dark:bg-slate-900/50 p-2 rounded border border-slate-200 dark:border-slate-700">
+                                                <span className="text-slate-500 dark:text-slate-400">{ctx.before}</span>
+                                                <mark className="bg-yellow-300 dark:bg-yellow-500/50 text-slate-900 dark:text-white px-0.5 rounded">{ctx.match}</mark>
+                                                <span className="text-slate-500 dark:text-slate-400">{ctx.after}</span>
+                                            </div>
+                                            {globalReplaceQuery && (
+                                                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                                    → <span className="text-green-600 dark:text-green-400 font-medium">{globalReplaceQuery}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                         <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
                             <button onClick={() => setReviewModalOpen(false)} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700">Cancel</button>
                             <button onClick={handleConfirmReplaceAll} className="px-4 py-2 rounded bg-primary-600 text-white">Replace Selected</button>
                         </div>
-                     </div>
+                    </div>
                 </div>
             )}
         </div>
