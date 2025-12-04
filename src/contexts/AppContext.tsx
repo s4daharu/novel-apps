@@ -1,5 +1,5 @@
 
-import React, { useState, createContext, useContext, PropsWithChildren } from 'react';
+import React, { useState, useRef, createContext, useContext, PropsWithChildren } from 'react';
 import { AppContextType, ToastMessage } from '../utils/types';
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -15,10 +15,10 @@ export const useAppContext = () => {
 export const AppProvider: React.FC<PropsWithChildren<{}>> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [spinnerCount, setSpinnerCount] = useState(0);
-  let toastIdCounter = 0;
+  const toastIdCounter = useRef(0);
 
   const showToast = (message: string, isError = false) => {
-    const id = toastIdCounter++;
+    const id = toastIdCounter.current++;
     setToasts((prev) => [...prev, { id, message, isError }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((toast) => toast.id !== id));
@@ -37,9 +37,8 @@ export const AppProvider: React.FC<PropsWithChildren<{}>> = ({ children }) => {
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`px-4 py-2 rounded-lg text-white font-medium transition-opacity duration-300 opacity-100 ${
-              toast.isError ? 'bg-red-600' : 'bg-green-600'
-            }`}
+            className={`px-4 py-2 rounded-lg text-white font-medium transition-opacity duration-300 opacity-100 ${toast.isError ? 'bg-red-600' : 'bg-green-600'
+              }`}
             role="alert"
             aria-live="assertive"
           >
@@ -47,11 +46,11 @@ export const AppProvider: React.FC<PropsWithChildren<{}>> = ({ children }) => {
           </div>
         ))}
       </div>
-       {spinnerCount > 0 && (
-         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
-            <div className="w-12 h-12 border-4 border-slate-200 dark:border-slate-700 rounded-full border-t-primary-600 animate-spin" role="status" aria-live="polite" aria-label="Loading"></div>
-         </div>
-       )}
+      {spinnerCount > 0 && (
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
+          <div className="w-12 h-12 border-4 border-slate-200 dark:border-slate-700 rounded-full border-t-primary-600 animate-spin" role="status" aria-live="polite" aria-label="Loading"></div>
+        </div>
+      )}
     </AppContext.Provider>
   );
 };
