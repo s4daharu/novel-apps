@@ -4,6 +4,7 @@ import { AppProvider } from './contexts/AppContext';
 import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { ToolWrapper } from './pages/ToolWrapper';
+import { InstallPrompt } from './components/InstallPrompt';
 
 export const App: React.FC = () => {
 
@@ -27,6 +28,7 @@ export const App: React.FC = () => {
                     <Route path="*" element={<Dashboard />} />
                 </Route>
             </Routes>
+            <InstallPrompt />
         </AppProvider>
     );
 };
