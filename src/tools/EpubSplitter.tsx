@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { PDFDocument as PDFLibDoc, rgb, PageSizes, PDFString, PDFName, PDFArray, PDFDict } from 'pdf-lib';
 import * as fontkit from 'fontkit';
 import { useAppContext } from '../contexts/AppContext';
 import { FileInput } from '../components/FileInput';
 import { StatusMessage } from '../components/StatusMessage';
-import { triggerDownload, getJSZip, getFonts, extractTextFromHtml } from '../utils/helpers';
+import { triggerDownload, getJSZip, getFonts, escapeHTML } from '../utils/helpers';
 import { Status } from '../utils/types';
 
 // Extended type definition for PDFDocument to include registerFontkit
@@ -31,7 +30,6 @@ export const EpubSplitter: React.FC = () => {
     const [groupSize, setGroupSize] = useState(4);
     const [pdfFontSize, setPdfFontSize] = useState(14);
     const [useFirstLineAsHeading, setUseFirstLineAsHeading] = useState(false);
-    const [preserveFormatting, setPreserveFormatting] = useState(false); // Markdown mode
     const [isFormattingOptionsOpen, setFormattingOptionsOpen] = useState(false);
     
     // Handlers for chapter range selection
@@ -108,9 +106,30 @@ export const EpubSplitter: React.FC = () => {
                 }
             });
             
-            const tempChapters: { title: string; html: string }[] = [];
+            const tempChapters: { title: string; text: string }[] = [];
             const parser = new DOMParser();
 
+            const extractChapterContent = (doc_element: Element): string => {
+                function convertNodeToText(node: Node): string {
+                    let text = '';
+                    if (node.nodeType === Node.TEXT_NODE) return node.textContent || '';
+                    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+            
+                    const tagName = (node as Element).tagName.toLowerCase();
+                    if (['h1', 'h2', 'h3', 'script', 'style', 'header', 'footer', 'nav'].includes(tagName)) return '';
+            
+                    const isBlock = ['p', 'div', 'h4', 'h5', 'h6', 'li', 'blockquote', 'section', 'article', 'tr', 'br', 'hr'].includes(tagName);
+            
+                    if (isBlock) text += '\n';
+                    for (const child of Array.from(node.childNodes)) text += convertNodeToText(child);
+                    if (isBlock) text += '\n';
+                    
+                    return text;
+                }
+                let rawText = convertNodeToText(doc_element.cloneNode(true));
+                return rawText.replace(/\r\n?/g, '\n').split('\n').map(line => line.trim()).filter(line => line.length > 0).join('\n\n');
+            };
+            
             for (const spinePath of spineItems) {
                 const file = epub.file(spinePath);
                 if (!file) continue;
@@ -121,32 +140,24 @@ export const EpubSplitter: React.FC = () => {
                     doc = parser.parseFromString(content, 'text/html');
                 }
 
-                // Strategy: Try to find semantic chapter divisions first, otherwise take the whole body
                 const chapterSections = doc.querySelectorAll('section[epub\\:type="chapter"], section[*|type="chapter"]');
-                
                 if (chapterSections.length > 0) {
                     chapterSections.forEach((section: Element) => {
                         const titleEl = section.querySelector('h1, h2, h3');
                         const title = titleEl ? titleEl.textContent?.trim() : `Chapter ${tempChapters.length + 1}`;
-                        // Store HTML for later processing (allows toggling markdown)
-                        tempChapters.push({ title: title || `Chapter ${tempChapters.length + 1}`, html: section.innerHTML });
+                        const text = extractChapterContent(section);
+                        if (text && title) tempChapters.push({ title, text });
                     });
                 } else if (doc.body) {
                     const titleEl = doc.body.querySelector('h1, h2, h3, title');
                     const title = titleEl ? titleEl.textContent?.trim() : `Chapter ${tempChapters.length + 1}`;
-                    tempChapters.push({ title: title || `Chapter ${tempChapters.length + 1}`, html: doc.body.innerHTML });
+                    const text = extractChapterContent(doc.body);
+                    if (text && title) tempChapters.push({ title, text });
                 }
             }
             
-            // Initial extract as plain text for preview
-            const chapters = tempChapters.map((chap, index) => ({ 
-                index, 
-                title: chap.title, 
-                text: extractTextFromHtml(chap.html, false),
-                html: chap.html // Keep raw HTML for export phase
-            }));
-            
-            setParsedChapters(chapters as any);
+            const chapters = tempChapters.map((chap, index) => ({ index, title: chap.title, text: chap.text }));
+            setParsedChapters(chapters);
             setStartChapterIndex(0);
             if (chapters.length > 0) {
                 setEndChapterIndex(chapters.length - 1);
@@ -170,6 +181,7 @@ export const EpubSplitter: React.FC = () => {
         setStatus(null);
         if (parsedChapters.length === 0) {
             showToast("No chapters available to process.", true);
+            setStatus({ message: 'Error: No chapters available to process.', type: 'error' });
             return;
         }
 
@@ -178,16 +190,15 @@ export const EpubSplitter: React.FC = () => {
             return;
         }
 
-        hideSpinner(); 
+        if (mode === 'grouped' && (isNaN(groupSize) || groupSize < 1)) {
+            setStatus({ message: 'Error: Chapters per File must be 1 or greater.', type: 'error' });
+            return;
+        }
+
+        hideSpinner(); // Hide global spinner, use local status for progress
         
         try {
-            // Re-process text if markdown is selected
-            const chaptersToProcess = parsedChapters
-                .slice(startChapterIndex, endChapterIndex + 1)
-                .map(c => ({
-                    ...c,
-                    text: extractTextFromHtml((c as any).html, preserveFormatting)
-                }));
+            const chaptersToProcess = parsedChapters.slice(startChapterIndex, endChapterIndex + 1);
 
             if (chaptersToProcess.length === 0) {
                 throw new Error(`The selected range resulted in no chapters to process.`);
@@ -210,28 +221,34 @@ export const EpubSplitter: React.FC = () => {
             }
             
             if (!status || status.type !== 'error') {
-                setStatus({ message: `Processing complete. Download started.`, type: 'success' });
-                showToast(`Processing complete.`);
+                const outputDescriptions: Record<typeof outputFormat, string> = {
+                    'zip-txt': '.txt files in a ZIP archive',
+                    'zip-pdf': 'PDFs in a ZIP file',
+                    'single-txt': 'a single .txt file',
+                    'single-pdf': 'a single .pdf file'
+                };
+
+                setStatus({ message: `Extracted ${chaptersToProcess.length} chapter(s) as ${outputDescriptions[outputFormat]}. Download started.`, type: 'success' });
+                showToast(`Extracted ${chaptersToProcess.length} chapter(s).`);
             }
 
         } catch (err: any) {
             console.error("EPUB Splitter Error:", err);
             setStatus({ message: `Error: ${err.message}`, type: 'error' });
-            showToast(`Error: ${err.message}`, true);
+            showToast(`Error splitting EPUB: ${err.message}`, true);
         }
     };
 
     const generateTxtZip = async (chaptersToProcess: typeof parsedChapters) => {
-        showSpinner(); 
+        showSpinner(); // Use global spinner for this faster operation
         const JSZip = await getJSZip();
         const zip = new JSZip();
-        const BOM = "\uFEFF"; 
-        const ext = preserveFormatting ? '.md' : '.txt';
+        const BOM = "\uFEFF"; // UTF-8 Byte Order Mark
 
         if (mode === 'single') {
             chaptersToProcess.forEach((chapter, i) => {
                 const chapNum = String(startNumber + i).padStart(2, '0');
-                zip.file(`${chapterPattern}${chapNum}${ext}`, BOM + chapter.text);
+                zip.file(`${chapterPattern}${chapNum}.txt`, BOM + chapter.text);
             });
         } else { // grouped
             for (let i = 0; i < chaptersToProcess.length; i += groupSize) {
@@ -239,8 +256,8 @@ export const EpubSplitter: React.FC = () => {
                 const groupStartNum = startNumber + i;
                 const groupEndNum = groupStartNum + group.length - 1;
                 const name = group.length === 1
-                    ? `${chapterPattern}${String(groupStartNum).padStart(2, '0')}${ext}`
-                    : `${chapterPattern}${String(groupStartNum).padStart(2, '0')}-${String(groupEndNum).padStart(2, '0')}${ext}`;
+                    ? `${chapterPattern}${String(groupStartNum).padStart(2, '0')}.txt`
+                    : `${chapterPattern}${String(groupStartNum).padStart(2, '0')}-${String(groupEndNum).padStart(2, '0')}.txt`;
 
                 const content = group.map(c => c.text).join('\n\n\n---------------- END ----------------\n\n\n');
                 zip.file(name, BOM + content);
@@ -251,8 +268,6 @@ export const EpubSplitter: React.FC = () => {
         hideSpinner();
     };
     
-    // PDF Generation functions (generatePdfZip, generateSinglePdf, createPdfFromChapters) remain largely the same, 
-    // but they will consume the 'text' property which is now dynamically generated based on formatting options.
     const generatePdfZip = async (chaptersToProcess: typeof parsedChapters, fontSize: number) => {
         setStatus({ message: 'Loading fonts...', type: 'info' });
         const fontBytes = await getFonts();
@@ -272,7 +287,7 @@ export const EpubSplitter: React.FC = () => {
         if (mode === 'single') {
             for (let i = 0; i < chaptersForPdf.length; i++) {
                 setStatus({ message: `Generating PDF for chapter ${i + 1} of ${chaptersForPdf.length}...`, type: 'info' });
-                await new Promise(resolve => setTimeout(resolve, 0));
+                await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI to update
                 const chapter = chaptersForPdf[i];
                 const chapNum = String(startNumber + i).padStart(2, '0');
                 const pdfBytes = await createPdfFromChapters([chapter], fontBytes, fontSize);
@@ -281,7 +296,7 @@ export const EpubSplitter: React.FC = () => {
         } else { // grouped
             for (let i = 0; i < chaptersForPdf.length; i += groupSize) {
                 setStatus({ message: `Generating PDF for group starting at chapter ${i + 1}...`, type: 'info' });
-                await new Promise(resolve => setTimeout(resolve, 0));
+                await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI to update
                 const group = chaptersForPdf.slice(i, i + groupSize);
                 const groupStartNum = startNumber + i;
                 const groupEndNum = groupStartNum + group.length - 1;
@@ -332,12 +347,14 @@ export const EpubSplitter: React.FC = () => {
 
         const blob = new Blob([BOM + content], { type: 'text/plain;charset=utf-8' });
         const fileNameBase = epubFile?.name.replace(/\.epub$/i, '') || 'novel';
-        triggerDownload(blob, `${fileNameBase}${preserveFormatting ? '.md' : '.txt'}`);
+        triggerDownload(blob, `${fileNameBase}.txt`);
         hideSpinner();
     };
 
     const createPdfFromChapters = async (chaptersData: { title: string, text: string }[], fontBytes: { cjkFontBytes: ArrayBuffer, latinFontBytes: ArrayBuffer }, baseFontSize: number, onProgress?: (progress: { current: number; total: number }) => void) => {
         const pdfDoc = await PDFLibDoc.create() as PDFDocument;
+        
+        // Register fontkit instance
         pdfDoc.registerFontkit(fontkit);
         
         const chineseFont = await pdfDoc.embedFont(fontBytes.cjkFontBytes);
@@ -399,9 +416,11 @@ export const EpubSplitter: React.FC = () => {
             if (currentLine.length > 0) {
                 lines.push(currentLine);
             }
+            
             return lines.map(l => l.trim()).filter(l => l.length > 0);
         };
         
+        // 1. Generate all chapter pages
         for (const [index, chapter] of chaptersData.entries()) {
             if (onProgress) {
                 onProgress({ current: index + 1, total: chaptersData.length });
@@ -462,22 +481,121 @@ export const EpubSplitter: React.FC = () => {
             }
         }
 
-        // TOC Generation (Simplified for brevity as logic is unchanged)
-        // ... (Insert TOC logic similar to original file here if not refactoring completely)
-        // For the purpose of this update, assuming the TOC logic from previous file is preserved or can be inferred.
-        // I will include a minimal TOC block to ensure compilation.
+        // 2. Generate and insert TOC pages
+        const tocLineHeight = 14 * 1.8;
+        const pageHeightConst = PageSizes.A4[1];
+        
+        let tocPageCount = 0;
+        let tocPageLineCounts: number[] = [];
         if (tocEntries.length > 0) {
-             // ... TOC logic ...
-             // Since I am updating the file fully, I'll keep the previous logic.
-             // (Copying TOC generation logic from original file to ensure functionality)
-            const tocLineHeight = 14 * 1.8;
-            const pageHeightConst = PageSizes.A4[1];
-            let tocPageCount = 0;
-            // ... (Rest of TOC logic is standard, keeping it short for this response)
+            let linesAvailable = Math.floor((pageHeightConst - 2 * margin - (22 * 2.5)) / tocLineHeight);
+            let currentLines = 0;
+            const tempTocWidth = PageSizes.A4[0];
+            
+            for(const entry of tocEntries) {
+                const pageNumStr = "999"; // Assume max 3 digits for calculation
+                const pageNumWidth = englishFont.widthOfTextAtSize(pageNumStr, 14);
+                const tocUsableWidth = tempTocWidth - 2 * margin - pageNumWidth - 20;
+                const wrappedLines = wrapText(entry.title, tocUsableWidth, 14, measureMixedTextWidth);
+
+                if(currentLines + wrappedLines.length > linesAvailable) {
+                    tocPageLineCounts.push(currentLines);
+                    currentLines = 0;
+                    linesAvailable = Math.floor((pageHeightConst - 2 * margin) / tocLineHeight);
+                }
+                currentLines += wrappedLines.length;
+            }
+            if(currentLines > 0) tocPageLineCounts.push(currentLines);
+            tocPageCount = tocPageLineCounts.length;
+        }
+
+        for (let i = 0; i < tocPageCount; i++) {
+            pdfDoc.insertPage(i, PageSizes.A4);
+        }
+
+        const allPages = pdfDoc.getPages();
+        
+        const pageNumberMap = new Map<any, number>();
+        tocEntries.forEach(entry => {
+            const pageIndex = allPages.indexOf(entry.page);
+            if(pageIndex !== -1){
+                pageNumberMap.set(entry.page.ref, pageIndex + 1);
+            }
+        });
+        
+        let tocEntryIndex = 0;
+        for (let i = 0; i < tocPageCount; i++) {
+            const tocPage = allPages[i];
+            const { width: tocWidth, height: tocHeight } = tocPage.getSize();
+            let tocY = tocHeight - margin;
+            let tocPageAnnots = (tocPage.node.get(PDFName.of('Annots')) || pdfDoc.context.obj([])) as PDFArray;
+            tocPage.node.set(PDFName.of('Annots'), tocPageAnnots);
+
+            if (i === 0) {
+                drawMixedTextLine(tocPage, 'Table of Contents', { x: margin, y: tocY, size: 22 });
+                tocY -= 22 * 2.5;
+            }
+
+            const linesOnThisPage = (i === 0) 
+                ? Math.floor((pageHeightConst - 2 * margin - (22 * 2.5)) / tocLineHeight)
+                : Math.floor((pageHeightConst - 2 * margin) / tocLineHeight);
+
+            let linesDrawn = 0;
+            while(tocEntryIndex < tocEntries.length && linesDrawn < linesOnThisPage) {
+                const entry = tocEntries[tocEntryIndex];
+                const pageNumber = pageNumberMap.get(entry.page.ref);
+
+                if (!pageNumber) {
+                    tocEntryIndex++;
+                    continue;
+                }
+                
+                const pageNumStr = String(pageNumber);
+                const pageNumWidth = englishFont.widthOfTextAtSize(pageNumStr, 14);
+                const tocUsableWidth = tocWidth - 2 * margin - pageNumWidth - 20;
+                const wrappedTocLines = wrapText(entry.title, tocUsableWidth, 14, measureMixedTextWidth);
+                
+                if (linesDrawn + wrappedTocLines.length > linesOnThisPage && linesDrawn > 0) {
+                    break; 
+                }
+
+                const entryStartY = tocY;
+                
+                for (const line of wrappedTocLines) {
+                    drawMixedTextLine(tocPage, line, { x: margin, y: tocY, size: 14 });
+                    tocY -= tocLineHeight;
+                }
+                
+                tocPage.drawText(String(pageNumber), { x: tocWidth - margin - pageNumWidth, y: entryStartY, font: englishFont, size: 14, color: rgb(0, 0, 0) });
+                
+                const { height: chapterPageHeight } = entry.page.getSize();
+                const linkRect: [number, number, number, number] = [margin, tocY + tocLineHeight - 14 + 4, tocWidth - margin, entryStartY + 4];
+                const linkAnnotation = pdfDoc.context.obj({ Type: 'Annot', Subtype: 'Link', Rect: linkRect, Border: [0, 0, 0], Dest: [entry.page.ref, PDFName.of('XYZ'), null, chapterPageHeight, null] });
+                tocPageAnnots.push(pdfDoc.context.register(linkAnnotation));
+                
+                linesDrawn += wrappedTocLines.length;
+                tocEntryIndex++;
+            }
+        }
+
+        if (outlineItemRefs.length > 0) {
+            const outlineRootRef = pdfDoc.context.nextRef();
+            for (let i = 0; i < outlineItemRefs.length; i++) {
+                const itemRef = outlineItemRefs[i];
+                const item = pdfDoc.context.lookup(itemRef) as PDFDict;
+                item.set(PDFName.of('Parent'), outlineRootRef);
+                if (i > 0) item.set(PDFName.of('Prev'), outlineItemRefs[i - 1]);
+                if (i < outlineItemRefs.length - 1) item.set(PDFName.of('Next'), outlineItemRefs[i + 1]);
+            }
+            const outlineRoot = pdfDoc.context.obj({ Type: 'Outlines', First: outlineItemRefs[0], Last: outlineItemRefs[outlineItemRefs.length - 1], Count: outlineItemRefs.length });
+            pdfDoc.context.assign(outlineRootRef, outlineRoot);
+            pdfDoc.catalog.set(PDFName.of('Outlines'), outlineRootRef);
         }
     
         return await pdfDoc.save();
     }
+
+    const showFormattingOptions = outputFormat.includes('pdf');
 
     return (
         <div id="splitterApp" className="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 animate-fade-in will-change-[transform,opacity]">
@@ -535,57 +653,71 @@ export const EpubSplitter: React.FC = () => {
                             </select>
                         </div>
                     )}
-                </div>
-                
-                <div className="mt-4">
-                     <button type="button" onClick={() => setFormattingOptionsOpen(!isFormattingOptionsOpen)} className="w-full flex justify-between items-center text-left p-2 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
-                        <span className="font-semibold text-sm text-slate-800 dark:text-slate-200">Advanced Options</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-slate-500 transition-transform ${isFormattingOptionsOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                    </button>
-                    
-                    {isFormattingOptionsOpen && (
-                        <div className="mt-2 space-y-4 p-3 border border-slate-200 dark:border-slate-600 rounded-lg">
-                             <div>
-                                <label htmlFor="chapterPattern" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Chapter Prefix:</label>
-                                <input type="text" id="chapterPattern" placeholder="e.g., Chapter " value={chapterPattern} onChange={e => setChapterPattern(e.target.value)} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-1.5 text-sm w-full" />
-                            </div>
-                             <div>
-                                <label htmlFor="startNumber" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Start Number:</label>
-                                <input type="number" id="startNumber" min="1" value={startNumber} onChange={e => setStartNumber(parseInt(e.target.value, 10))} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-1.5 text-sm w-full" />
-                            </div>
-                            {mode === 'grouped' && outputFormat.startsWith('zip-') && (
-                                <div>
-                                    <label htmlFor="groupSize" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Chapters per File:</label>
-                                    <input type="number" id="groupSize" min="1" value={groupSize} onChange={e => setGroupSize(parseInt(e.target.value, 10))} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-1.5 text-sm w-full" />
-                                </div>
-                            )}
-                            
-                            {(outputFormat.includes('txt')) && (
-                                 <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                                    <input type="checkbox" checked={preserveFormatting} onChange={e => setPreserveFormatting(e.target.checked)} className="rounded text-primary-600" />
-                                    Preserve formatting (Markdown)
-                                </label>
-                            )}
 
-                            {(outputFormat.includes('pdf')) && (
-                                <>
-                                    <div>
-                                        <label htmlFor="pdfFontSize" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">PDF Font Size:</label>
-                                        <input type="number" id="pdfFontSize" min="8" max="32" value={pdfFontSize} onChange={e => setPdfFontSize(parseInt(e.target.value, 10))} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-1.5 text-sm w-full" />
-                                    </div>
-                                     <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                                        <input type="checkbox" checked={useFirstLineAsHeading} onChange={e => setUseFirstLineAsHeading(e.target.checked)} className="rounded text-primary-600" />
-                                        Use first line as heading
-                                    </label>
-                                </>
-                            )}
+                    <div>
+                        <label htmlFor="chapterPattern" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                        Chapter Prefix:
+                        <div className="relative group">
+                             <button type="button" aria-describedby="prefix-tooltip" className="flex items-center justify-center p-1 cursor-help text-primary-600 font-bold border border-primary-600 rounded-full w-6 h-6 leading-4 text-center text-sm hover:bg-primary-600 hover:text-white">
+                                ?
+                            </button>
+                            <span id="prefix-tooltip" role="tooltip" className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-56 invisible opacity-0 group-hover:visible group-hover:opacity-100 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-left rounded-md p-2 z-10 shadow-lg text-sm transition-opacity duration-300">
+                                Pattern for naming output files, e.g., 'C' will result in C01.txt, C02.txt.
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-[-4px] w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-100 dark:border-t-slate-800"></div>
+                            </span>
                         </div>
-                    )}
+                        </label>
+                        <input type="text" id="chapterPattern" placeholder="e.g., Chapter " value={chapterPattern} onChange={e => setChapterPattern(e.target.value)} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
+                    </div>
+
+                    <div>
+                        <label htmlFor="startNumber" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Start Number:</label>
+                        <input type="number" id="startNumber" min="1" value={startNumber} onChange={e => setStartNumber(parseInt(e.target.value, 10))} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
+                    </div>
                 </div>
+
+                 {mode === 'grouped' && outputFormat.startsWith('zip-') && (
+                    <div className="mt-4 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
+                        <label htmlFor="groupSize" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Chapters per File:</label>
+                        <input type="number" id="groupSize" min="1" value={groupSize} onChange={e => setGroupSize(parseInt(e.target.value, 10))} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">When using grouped mode, how many chapters to include in each output file</p>
+                    </div>
+                )}
+                 {showFormattingOptions && (
+                    <div className="mt-4 p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
+                        <button type="button" onClick={() => setFormattingOptionsOpen(!isFormattingOptionsOpen)} className="w-full flex justify-between items-center text-left">
+                            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Formatting Options</h3>
+                             <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 text-slate-500 dark:text-slate-400 transition-transform duration-200 ${isFormattingOptionsOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                        </button>
+                        {isFormattingOptionsOpen && (
+                            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-600 space-y-4">
+                                {(outputFormat === 'zip-pdf' || outputFormat === 'single-pdf') && (
+                                    <div className="max-w-xs mx-auto">
+                                        <label htmlFor="pdfFontSize" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">PDF Font Size:</label>
+                                        <input type="number" id="pdfFontSize" min="8" max="32" value={pdfFontSize} onChange={e => setPdfFontSize(parseInt(e.target.value, 10))} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
+                                    </div>
+                                )}
+                                <div>
+                                    <label className="flex items-center gap-2 justify-center text-slate-800 dark:text-slate-200 select-none cursor-pointer" htmlFor="useFirstLineAsHeading">
+                                        <input
+                                            type="checkbox"
+                                            id="useFirstLineAsHeading"
+                                            checked={useFirstLineAsHeading}
+                                            onChange={e => setUseFirstLineAsHeading(e.target.checked)}
+                                            className="w-4 h-4 align-middle rounded border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-slate-100 dark:focus:ring-offset-slate-800 accent-primary-600"
+                                        />
+                                        Use first line as chapter heading
+                                    </label>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Treats the first line of text as the chapter title inside the document.</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
             
             <div className="mt-8 flex justify-center gap-4">
-                <button onClick={handleSplit} disabled={!epubFile || parsedChapters.length === 0} className="inline-flex items-center justify-center px-6 py-3 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed">Process &amp; Download</button>
+                <button onClick={handleSplit} disabled={!epubFile || parsedChapters.length === 0} className="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 disabled:opacity-60 disabled:cursor-not-allowed">Process &amp; Download</button>
             </div>
             <StatusMessage status={status} />
         </div>

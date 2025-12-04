@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { FileInput } from '../components/FileInput';
@@ -10,7 +9,6 @@ import { Status, BackupScene, BackupSection } from '../utils/types';
 export const CreateBackupFromZip: React.FC = () => {
     const { showToast, showSpinner, hideSpinner } = useAppContext();
     const [zipFile, setZipFile] = useState<File | null>(null);
-    const [coverFile, setCoverFile] = useState<File | null>(null);
     const [projectTitle, setProjectTitle] = useState('');
     const [description, setDescription] = useState('');
     const [uniqueCode, setUniqueCode] = useState('');
@@ -48,18 +46,12 @@ export const CreateBackupFromZip: React.FC = () => {
             const chapterFiles = (await Promise.all(chapterFilePromises))
                 .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
-            const timestamp = Date.now();
-
             for (const chapterFile of chapterFiles) {
                 const currentRank = startNumber + currentProcessingIndex;
-                // Use a timestamp based ID to avoid collisions if merged later
-                const uniqueId = `${timestamp}_${currentProcessingIndex}`;
-                const sceneCode = `scene_${uniqueId}`;
-                const sectionCode = `section_${uniqueId}`;
-                
+                const sceneCode = `scene${currentRank}`;
+                const sectionCode = `section${currentRank}`;
                 const title = chapterPattern ? `${chapterPattern}${currentRank}` : chapterFile.name.replace(/\.txt$/i, '');
                 const sceneText = JSON.stringify(parseTextToBlocks(chapterFile.text));
-                
                 scenes.push({ code: sceneCode, title, text: sceneText, ranking: currentRank, status: '1' });
                 sections.push({ code: sectionCode, title, synopsis: '', ranking: currentRank, section_scenes: [{ code: sceneCode, ranking: 1 }] });
                 currentProcessingIndex++;
@@ -67,13 +59,10 @@ export const CreateBackupFromZip: React.FC = () => {
             
             for (let i = 0; i < extraChapters; i++) {
                 const currentRank = startNumber + currentProcessingIndex;
-                const uniqueId = `${timestamp}_${currentProcessingIndex}`;
-                const sceneCode = `scene_${uniqueId}`;
-                const sectionCode = `section_${uniqueId}`;
-                
+                const sceneCode = `scene${currentRank}`;
+                const sectionCode = `section${currentRank}`;
                 const title = chapterPattern ? `${chapterPattern}${currentRank}` : `Chapter ${currentRank}`;
                 const emptySceneContent = { blocks: [{ type: 'text', align: 'left', text: '' }] };
-                
                 scenes.push({ code: sceneCode, title, text: JSON.stringify(emptySceneContent), ranking: currentRank, status: '1' });
                 sections.push({ code: sectionCode, title, synopsis: '', ranking: currentRank, section_scenes: [{ code: sceneCode, ranking: 1 }] });
                 currentProcessingIndex++;
@@ -87,23 +76,6 @@ export const CreateBackupFromZip: React.FC = () => {
             backupData.revisions[0].scenes = scenes;
             backupData.revisions[0].sections = sections;
             backupData.revisions[0].book_progresses[0].word_count = calculateWordCount(scenes);
-
-            // Handle Cover Image
-            if (coverFile) {
-                const reader = new FileReader();
-                reader.readAsDataURL(coverFile);
-                await new Promise<void>(resolve => {
-                    reader.onloadend = () => {
-                        const base64 = reader.result as string;
-                        // Strip metadata prefix (data:image/png;base64,) if present, depending on how backup format expects it. 
-                        // Usually Novel backups expect raw base64 without prefix for 'cover' field, but some apps might want it.
-                        // Standard practice for this app seems to be raw base64 or prefixed. Let's strip prefix for safety if strictly raw required, 
-                        // but `MergeBackup.tsx` uses `data:image/jpeg;base64,${cover}` implying the stored data is RAW base64.
-                        backupData.cover = base64.split(',')[1]; 
-                        resolve();
-                    };
-                });
-            }
 
             const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
             const safeFileNameBase = projectTitle.replace(/[^a-z0-9_\-\s]/gi, '_').replace(/\s+/g, '_');
@@ -142,44 +114,43 @@ export const CreateBackupFromZip: React.FC = () => {
             <div className="space-y-6 max-w-md mx-auto">
                  <div className="p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
                     <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">Project Information</h3>
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label htmlFor="zipProjectTitle" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Project Title:</label>
-                            <input type="text" id="zipProjectTitle" value={projectTitle} onChange={e => setProjectTitle(e.target.value)} placeholder="Enter project title" className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 w-full" />
+                            <label htmlFor="zipProjectTitle" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Project Title:</label>
+                            <input type="text" id="zipProjectTitle" value={projectTitle} onChange={e => setProjectTitle(e.target.value)} placeholder="Enter project title" className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
                         </div>
-                         <div>
-                            <label htmlFor="zipDescription" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Description:</label>
-                            <textarea id="zipDescription" value={description} onChange={e => setDescription(e.target.value)} placeholder="Enter project description" rows={3} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 w-full min-h-[80px]"></textarea>
-                        </div>
-                         <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Cover Image (Optional):</label>
-                            <FileInput inputId="zipCoverFile" label="Upload Cover" accept="image/*" onFileSelected={(files) => setCoverFile(files[0])} onFileCleared={() => setCoverFile(null)} />
-                            {coverFile && <p className="text-xs mt-1 text-slate-500">{coverFile.name}</p>}
+                        <div>
+                             <label htmlFor="zipUniqueCode" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Unique Code (Optional):</label>
+                            <input type="text" id="zipUniqueCode" value={uniqueCode} onChange={e => setUniqueCode(e.target.value)} placeholder="Auto-generated if blank" className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
                         </div>
                     </div>
+                     <div className="mt-4">
+                        <label htmlFor="zipDescription" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Description:</label>
+                        <textarea id="zipDescription" value={description} onChange={e => setDescription(e.target.value)} placeholder="Enter project description" rows={3} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full min-h-[80px]"></textarea>
+                    </div>
                  </div>
-                 
                  <div className="p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
                     <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">Chapter Configuration</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label htmlFor="zipChapterPattern" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Chapter Pattern:</label>
-                            <input type="text" id="zipChapterPattern" value={chapterPattern} onChange={e => setChapterPattern(e.target.value)} placeholder="e.g., Chapter " className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 w-full" />
+                            <label htmlFor="zipChapterPattern" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Chapter Pattern:</label>
+                            <input type="text" id="zipChapterPattern" value={chapterPattern} onChange={e => setChapterPattern(e.target.value)} placeholder="e.g., Chapter " className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
                         </div>
                         <div>
-                            <label htmlFor="zipStartNumber" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Start Number:</label>
-                            <input type="number" id="zipStartNumber" value={startNumber} onChange={e => setStartNumber(parseInt(e.target.value, 10))} min="1" className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 w-full" />
+                            <label htmlFor="zipStartNumber" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Start Number:</label>
+                            <input type="number" id="zipStartNumber" value={startNumber} onChange={e => setStartNumber(parseInt(e.target.value, 10))} min="1" className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
                         </div>
                     </div>
                     <div className="mt-4">
-                        <label htmlFor="zipExtraChapters" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Extra Empty Chapters:</label>
-                        <input type="number" id="zipExtraChapters" value={extraChapters} onChange={e => setExtraChapters(parseInt(e.target.value, 10))} min="0" className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 w-full" />
+                        <label htmlFor="zipExtraChapters" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Extra Empty Chapters:</label>
+                        <input type="number" id="zipExtraChapters" value={extraChapters} onChange={e => setExtraChapters(parseInt(e.target.value, 10))} min="0" className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Add this many empty chapters to the end of your backup</p>
                     </div>
                  </div>
             </div>
 
             <div className="mt-8 flex justify-center">
-                <button onClick={handleCreateBackup} disabled={!zipFile} className="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-60 disabled:cursor-not-allowed">
+                <button onClick={handleCreateBackup} disabled={!zipFile} className="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 disabled:opacity-60 disabled:cursor-not-allowed">
                     Generate Backup and Download
                 </button>
             </div>

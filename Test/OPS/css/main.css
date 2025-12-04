@@ -1,0 +1,1 @@
+@charset "utf-8"body {font-family: serif;font-style: normal;font-weight: normal;line-height: 1.4em;}h1, h2, h3, h4, h5, h6 {line-height: 1.1em;font-weight: normal;page-break-before: left;text-align: center;}p {line-height: 1.4em;margin: 0 0 0.2em 0;}section p:not(:first-of-type) {text-indent: 0;}p:empty:before {content: " ";white-space: pre;}

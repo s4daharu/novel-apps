@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { FileInput } from '../components/FileInput';
@@ -15,7 +14,6 @@ export const AugmentBackupWithZip: React.FC = () => {
     const [startNumber, setStartNumber] = useState(1);
     const [minStartNumber, setMinStartNumber] = useState(1);
     const [preserveTitles, setPreserveTitles] = useState(false);
-    const [shiftExisting, setShiftExisting] = useState(false);
     const [status, setStatus] = useState<Status | null>(null);
 
     const handleBaseFileSelected = async (files: FileList) => {
@@ -39,12 +37,12 @@ export const AugmentBackupWithZip: React.FC = () => {
             let maxExistingRank = 0;
             currentRevision.scenes.forEach(s => { if (s.ranking > maxExistingRank) maxExistingRank = s.ranking; });
             currentRevision.sections.forEach(s => { if (s.ranking > maxExistingRank) maxExistingRank = s.ranking; });
-            
             const nextAvailableRank = maxExistingRank + 1;
             setStartNumber(nextAvailableRank);
-            setMinStartNumber(1); // Allow insertion at any point, technically
+            setMinStartNumber(nextAvailableRank);
         } catch (err: any) {
             showToast(`Error reading base backup: ${err.message}`, true);
+            // In a real app, we'd need a way to imperatively clear the FileInput component
         } finally {
             hideSpinner();
         }
@@ -78,18 +76,13 @@ export const AugmentBackupWithZip: React.FC = () => {
                 throw new Error('Base backup file has an invalid or incomplete structure.');
             }
             const currentRevision = backupData.revisions[0];
-            
-            // Check for collision if not shifting
-            if (!shiftExisting) {
-                const isRankOccupied = currentRevision.scenes.some(s => s.ranking >= startNumber);
-                if (isRankOccupied) {
-                   // Calculate max again just to be safe
-                   let maxRank = 0;
-                   currentRevision.scenes.forEach(s => { if (s.ranking > maxRank) maxRank = s.ranking; });
-                   if (startNumber <= maxRank) {
-                       throw new Error(`Start Number ${startNumber} collides with existing chapters (Max: ${maxRank}). Enable "Shift existing chapters" to insert, or increase Start Number.`);
-                   }
-                }
+
+            let maxExistingRank = 0;
+            currentRevision.scenes.forEach(s => { if (s.ranking > maxExistingRank) maxExistingRank = s.ranking; });
+            currentRevision.sections.forEach(s => { if (s.ranking > maxExistingRank) maxExistingRank = s.ranking; });
+
+            if (isNaN(startNumber) || startNumber < maxExistingRank + 1) {
+                throw new Error(`Start Number must be ${maxExistingRank + 1} or greater to avoid chapter conflicts.`);
             }
 
             const JSZip = await getJSZip();
@@ -108,26 +101,10 @@ export const AugmentBackupWithZip: React.FC = () => {
                 return;
             }
 
-            // Shift existing chapters if enabled
-            if (shiftExisting) {
-                const shiftAmount = chapterFiles.length;
-                currentRevision.scenes.forEach(s => {
-                    if (s.ranking >= startNumber) s.ranking += shiftAmount;
-                });
-                currentRevision.sections.forEach(s => {
-                    if (s.ranking >= startNumber) s.ranking += shiftAmount;
-                });
-            }
-
-            const timestamp = Date.now();
-
             chapterFiles.forEach((chapterFile, index) => {
                 const newRank = startNumber + index;
-                // Use robust ID generation to prevent code collisions with shifted chapters
-                const uniqueId = `${timestamp}_${index}`;
-                const sceneCode = `scene_${uniqueId}`;
-                const sectionCode = `section_${uniqueId}`;
-                
+                const sceneCode = `scene${newRank}`;
+                const sectionCode = `section${newRank}`;
                 const txtFilename = chapterFile.name.replace(/\.txt$/i, '');
                 let chapterTitle;
 
@@ -151,13 +128,13 @@ export const AugmentBackupWithZip: React.FC = () => {
                 });
             });
 
-            // Update stats
             const now = Date.now();
             backupData.last_update_date = now;
             backupData.last_backup_date = now;
             currentRevision.date = now;
 
             const totalWordCount = calculateWordCount(currentRevision.scenes);
+
             if (!currentRevision.book_progresses) currentRevision.book_progresses = [];
             const today = new Date();
             const lastProgress = currentRevision.book_progresses[currentRevision.book_progresses.length - 1];
@@ -236,24 +213,19 @@ export const AugmentBackupWithZip: React.FC = () => {
                         </div>
                         <div>
                             <label htmlFor="augmentStartNumber" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Start Number:</label>
-                            <input type="number" id="augmentStartNumber" value={startNumber} onChange={e => setStartNumber(parseInt(e.target.value, 10))} min="1" className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
+                            <input type="number" id="augmentStartNumber" value={startNumber} onChange={e => setStartNumber(parseInt(e.target.value, 10))} min={minStartNumber} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
                         </div>
                     </div>
-                    <div className="mt-4 space-y-2">
-                         <label className="flex items-center gap-2 text-slate-800 dark:text-slate-200 select-none cursor-pointer">
-                            <input type="checkbox" checked={shiftExisting} onChange={e => setShiftExisting(e.target.checked)} className="rounded text-primary-600 focus:ring-primary-500" />
-                            <span>Shift existing chapters to make room (Insert mode)</span>
-                        </label>
-                        <label className="flex items-center gap-2 text-slate-800 dark:text-slate-200 select-none cursor-pointer">
-                            <input type="checkbox" checked={preserveTitles} onChange={e => setPreserveTitles(e.target.checked)} className="rounded text-primary-600 focus:ring-primary-500" />
-                            <span>Use .txt filenames as titles</span>
+                    <div className="mt-4">
+                        <label className="flex items-center gap-2 justify-start text-slate-800 dark:text-slate-200 select-none cursor-pointer" htmlFor="augmentPreserveTxtTitles">
+                            <input type="checkbox" id="augmentPreserveTxtTitles" checked={preserveTitles} onChange={e => setPreserveTitles(e.target.checked)} className="w-4 h-4 align-middle rounded border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-slate-100 dark:focus:ring-offset-slate-800 accent-primary-600" /> Use .txt filenames as titles
                         </label>
                     </div>
                 </div>
             </div>
 
             <div className="mt-8 flex justify-center">
-                <button onClick={handleAugmentBackup} disabled={!baseFile || !zipFile} className="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-60 disabled:cursor-not-allowed">
+                <button onClick={handleAugmentBackup} disabled={!baseFile || !zipFile} className="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 disabled:opacity-60 disabled:cursor-not-allowed">
                     Augment and Download
                 </button>
             </div>

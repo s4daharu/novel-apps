@@ -1,10 +1,9 @@
-
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../contexts/AppContext';
 import { FileInput } from '../components/FileInput';
 import { triggerDownload } from '../utils/helpers';
-import { BackupData, BackupScene, FrMatch } from '../utils/types';
+import { BackupData, BackupScene, FrMatch, FrReviewItem } from '../utils/types';
 
 export const FindReplaceBackup: React.FC = () => {
     const { showToast, showSpinner, hideSpinner } = useAppContext();
@@ -13,7 +12,6 @@ export const FindReplaceBackup: React.FC = () => {
 
     // Main state
     const [backupData, setBackupData] = useState<BackupData | null>(null);
-    const [history, setHistory] = useState<BackupData[]>([]); // Undo history
     const [fileName, setFileName] = useState('');
     const [modificationsMade, setModificationsMade] = useState(false);
 
@@ -28,6 +26,7 @@ export const FindReplaceBackup: React.FC = () => {
 
     // Modal state
     const [isReviewModalOpen, setReviewModalOpen] = useState(false);
+    const [reviewItems, setReviewItems] = useState<FrReviewItem[]>([]);
     const [reviewSelection, setReviewSelection] = useState<Set<number>>(new Set());
 
     const getScenePlainText = useCallback((scene: BackupScene): string => {
@@ -97,7 +96,6 @@ export const FindReplaceBackup: React.FC = () => {
                 throw new Error('Invalid backup file structure.');
             }
             setBackupData(data);
-            setHistory([]);
             setFileName(file.name);
             setModificationsMade(false);
         } catch (err: any) {
@@ -107,25 +105,8 @@ export const FindReplaceBackup: React.FC = () => {
         }
     };
     
-    const pushToHistory = (data: BackupData) => {
-        setHistory(prev => {
-            const newHistory = [...prev, data];
-            if (newHistory.length > 5) newHistory.shift(); // Limit history depth
-            return newHistory;
-        });
-    };
-
-    const handleUndo = () => {
-        if (history.length === 0) return;
-        const previousState = history[history.length - 1];
-        setBackupData(previousState);
-        setHistory(prev => prev.slice(0, prev.length - 1));
-        showToast('Undone last change.');
-    };
-
     const handleClose = () => {
         setBackupData(null);
-        setHistory([]);
         setFileName('');
         setFindPattern('');
         setReplaceText('');
@@ -151,9 +132,6 @@ export const FindReplaceBackup: React.FC = () => {
     const handleReplaceNext = () => {
         if (currentMatchIndex < 0 || !backupData) return;
         
-        // Save current state for undo
-        pushToHistory(JSON.parse(JSON.stringify(backupData)));
-
         const match = matches[currentMatchIndex];
         const newBackupData = JSON.parse(JSON.stringify(backupData));
         const scene = newBackupData.revisions[0].scenes.find((s: BackupScene) => s.code === match.sceneCode);
@@ -170,22 +148,32 @@ export const FindReplaceBackup: React.FC = () => {
 
     const handleReviewReplaceAll = () => {
         if (matches.length === 0) return;
-        setReviewSelection(new Set(matches.map((_, i) => i)));
+        const items = matches.map((match, index) => {
+            const sceneText = getScenePlainText(backupData!.revisions[0].scenes.find(s => s.code === match.sceneCode)!);
+            const contextStart = Math.max(0, match.index - 30);
+            const preContext = sceneText.substring(contextStart, match.index);
+            const postContext = sceneText.substring(match.index + match.length, match.index + match.length + 30);
+            
+            return {
+                ...match,
+                id: index,
+                context: (
+                    <>...{preContext}<span className="bg-red-500/20 px-1 rounded"><del>{match.text}</del></span>{postContext}... </>
+                )
+            };
+        });
+        setReviewItems(items);
+        setReviewSelection(new Set(items.map(it => it.id)));
         setReviewModalOpen(true);
     };
     
     const handleConfirmReplaceAll = () => {
-        if (!backupData) return;
-        
-        // Save state for undo
-        pushToHistory(JSON.parse(JSON.stringify(backupData)));
-
         const newBackupData = JSON.parse(JSON.stringify(backupData));
         const scenes = newBackupData.revisions[0].scenes as BackupScene[];
         
         const matchesToReplace = matches
-            .map((match, index) => ({...match, originalIndex: index}))
-            .filter(match => reviewSelection.has(match.originalIndex))
+            .map((match, index) => ({...match, id: index}))
+            .filter(match => reviewSelection.has(match.id))
             .sort((a, b) => {
                 if (a.sceneCode < b.sceneCode) return -1;
                 if (a.sceneCode > b.sceneCode) return 1;
@@ -214,7 +202,7 @@ export const FindReplaceBackup: React.FC = () => {
         setBackupData(newBackupData);
         setModificationsMade(true);
         setReviewModalOpen(false);
-        showToast(`${matchesToReplace.length} replacements made.`);
+        showToast(`${reviewSelection.size} replacements made.`);
     };
 
     if (!backupData) {
@@ -235,9 +223,9 @@ export const FindReplaceBackup: React.FC = () => {
     const preview = currentMatch ? (
         <>
             <div className="font-semibold text-slate-800 dark:text-slate-200 truncate mb-2">{currentMatch.sceneTitle}</div>
-            <div className="text-slate-600 dark:text-slate-400 leading-relaxed break-words font-mono text-sm bg-slate-50 dark:bg-slate-900 p-2 rounded">
+            <div className="text-slate-600 dark:text-slate-400 leading-relaxed break-words">
                 ...{getScenePlainText(backupData.revisions[0].scenes.find(s => s.code === currentMatch.sceneCode)!).substring(Math.max(0, currentMatch.index - CONTEXT_LENGTH), currentMatch.index)}
-                <mark className="bg-primary-500/30 text-primary-900 dark:text-primary-100 px-1 rounded mx-0.5">{currentMatch.text}</mark>
+                <mark className="bg-primary-500/30 px-1 rounded">{currentMatch.text}</mark>
                 {getScenePlainText(backupData.revisions[0].scenes.find(s => s.code === currentMatch.sceneCode)!).substring(currentMatch.index + currentMatch.length, currentMatch.index + currentMatch.length + CONTEXT_LENGTH)}...
             </div>
         </>
@@ -248,7 +236,6 @@ export const FindReplaceBackup: React.FC = () => {
             <header className="flex-shrink-0 flex items-center justify-between p-2 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                 <h2 className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate px-2">{fileName}</h2>
                 <div className="flex items-center gap-2">
-                     <button onClick={handleUndo} disabled={history.length === 0} className="inline-flex items-center justify-center px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 dark:text-white shadow-md transition-all disabled:opacity-50">Undo</button>
                      <button onClick={handleDownload} disabled={!modificationsMade} className="inline-flex items-center justify-center px-3 py-1.5 text-sm rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed">Download</button>
                     <button onClick={handleClose} className="inline-flex items-center justify-center px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 dark:text-white shadow-md transition-all">Close</button>
                 </div>
@@ -256,7 +243,7 @@ export const FindReplaceBackup: React.FC = () => {
             <main className="flex-1 p-4 md:p-8 relative">
                 <div className="w-full max-w-2xl mx-auto h-full flex flex-col">
                     {findPattern ? (
-                        <div className="flex-1 overflow-y-auto p-4 bg-white dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 shadow-inner">
+                        <div className="flex-1 overflow-y-auto p-4 bg-white dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 text-sm">
                             {matches.length > 0 ? (
                                 preview
                             ) : (
@@ -278,7 +265,7 @@ export const FindReplaceBackup: React.FC = () => {
                         <div className="relative flex-grow w-full">
                              <input type="text" value={findPattern} onChange={e => setFindPattern(e.target.value)} placeholder="Find" className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 pr-24 text-base text-slate-800 dark:text-slate-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500" />
                              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1 pointer-events-none">
-                                {matches.length > 0 ? `${currentMatchIndex + 1} of ${matches.length}` : '0 of 0'}
+                                {matches.length > 0 ? `${currentMatchIndex + 1} of ${matches.length}` : 'No results'}
                             </div>
                         </div>
                          <div className="flex-shrink-0 flex items-center gap-2">
@@ -314,30 +301,22 @@ export const FindReplaceBackup: React.FC = () => {
                         </header>
                         <div className="p-3 bg-slate-100 dark:bg-slate-900/50 flex-shrink-0">
                             <label className="flex items-center gap-2 text-slate-800 dark:text-slate-200 select-none cursor-pointer">
-                                <input type="checkbox" checked={reviewSelection.size === matches.length} onChange={e => setReviewSelection(e.target.checked ? new Set(matches.map((_, i) => i)) : new Set())} className="w-4 h-4 align-middle rounded border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-primary-500 accent-primary-600" />
-                                <span>{reviewSelection.size} of {matches.length} selected</span>
+                                <input type="checkbox" checked={reviewSelection.size === reviewItems.length} onChange={e => setReviewSelection(e.target.checked ? new Set(reviewItems.map(i => i.id)) : new Set())} className="w-4 h-4 align-middle rounded border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-primary-500 accent-primary-600" />
+                                <span>{reviewSelection.size} of {reviewItems.length} selected</span>
                             </label>
                         </div>
                         <ul className="list-none p-0 m-0 overflow-y-auto flex-grow">
-                            {matches.map((match, idx) => {
-                                const scenePlainText = getScenePlainText(backupData!.revisions[0].scenes.find(s => s.code === match.sceneCode)!);
-                                const contextPre = scenePlainText.substring(Math.max(0, match.index - 30), match.index);
-                                const contextPost = scenePlainText.substring(match.index + match.length, match.index + match.length + 30);
-                                
-                                return (
-                                    <li key={idx} className="p-3 border-b border-slate-200 dark:border-slate-700 last:border-b-0 text-sm">
-                                        <div className="flex items-start gap-3">
-                                            <input type="checkbox" checked={reviewSelection.has(idx)} onChange={e => setReviewSelection(s => { const newSet = new Set(s); if (e.target.checked) newSet.add(idx); else newSet.delete(idx); return newSet; })} className="mt-1 w-4 h-4 rounded" />
-                                            <label onClick={() => setReviewSelection(s => { const newSet = new Set(s); if (!s.has(idx)) newSet.add(idx); else newSet.delete(idx); return newSet; })} className="flex-1 cursor-pointer">
-                                                <div className="font-semibold text-slate-800 dark:text-slate-200">{match.sceneTitle}</div>
-                                                <div className="text-slate-600 dark:text-slate-400 mt-1 font-mono text-xs">
-                                                    ...{contextPre}<span className="bg-red-500/20 text-red-700 dark:text-red-300 px-1 rounded line-through decoration-red-500">{match.text}</span>{contextPost}...
-                                                </div>
-                                            </label>
-                                        </div>
-                                    </li>
-                                );
-                            })}
+                            {reviewItems.map(item => (
+                                <li key={item.id} className="p-3 border-b border-slate-200 dark:border-slate-700 last:border-b-0 text-sm">
+                                    <div className="flex items-start gap-3">
+                                        <input type="checkbox" id={`review-${item.id}`} checked={reviewSelection.has(item.id)} onChange={e => setReviewSelection(s => { const newSet = new Set(s); if (e.target.checked) newSet.add(item.id); else newSet.delete(item.id); return newSet; })} className="mt-1 w-4 h-4 rounded" />
+                                        <label htmlFor={`review-${item.id}`} className="flex-1 cursor-pointer">
+                                            <div className="font-semibold text-slate-800 dark:text-slate-200">{item.sceneTitle}</div>
+                                            <div className="text-slate-600 dark:text-slate-400 mt-1">{item.context}</div>
+                                        </label>
+                                    </div>
+                                </li>
+                            ))}
                         </ul>
                         <footer className="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-4 flex-shrink-0">
                             <button onClick={() => setReviewModalOpen(false)} className="px-4 py-2 rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 dark:text-white">Cancel</button>

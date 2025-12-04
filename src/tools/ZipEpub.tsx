@@ -1,9 +1,8 @@
-
 import React, { useState, useRef } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { FileInput } from '../components/FileInput';
 import { StatusMessage } from '../components/StatusMessage';
-import { triggerDownload, getJSZip, escapeHTML, extractTextFromHtml } from '../utils/helpers';
+import { triggerDownload, getJSZip, escapeHTML } from '../utils/helpers';
 import { Status } from '../utils/types';
 
 const EpubToZip: React.FC = () => {
@@ -107,6 +106,37 @@ const EpubToZip: React.FC = () => {
         }).filter((c): c is ChapterInfo => c !== null);
         
         return [...new Map(chapterList.map(item => [item.href, item])).values()];
+    };
+
+    const extractTextFromHtml = (htmlString: string): string => {
+        const domParser = new DOMParser();
+        const doc = domParser.parseFromString(htmlString, 'text/html');
+        if (!doc.body) return '';
+
+        function convertNodeToText(node: Node): string {
+            let text = '';
+            if (node.nodeType === Node.TEXT_NODE) return node.textContent || '';
+            if (node.nodeType !== Node.ELEMENT_NODE) return '';
+    
+            const element = node as Element;
+            const tagName = element.tagName.toLowerCase();
+
+            if (['script', 'style', 'header', 'footer', 'nav'].includes(tagName)) {
+                return '';
+            }
+    
+            const isBlock = ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote', 'section', 'article', 'tr', 'br', 'hr'].includes(tagName);
+    
+            if (isBlock) text += '\n';
+            for (const child of Array.from(node.childNodes)) {
+                text += convertNodeToText(child);
+            }
+            if (isBlock) text += '\n';
+            
+            return text;
+        }
+        let rawText = convertNodeToText(doc.body);
+        return rawText.replace(/\r\n?/g, '\n').split('\n').map(line => line.trim()).filter(line => line.length > 0).join('\n\n');
     };
 
     const handleExtract = async () => {
