@@ -4,6 +4,16 @@ import { useAppContext } from '../contexts/AppContext';
 import { FileInput } from '../components/FileInput';
 import { triggerDownload } from '../utils/helpers';
 import { BackupData, BackupScene, FrMatch, FrReviewItem } from '../utils/types';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { Badge } from '../components/ui/Badge';
+import { Card, CardContent } from '../components/ui/Card';
+import { PageHeader } from '../components/ui/PageHeader';
+import {
+    Search, Replace, ChevronLeft, ChevronRight, X, Download,
+    ArrowLeft, CaseSensitive, Regex, Type, BookOpen
+} from 'lucide-react';
+import { cn } from '../utils/cn';
 
 export const FindReplaceBackup: React.FC = () => {
     const { showToast, showSpinner, hideSpinner } = useAppContext();
@@ -19,7 +29,7 @@ export const FindReplaceBackup: React.FC = () => {
     const [findPattern, setFindPattern] = useState('');
     const [replaceText, setReplaceText] = useState('');
     const [options, setOptions] = useState({ useRegex: false, caseSensitive: false, wholeWord: false });
-    
+
     // Results state
     const [matches, setMatches] = useState<FrMatch[]>([]);
     const [currentMatchIndex, setCurrentMatchIndex] = useState(-1);
@@ -72,7 +82,7 @@ export const FindReplaceBackup: React.FC = () => {
                 });
             }
         });
-        
+
         setMatches(allMatches);
         setCurrentMatchIndex(allMatches.length > 0 ? 0 : -1);
     }, [findPattern, options, backupData, getScenePlainText, showToast]);
@@ -104,7 +114,7 @@ export const FindReplaceBackup: React.FC = () => {
             hideSpinner();
         }
     };
-    
+
     const handleClose = () => {
         setBackupData(null);
         setFileName('');
@@ -112,7 +122,6 @@ export const FindReplaceBackup: React.FC = () => {
         setReplaceText('');
         setMatches([]);
         setCurrentMatchIndex(-1);
-        navigate('/');
     };
 
     const handleNavigate = (direction: 1 | -1) => {
@@ -122,16 +131,16 @@ export const FindReplaceBackup: React.FC = () => {
             return prev;
         });
     };
-    
+
     const handleDownload = () => {
-      if (!backupData) return;
-      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-      triggerDownload(blob, fileName);
+        if (!backupData) return;
+        const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+        triggerDownload(blob, fileName);
     };
 
     const handleReplaceNext = () => {
         if (currentMatchIndex < 0 || !backupData) return;
-        
+
         const match = matches[currentMatchIndex];
         const newBackupData = JSON.parse(JSON.stringify(backupData));
         const scene = newBackupData.revisions[0].scenes.find((s: BackupScene) => s.code === match.sceneCode);
@@ -153,12 +162,12 @@ export const FindReplaceBackup: React.FC = () => {
             const contextStart = Math.max(0, match.index - 30);
             const preContext = sceneText.substring(contextStart, match.index);
             const postContext = sceneText.substring(match.index + match.length, match.index + match.length + 30);
-            
+
             return {
                 ...match,
                 id: index,
                 context: (
-                    <>...{preContext}<span className="bg-red-500/20 px-1 rounded"><del>{match.text}</del></span>{postContext}... </>
+                    <>...{preContext}<span className="bg-red-500/20 px-1 rounded mx-0.5 text-red-700 dark:text-red-300 decoration-slice line-through">{match.text}</span>{postContext}... </>
                 )
             };
         });
@@ -166,13 +175,13 @@ export const FindReplaceBackup: React.FC = () => {
         setReviewSelection(new Set(items.map(it => it.id)));
         setReviewModalOpen(true);
     };
-    
+
     const handleConfirmReplaceAll = () => {
         const newBackupData = JSON.parse(JSON.stringify(backupData));
         const scenes = newBackupData.revisions[0].scenes as BackupScene[];
-        
+
         const matchesToReplace = matches
-            .map((match, index) => ({...match, id: index}))
+            .map((match, index) => ({ ...match, id: index }))
             .filter(match => reviewSelection.has(match.id))
             .sort((a, b) => {
                 if (a.sceneCode < b.sceneCode) return -1;
@@ -181,7 +190,7 @@ export const FindReplaceBackup: React.FC = () => {
             });
 
         const sceneCache = new Map<string, string>();
-        
+
         matchesToReplace.forEach(match => {
             if (!sceneCache.has(match.sceneCode)) {
                 sceneCache.set(match.sceneCode, getScenePlainText(scenes.find(s => s.code === match.sceneCode)!));
@@ -198,7 +207,7 @@ export const FindReplaceBackup: React.FC = () => {
                 scene.text = JSON.stringify({ blocks: newBlocks });
             }
         });
-        
+
         setBackupData(newBackupData);
         setModificationsMade(true);
         setReviewModalOpen(false);
@@ -207,122 +216,223 @@ export const FindReplaceBackup: React.FC = () => {
 
     if (!backupData) {
         return (
-            <div className="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6">
-                <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 p-6 animate-fade-in">
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">Find & Replace in Backup</h1>
-                    <div className="max-w-md mx-auto">
+            <div className="max-w-4xl mx-auto space-y-6 animate-fade-in p-4 md:p-8">
+                <PageHeader
+                    title="Find & Replace in Backup"
+                    description="Perform advanced text search and replacements across an entire novel backup file."
+                />
+                <Card>
+                    <CardContent className="pt-6">
                         <FileInput inputId="frBackupFile" label="Upload Backup File" accept=".json,.txt,.nov" onFileSelected={handleFileSelected} />
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Upload a backup file to begin.</p>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
             </div>
         );
     }
 
     const currentMatch = matches[currentMatchIndex];
     const preview = currentMatch ? (
-        <>
-            <div className="font-semibold text-slate-800 dark:text-slate-200 truncate mb-2">{currentMatch.sceneTitle}</div>
-            <div className="text-slate-600 dark:text-slate-400 leading-relaxed break-words">
+        <div className="animate-fade-in">
+            <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-muted-foreground" />
+                {currentMatch.sceneTitle}
+            </h3>
+            <div className="text-lg leading-relaxed font-serif text-foreground/80 whitespace-pre-wrap p-6 bg-muted/30 rounded-lg border border-border shadow-sm">
                 ...{getScenePlainText(backupData.revisions[0].scenes.find(s => s.code === currentMatch.sceneCode)!).substring(Math.max(0, currentMatch.index - CONTEXT_LENGTH), currentMatch.index)}
-                <mark className="bg-primary-500/30 px-1 rounded">{currentMatch.text}</mark>
+                <mark className="bg-primary/30 text-primary-foreground px-1 rounded font-bold border-b-2 border-primary mx-0.5">{currentMatch.text}</mark>
                 {getScenePlainText(backupData.revisions[0].scenes.find(s => s.code === currentMatch.sceneCode)!).substring(currentMatch.index + currentMatch.length, currentMatch.index + currentMatch.length + CONTEXT_LENGTH)}...
             </div>
-        </>
+        </div>
     ) : null;
-    
+
     return (
-        <div className="absolute inset-0 flex flex-col bg-slate-50 dark:bg-slate-800">
-            <header className="flex-shrink-0 flex items-center justify-between p-2 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-                <h2 className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate px-2">{fileName}</h2>
+        <div className="fixed inset-0 z-50 flex flex-col bg-background">
+            {/* Header */}
+            <header className="flex-shrink-0 h-16 border-b border-border bg-background/80 backdrop-blur px-4 flex items-center justify-between z-10">
+                <div className="flex items-center gap-3">
+                    <Button variant="ghost" size="icon" onClick={handleClose}>
+                        <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                    <div className="flex flex-col">
+                        <h2 className="font-semibold text-sm md:text-base leading-tight">{fileName}</h2>
+                        <span className="text-xs text-muted-foreground">Find & Replace Mode</span>
+                    </div>
+                </div>
                 <div className="flex items-center gap-2">
-                     <button onClick={handleDownload} disabled={!modificationsMade} className="inline-flex items-center justify-center px-3 py-1.5 text-sm rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed">Download</button>
-                    <button onClick={handleClose} className="inline-flex items-center justify-center px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 dark:text-white shadow-md transition-all">Close</button>
+                    <Button
+                        onClick={handleDownload}
+                        disabled={!modificationsMade}
+                        variant={modificationsMade ? "default" : "secondary"}
+                        size="sm"
+                    >
+                        <Download className="mr-2 h-4 w-4" /> Save Changes
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleClose}>
+                        Close
+                    </Button>
                 </div>
             </header>
-            <main className="flex-1 p-4 md:p-8 relative">
-                <div className="w-full max-w-2xl mx-auto h-full flex flex-col">
+
+            {/* Main Content Area */}
+            <main className="flex-1 overflow-hidden relative flex flex-col items-center justify-center p-4">
+                <div className="w-full max-w-3xl h-full flex flex-col">
                     {findPattern ? (
-                        <div className="flex-1 overflow-y-auto p-4 bg-white dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 text-sm">
+                        <div className="flex-1 overflow-y-auto p-4 md:p-8 flex items-center justify-center">
                             {matches.length > 0 ? (
                                 preview
                             ) : (
-                                <div className="h-full flex items-center justify-center text-slate-500 dark:text-slate-400">
-                                    No results found.
+                                <div className="text-center text-muted-foreground">
+                                    <Search className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                                    <p>No matches found for "{findPattern}"</p>
                                 </div>
                             )}
                         </div>
                     ) : (
-                        <div className="flex-1 flex items-center justify-center text-center p-8 text-slate-500 dark:text-slate-400">
-                            Enter a search term to begin.
+                        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
+                            <Search className="h-16 w-16 mb-4 opacity-10" />
+                            <p className="text-lg">Enter a search term below to begin.</p>
                         </div>
                     )}
                 </div>
             </main>
-            <footer className="flex-shrink-0 bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-md border-t border-slate-300 dark:border-slate-700 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-                <div className="max-w-4xl mx-auto space-y-3">
-                    <div className="flex flex-col sm:flex-row items-center gap-2">
-                        <div className="relative flex-grow w-full">
-                             <input type="text" value={findPattern} onChange={e => setFindPattern(e.target.value)} placeholder="Find" className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 pr-24 text-base text-slate-800 dark:text-slate-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500" />
-                             <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1 pointer-events-none">
-                                {matches.length > 0 ? `${currentMatchIndex + 1} of ${matches.length}` : 'No results'}
+
+            {/* Bottom Control Panel */}
+            <footer className="flex-shrink-0 border-t border-border bg-background/95 backdrop-blur shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] transition-all">
+                <div className="max-w-3xl mx-auto space-y-4">
+                    {/* Search Row */}
+                    <div className="flex gap-2 relative">
+                        <div className="relative flex-grow">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                value={findPattern}
+                                onChange={e => setFindPattern(e.target.value)}
+                                placeholder="Find text..."
+                                className="pl-9 pr-28"
+                            />
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground bg-background px-1">
+                                {matches.length > 0 ? `${currentMatchIndex + 1} / ${matches.length}` : '0 results'}
                             </div>
                         </div>
-                         <div className="flex-shrink-0 flex items-center gap-2">
-                            <button onClick={() => handleNavigate(-1)} disabled={currentMatchIndex <= 0} className="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-10 h-10 rounded-md inline-flex items-center justify-center text-2xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50" aria-label="Find Previous">‹</button>
-                            <button onClick={() => handleNavigate(1)} disabled={currentMatchIndex >= matches.length - 1} className="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 w-10 h-10 rounded-md inline-flex items-center justify-center text-2xl transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50" aria-label="Find Next">›</button>
+                        <div className="flex gap-1 shrink-0">
+                            <Button variant="outline" size="icon" onClick={() => handleNavigate(-1)} disabled={currentMatchIndex <= 0}>
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <Button variant="outline" size="icon" onClick={() => handleNavigate(1)} disabled={currentMatchIndex >= matches.length - 1}>
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
                         </div>
                     </div>
-                    <div className="flex flex-col sm:flex-row items-center gap-2">
-                        <input type="text" value={replaceText} onChange={e => setReplaceText(e.target.value)} placeholder="Replace with" className="flex-1 w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md px-3 py-2 text-base text-slate-800 dark:text-slate-200 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"/>
-                        <div className="flex-shrink-0 flex items-center gap-2">
-                            <button onClick={handleReplaceNext} disabled={matches.length === 0} className="px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 h-10 rounded-md inline-flex items-center justify-center text-sm font-medium transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50">Replace</button>
-                            <button onClick={handleReviewReplaceAll} disabled={matches.length === 0} className="px-4 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 h-10 rounded-md inline-flex items-center justify-center text-sm font-medium transition-all hover:bg-primary-600 hover:text-white hover:border-primary-600 disabled:opacity-50">Replace All</button>
+
+                    {/* Replace Row */}
+                    <div className="flex gap-2">
+                        <div className="relative flex-grow">
+                            <Replace className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                value={replaceText}
+                                onChange={e => setReplaceText(e.target.value)}
+                                placeholder="Replace with..."
+                                className="pl-9"
+                            />
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                            <Button onClick={handleReplaceNext} disabled={matches.length === 0} variant="secondary">
+                                Replace
+                            </Button>
+                            <Button onClick={handleReviewReplaceAll} disabled={matches.length === 0}>
+                                Replace All
+                            </Button>
                         </div>
                     </div>
-                    <div className="flex items-center justify-center pt-2">
-                        <div className="flex flex-wrap justify-center gap-2 p-1">
-                            {Object.entries({useRegex: 'Regex', caseSensitive: 'Case-sensitive', wholeWord: 'Whole word'}).map(([key, label]) => (
-                                <button key={key} onClick={() => setOptions(o => ({ ...o, [key]: !o[key as keyof typeof options] }))} className={`cursor-pointer px-4 py-2 transition-colors duration-200 rounded-lg text-sm font-medium whitespace-nowrap ${options[key as keyof typeof options] ? 'bg-primary-600 text-white shadow-md' : 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200'}`}>
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
+
+                    {/* Options Row */}
+                    <div className="flex justify-center gap-2 pt-1 border-t border-border/50 mt-2">
+                        <Button
+                            variant={options.useRegex ? "default" : "ghost"}
+                            size="sm"
+                            onClick={() => setOptions(o => ({ ...o, useRegex: !o.useRegex }))}
+                            className="h-8 text-xs gap-1.5"
+                        >
+                            <Regex className="h-3 w-3" /> Regex
+                        </Button>
+                        <Button
+                            variant={options.caseSensitive ? "default" : "ghost"}
+                            size="sm"
+                            onClick={() => setOptions(o => ({ ...o, caseSensitive: !o.caseSensitive }))}
+                            className="h-8 text-xs gap-1.5"
+                        >
+                            <CaseSensitive className="h-4 w-4" /> Case Sensitive
+                        </Button>
+                        <Button
+                            variant={options.wholeWord ? "default" : "ghost"}
+                            size="sm"
+                            onClick={() => setOptions(o => ({ ...o, wholeWord: !o.wholeWord }))}
+                            className="h-8 text-xs gap-1.5"
+                        >
+                            <Type className="h-3 w-3" /> Whole Word
+                        </Button>
                     </div>
                 </div>
             </footer>
 
+            {/* Review Modal */}
             {isReviewModalOpen && (
-                <div className="fixed inset-0 bg-slate-100/70 dark:bg-black/70 backdrop-blur-sm z-40 flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-300 dark:border-slate-700 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
-                        <header className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center flex-shrink-0">
-                            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Review Changes</h2>
-                            <button onClick={() => setReviewModalOpen(false)} className="text-2xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white">&times;</button>
-                        </header>
-                        <div className="p-3 bg-slate-100 dark:bg-slate-900/50 flex-shrink-0">
-                            <label className="flex items-center gap-2 text-slate-800 dark:text-slate-200 select-none cursor-pointer">
-                                <input type="checkbox" checked={reviewSelection.size === reviewItems.length} onChange={e => setReviewSelection(e.target.checked ? new Set(reviewItems.map(i => i.id)) : new Set())} className="w-4 h-4 align-middle rounded border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-primary-500 accent-primary-600" />
-                                <span>{reviewSelection.size} of {reviewItems.length} selected</span>
-                            </label>
-                        </div>
-                        <ul className="list-none p-0 m-0 overflow-y-auto flex-grow">
-                            {reviewItems.map(item => (
-                                <li key={item.id} className="p-3 border-b border-slate-200 dark:border-slate-700 last:border-b-0 text-sm">
-                                    <div className="flex items-start gap-3">
-                                        <input type="checkbox" id={`review-${item.id}`} checked={reviewSelection.has(item.id)} onChange={e => setReviewSelection(s => { const newSet = new Set(s); if (e.target.checked) newSet.add(item.id); else newSet.delete(item.id); return newSet; })} className="mt-1 w-4 h-4 rounded" />
-                                        <label htmlFor={`review-${item.id}`} className="flex-1 cursor-pointer">
-                                            <div className="font-semibold text-slate-800 dark:text-slate-200">{item.sceneTitle}</div>
-                                            <div className="text-slate-600 dark:text-slate-400 mt-1">{item.context}</div>
-                                        </label>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                        <footer className="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-4 flex-shrink-0">
-                            <button onClick={() => setReviewModalOpen(false)} className="px-4 py-2 rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 dark:text-white">Cancel</button>
-                            <button onClick={handleConfirmReplaceAll} className="px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white">Confirm Replacements</button>
-                        </footer>
-                    </div>
+                <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <Card className="w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl animate-scale-in">
+                        <CardContent className="p-0 flex flex-col h-full overflow-hidden">
+                            <div className="p-4 border-b flex justify-between items-center bg-muted/20">
+                                <h3 className="font-semibold text-lg">Review Replacements</h3>
+                                <Button variant="ghost" size="icon" onClick={() => setReviewModalOpen(false)}>
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            </div>
+
+                            <div className="p-2 border-b bg-muted/50 text-sm flex justify-between items-center">
+                                <label className="flex items-center gap-2 cursor-pointer select-none px-2 py-1 rounded hover:bg-muted">
+                                    <input
+                                        type="checkbox"
+                                        checked={reviewSelection.size === reviewItems.length}
+                                        onChange={e => setReviewSelection(e.target.checked ? new Set(reviewItems.map(i => i.id)) : new Set())}
+                                        className="rounded border-primary text-primary focus:ring-primary"
+                                    />
+                                    <span>Select All ({reviewItems.length})</span>
+                                </label>
+                                <span className="text-muted-foreground px-2">{reviewSelection.size} selected</span>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto">
+                                <ul className="divide-y">
+                                    {reviewItems.map(item => (
+                                        <li key={item.id} className="p-4 hover:bg-muted/30 transition-colors">
+                                            <div className="flex gap-3">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={reviewSelection.has(item.id)}
+                                                    onChange={e => setReviewSelection(s => { const newSet = new Set(s); if (e.target.checked) newSet.add(item.id); else newSet.delete(item.id); return newSet; })}
+                                                    className="mt-1 w-4 h-4 rounded border-primary text-primary focus:ring-primary shrink-0"
+                                                />
+                                                <div
+                                                    className="flex-grow cursor-pointer"
+                                                    onClick={() => setReviewSelection(s => { const newSet = new Set(s); if (!s.has(item.id)) newSet.add(item.id); else newSet.delete(item.id); return newSet; })}
+                                                >
+                                                    <div className="font-medium text-sm mb-1 text-primary">{item.sceneTitle}</div>
+                                                    <div className="text-sm text-muted-foreground leading-relaxed font-serif">
+                                                        {item.context}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+
+                            <div className="p-4 border-t bg-muted/20 flex justify-end gap-3">
+                                <Button variant="outline" onClick={() => setReviewModalOpen(false)}>Cancel</Button>
+                                <Button onClick={handleConfirmReplaceAll}>
+                                    Confirm {reviewSelection.size} Replacements
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             )}
         </div>

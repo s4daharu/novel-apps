@@ -5,6 +5,12 @@ import { StatusMessage } from '../components/StatusMessage';
 import { triggerDownload, getJSZip } from '../utils/helpers';
 import { calculateWordCount, parseTextToBlocks } from '../utils/backupHelpers';
 import { Status, BackupData } from '../utils/types';
+import { PageHeader } from '../components/ui/PageHeader';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { Label } from '../components/ui/Label';
+import { PlusCircle, FilePlus, Download } from 'lucide-react';
 
 export const AugmentBackupWithZip: React.FC = () => {
     const { showToast, showSpinner, hideSpinner } = useAppContext();
@@ -171,63 +177,99 @@ export const AugmentBackupWithZip: React.FC = () => {
     };
 
     return (
-        <div id="augmentBackupWithZipApp" className="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 animate-fade-in will-change-[transform,opacity]">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">Augment Backup with ZIP</h1>
+        <div id="augmentBackupWithZipApp" className="max-w-4xl mx-auto space-y-6 animate-fade-in p-4 md:p-8">
+            <PageHeader
+                title="Augment Backup with ZIP"
+                description="Seamlessly add new chapters from a ZIP archive to an existing backup file."
+            />
 
-            <div className="mb-6 max-w-md mx-auto">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <FileInput
-                            inputId="augmentBaseBackupFile"
-                            label="Base Backup File"
-                            accept=".json,.txt,.nov"
-                            onFileSelected={handleBaseFileSelected}
-                            onFileCleared={() => {
-                                setBaseFile(null);
-                                setStartNumber(1);
-                                setMinStartNumber(1);
-                            }}
-                        />
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Upload your existing backup file</p>
+            <Card>
+                <CardHeader>
+                    <CardTitle>File Selection</CardTitle>
+                    <CardDescription>Upload your base backup and the ZIP file containing new chapters.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <FileInput
+                                inputId="augmentBaseBackupFile"
+                                label="Base Backup File (.json/.nov)"
+                                accept=".json,.txt,.nov"
+                                onFileSelected={handleBaseFileSelected}
+                                onFileCleared={() => {
+                                    setBaseFile(null);
+                                    setStartNumber(1);
+                                    setMinStartNumber(1);
+                                }}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <FileInput
+                                inputId="augmentZipFile"
+                                label="ZIP with .txt Chapters"
+                                accept=".zip"
+                                onFileSelected={(files) => setZipFile(files[0])}
+                                onFileCleared={() => setZipFile(null)}
+                            />
+                        </div>
                     </div>
-                    <div>
-                        <FileInput
-                            inputId="augmentZipFile"
-                            label="ZIP with Chapters"
-                            accept=".zip"
-                            onFileSelected={(files) => setZipFile(files[0])}
-                            onFileCleared={() => setZipFile(null)}
-                        />
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Upload ZIP containing new chapter files</p>
-                    </div>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
 
-            <div className="space-y-6 max-w-md mx-auto">
-                <div className="p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
-                    <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">Chapter Configuration</h3>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <PlusCircle className="h-5 w-5 text-primary" />
+                        Chapter Configuration
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label htmlFor="augmentPrefix" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Prefix for New Chapters:</label>
-                            <input type="text" id="augmentPrefix" value={prefix} onChange={e => setPrefix(e.target.value)} placeholder="e.g., New Section - " className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
+                        <div className="space-y-2">
+                            <Label htmlFor="augmentPrefix">Prefix for New Chapters</Label>
+                            <Input
+                                id="augmentPrefix"
+                                value={prefix}
+                                onChange={e => setPrefix(e.target.value)}
+                                placeholder="e.g., New Section - "
+                            />
                         </div>
-                        <div>
-                            <label htmlFor="augmentStartNumber" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Start Number:</label>
-                            <input type="number" id="augmentStartNumber" value={startNumber} onChange={e => setStartNumber(parseInt(e.target.value, 10))} min={minStartNumber} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
+                        <div className="space-y-2">
+                            <Label htmlFor="augmentStartNumber">Start Number</Label>
+                            <Input
+                                type="number"
+                                id="augmentStartNumber"
+                                value={startNumber}
+                                onChange={e => setStartNumber(parseInt(e.target.value, 10))}
+                                min={minStartNumber}
+                            />
                         </div>
                     </div>
-                    <div className="mt-4">
-                        <label className="flex items-center gap-2 justify-start text-slate-800 dark:text-slate-200 select-none cursor-pointer" htmlFor="augmentPreserveTxtTitles">
-                            <input type="checkbox" id="augmentPreserveTxtTitles" checked={preserveTitles} onChange={e => setPreserveTitles(e.target.checked)} className="w-4 h-4 align-middle rounded border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-slate-100 dark:focus:ring-offset-slate-800 accent-primary-600" /> Use .txt filenames as titles
-                        </label>
+                    <div className="flex items-center space-x-2 border p-3 rounded-lg bg-muted/20">
+                        <input
+                            type="checkbox"
+                            id="augmentPreserveTxtTitles"
+                            checked={preserveTitles}
+                            onChange={e => setPreserveTitles(e.target.checked)}
+                            className="rounded border-input text-primary focus:ring-primary"
+                        />
+                        <Label htmlFor="augmentPreserveTxtTitles" className="font-normal cursor-pointer select-none">
+                            Use original .txt filenames as chapter titles
+                        </Label>
                     </div>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
 
-            <div className="mt-8 flex justify-center">
-                <button onClick={handleAugmentBackup} disabled={!baseFile || !zipFile} className="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 disabled:opacity-60 disabled:cursor-not-allowed">
+            <div className="flex justify-center">
+                <Button
+                    onClick={handleAugmentBackup}
+                    disabled={!baseFile || !zipFile}
+                    size="lg"
+                    className="w-full md:w-auto min-w-[200px]"
+                >
+                    <Download className="mr-2 h-4 w-4" />
                     Augment and Download
-                </button>
+                </Button>
             </div>
             <StatusMessage status={status} />
         </div>

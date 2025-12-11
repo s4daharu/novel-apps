@@ -5,6 +5,12 @@ import { StatusMessage } from '../components/StatusMessage';
 import { triggerDownload, getJSZip } from '../utils/helpers';
 import { calculateWordCount, createNewBackupStructure, parseTextToBlocks } from '../utils/backupHelpers';
 import { Status, BackupScene, BackupSection } from '../utils/types';
+import { PageHeader } from '../components/ui/PageHeader';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { Label } from '../components/ui/Label';
+import { Save, FileArchive } from 'lucide-react';
 
 export const CreateBackupFromZip: React.FC = () => {
     const { showToast, showSpinner, hideSpinner } = useAppContext();
@@ -31,7 +37,7 @@ export const CreateBackupFromZip: React.FC = () => {
 
         showSpinner();
         setStatus(null);
-        
+
         try {
             const JSZip = await getJSZip();
             const zip = await JSZip.loadAsync(zipFile);
@@ -39,7 +45,7 @@ export const CreateBackupFromZip: React.FC = () => {
             const sections: BackupSection[] = [];
             let currentProcessingIndex = 0;
 
-            const chapterFilePromises = zip.file(/.txt$/i).map((file: any) => 
+            const chapterFilePromises = zip.file(/.txt$/i).map((file: any) =>
                 file.async('string').then((text: string) => ({ name: file.name, text }))
             );
 
@@ -56,7 +62,7 @@ export const CreateBackupFromZip: React.FC = () => {
                 sections.push({ code: sectionCode, title, synopsis: '', ranking: currentRank, section_scenes: [{ code: sceneCode, ranking: 1 }] });
                 currentProcessingIndex++;
             }
-            
+
             for (let i = 0; i < extraChapters; i++) {
                 const currentRank = startNumber + currentProcessingIndex;
                 const sceneCode = `scene${currentRank}`;
@@ -69,7 +75,7 @@ export const CreateBackupFromZip: React.FC = () => {
             }
 
             if (scenes.length === 0) {
-                 throw new Error('No .txt files found in ZIP and no extra chapters requested.');
+                throw new Error('No .txt files found in ZIP and no extra chapters requested.');
             }
 
             const backupData = createNewBackupStructure(projectTitle, description, uniqueCode);
@@ -81,7 +87,7 @@ export const CreateBackupFromZip: React.FC = () => {
             const safeFileNameBase = projectTitle.replace(/[^a-z0-9_\-\s]/gi, '_').replace(/\s+/g, '_');
             const filename = `${safeFileNameBase || 'backup_from_zip'}.json`;
 
-            if(triggerDownload(blob, filename)) {
+            if (triggerDownload(blob, filename)) {
                 setStatus({ message: `Backup file created with ${scenes.length} chapter(s). Download started.`, type: 'success' });
                 showToast(`Backup file created with ${scenes.length} chapter(s).`);
             } else {
@@ -96,63 +102,114 @@ export const CreateBackupFromZip: React.FC = () => {
             hideSpinner();
         }
     };
-    
+
     return (
-        <div id="createBackupFromZipApp" className="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 animate-fade-in will-change-[transform,opacity]">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">Create Backup from ZIP</h1>
-            <div className="max-w-md mx-auto mb-6">
-                <FileInput 
-                    inputId="zipBackupFile" 
-                    label="Upload ZIP File" 
-                    accept=".zip"
-                    onFileSelected={(files) => setZipFile(files[0])}
-                    onFileCleared={() => setZipFile(null)}
-                />
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">Upload a ZIP file containing .txt chapter files</p>
-            </div>
-            
-            <div className="space-y-6 max-w-md mx-auto">
-                 <div className="p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
-                    <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">Project Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label htmlFor="zipProjectTitle" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Project Title:</label>
-                            <input type="text" id="zipProjectTitle" value={projectTitle} onChange={e => setProjectTitle(e.target.value)} placeholder="Enter project title" className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
+        <div id="createBackupFromZipApp" className="max-w-4xl mx-auto space-y-6 animate-fade-in p-4 md:p-8">
+            <PageHeader
+                title="Create Backup from ZIP"
+                description="Initialize a new novel backup project from an existing ZIP archive of text chapters."
+            />
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Source Files</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <FileInput
+                        inputId="zipBackupFile"
+                        label="Upload ZIP File"
+                        accept=".zip"
+                        onFileSelected={(files) => setZipFile(files[0])}
+                        onFileCleared={() => setZipFile(null)}
+                    />
+                </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="h-full">
+                    <CardHeader>
+                        <CardTitle>Project Details</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="zipProjectTitle">Project Title</Label>
+                            <Input
+                                id="zipProjectTitle"
+                                value={projectTitle}
+                                onChange={e => setProjectTitle(e.target.value)}
+                                placeholder="My Novel Project"
+                            />
                         </div>
-                        <div>
-                             <label htmlFor="zipUniqueCode" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Unique Code (Optional):</label>
-                            <input type="text" id="zipUniqueCode" value={uniqueCode} onChange={e => setUniqueCode(e.target.value)} placeholder="Auto-generated if blank" className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
+                        <div className="space-y-2">
+                            <Label htmlFor="zipUniqueCode">Unique Code (Optional)</Label>
+                            <Input
+                                id="zipUniqueCode"
+                                value={uniqueCode}
+                                onChange={e => setUniqueCode(e.target.value)}
+                                placeholder="Auto-generated if blank"
+                            />
                         </div>
-                    </div>
-                     <div className="mt-4">
-                        <label htmlFor="zipDescription" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Description:</label>
-                        <textarea id="zipDescription" value={description} onChange={e => setDescription(e.target.value)} placeholder="Enter project description" rows={3} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full min-h-[80px]"></textarea>
-                    </div>
-                 </div>
-                 <div className="p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
-                    <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4 flex items-center gap-2">Chapter Configuration</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label htmlFor="zipChapterPattern" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Chapter Pattern:</label>
-                            <input type="text" id="zipChapterPattern" value={chapterPattern} onChange={e => setChapterPattern(e.target.value)} placeholder="e.g., Chapter " className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
+                        <div className="space-y-2">
+                            <Label htmlFor="zipDescription">Description</Label>
+                            <Input
+                                id="zipDescription"
+                                value={description}
+                                onChange={e => setDescription(e.target.value)}
+                                placeholder="Short description of the novel"
+                            />
                         </div>
-                        <div>
-                            <label htmlFor="zipStartNumber" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Start Number:</label>
-                            <input type="number" id="zipStartNumber" value={startNumber} onChange={e => setStartNumber(parseInt(e.target.value, 10))} min="1" className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
+                    </CardContent>
+                </Card>
+
+                <Card className="h-full">
+                    <CardHeader>
+                        <CardTitle>Structure</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="zipChapterPattern">Chapter Prefix Pattern</Label>
+                            <Input
+                                id="zipChapterPattern"
+                                value={chapterPattern}
+                                onChange={e => setChapterPattern(e.target.value)}
+                                placeholder="e.g., Chapter"
+                            />
                         </div>
-                    </div>
-                    <div className="mt-4">
-                        <label htmlFor="zipExtraChapters" className="flex items-center gap-2 block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Extra Empty Chapters:</label>
-                        <input type="number" id="zipExtraChapters" value={extraChapters} onChange={e => setExtraChapters(parseInt(e.target.value, 10))} min="0" className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 w-full" />
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Add this many empty chapters to the end of your backup</p>
-                    </div>
-                 </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="zipStartNumber">Start Numbering At</Label>
+                            <Input
+                                type="number"
+                                id="zipStartNumber"
+                                value={startNumber}
+                                onChange={e => setStartNumber(parseInt(e.target.value, 10))}
+                                min="1"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="zipExtraChapters">Append Empty Chapters</Label>
+                            <Input
+                                type="number"
+                                id="zipExtraChapters"
+                                value={extraChapters}
+                                onChange={e => setExtraChapters(parseInt(e.target.value, 10))}
+                                min="0"
+                            />
+                            <p className="text-xs text-muted-foreground">Add placeholders for future writing.</p>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
-            <div className="mt-8 flex justify-center">
-                <button onClick={handleCreateBackup} disabled={!zipFile} className="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 disabled:opacity-60 disabled:cursor-not-allowed">
-                    Generate Backup and Download
-                </button>
+            <div className="flex justify-center pt-4">
+                <Button
+                    onClick={handleCreateBackup}
+                    disabled={!zipFile || !projectTitle}
+                    size="lg"
+                    className="w-full md:w-auto min-w-[200px]"
+                >
+                    <Save className="mr-2 h-4 w-4" />
+                    Create Backup
+                </Button>
             </div>
             <StatusMessage status={status} />
         </div>

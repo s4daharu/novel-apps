@@ -5,6 +5,17 @@ import { StatusMessage } from '../components/StatusMessage';
 import { triggerDownload, getJSZip, escapeHTML } from '../utils/helpers';
 import { generateEpubBlob } from '../utils/epubGenerator';
 import { Status } from '../utils/types';
+import { PageHeader } from '../components/ui/PageHeader';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { Label } from '../components/ui/Label';
+import { Badge } from '../components/ui/Badge';
+import { cn } from '../utils/cn';
+import {
+    Download, Upload, FileText, CheckSquare, Square, Trash2,
+    GripVertical, RefreshCw, Settings, FolderArchive, Book
+} from 'lucide-react';
 
 const EpubToZip: React.FC = () => {
     const { showToast, showSpinner, hideSpinner } = useAppContext();
@@ -191,47 +202,84 @@ const EpubToZip: React.FC = () => {
     };
 
     return (
-        <div id="epubToZipApp" className="space-y-5">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">EPUB to ZIP (TXT)</h1>
-            <div className="max-w-md mx-auto">
-                <FileInput inputId="epubUploadForTxt" label="Upload EPUB File" accept=".epub" onFileSelected={handleFileSelected} onFileCleared={resetUI} />
-            </div>
+        <div className="space-y-6 animate-fade-in">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Source EPUB</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <FileInput inputId="epubUploadForTxt" label="Upload EPUB File" accept=".epub" onFileSelected={handleFileSelected} onFileCleared={resetUI} />
+                </CardContent>
+            </Card>
 
             {chapters.length > 0 && (
-                <div className="mt-6 p-4 bg-slate-100 dark:bg-slate-700/30 rounded-lg border border-slate-200 dark:border-slate-600/50">
-                    <h4 className="text-lg font-semibold text-slate-800 dark:text-slate-200 text-center">Select Chapters to Extract:</h4>
-                    <div className="my-4 flex justify-center gap-3">
-                        <button onClick={() => setSelectedIndices(new Set(chapters.map(c => c.originalIndex)))} className="inline-flex items-center justify-center rounded-lg font-medium bg-teal-600 hover:bg-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 px-3 py-1 text-sm">Select All</button>
-                        <button onClick={() => setSelectedIndices(new Set())} className="inline-flex items-center justify-center rounded-lg font-medium bg-teal-600 hover:bg-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 px-3 py-1 text-sm">Deselect All</button>
-                    </div>
-                    <ul className="max-w-xl mx-auto max-h-48 overflow-y-auto bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-3 list-none text-left">
-                        {chapters.map(c => (
-                            <li key={c.id} className="flex items-center gap-2 p-1.5 rounded-md transition-colors hover:bg-slate-200 dark:hover:bg-slate-700">
-                                <input type="checkbox" id={c.id} checked={selectedIndices.has(c.originalIndex)} onChange={e => setSelectedIndices(p => { const s = new Set(p); e.target.checked ? s.add(c.originalIndex) : s.delete(c.originalIndex); return s; })} className="w-4 h-4 rounded border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-primary-500 accent-primary-600" />
-                                <label htmlFor={c.id} className="text-sm text-slate-700 dark:text-slate-300 flex-1 cursor-pointer">{c.title}</label>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            )}
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <div className="space-y-1">
+                            <CardTitle>Select Chapters</CardTitle>
+                            <p className="text-sm text-muted-foreground">{selectedIndices.size} of {chapters.length} selected</p>
+                        </div>
+                        <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={() => setSelectedIndices(new Set(chapters.map(c => c.originalIndex)))}>Select All</Button>
+                            <Button variant="outline" size="sm" onClick={() => setSelectedIndices(new Set())}>Clear</Button>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="max-h-64 overflow-y-auto border rounded-md p-1">
+                            {chapters.map(c => {
+                                const isSelected = selectedIndices.has(c.originalIndex);
+                                return (
+                                    <div
+                                        key={c.id}
+                                        className={cn(
+                                            "flex items-center gap-3 p-2 rounded-md hover:bg-accent cursor-pointer transition-colors",
+                                            isSelected ? "bg-accent/50" : ""
+                                        )}
+                                        onClick={() => setSelectedIndices(p => { const s = new Set(p); isSelected ? s.delete(c.originalIndex) : s.add(c.originalIndex); return s; })}
+                                    >
+                                        <div className={cn("flex-shrink-0", isSelected ? "text-primary" : "text-muted-foreground")}>
+                                            {isSelected ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+                                        </div>
+                                        <span className="text-sm truncate">{c.title}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
 
-            <div className="max-w-md mx-auto space-y-4">
-                <div>
-                    <label className="flex items-center gap-2 justify-center text-slate-800 dark:text-slate-200 select-none cursor-pointer">
-                        <input type="checkbox" checked={enableRemoveLines} onChange={e => setEnableRemoveLines(e.target.checked)} className="w-4 h-4 align-middle rounded border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-primary-500 accent-primary-600" />
-                        Remove initial lines from chapters
-                    </label>
-                </div>
-                {enableRemoveLines && (
-                    <div className="text-center">
-                        <label htmlFor="linesToRemove" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Number of lines to remove:</label>
-                        <input type="number" id="linesToRemove" min="0" value={linesToRemove} onChange={e => setLinesToRemove(parseInt(e.target.value, 10))} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 max-w-[100px] mx-auto" />
-                    </div>
-                )}
-            </div>
-            <div className="text-center">
-                <button onClick={handleExtract} disabled={!epubFile || chapters.length === 0} className="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 focus:ring-offset-slate-100 disabled:opacity-60 disabled:cursor-not-allowed">Extract Chapters to ZIP</button>
-            </div>
+                        <div className="mt-4 pt-4 border-t space-y-4">
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    id="removeLinesCheck"
+                                    checked={enableRemoveLines}
+                                    onChange={e => setEnableRemoveLines(e.target.checked)}
+                                    className="rounded border-input text-primary focus:ring-primary"
+                                />
+                                <Label htmlFor="removeLinesCheck" className="font-normal cursor-pointer">Remove initial lines from extracted text</Label>
+                            </div>
+
+                            {enableRemoveLines && (
+                                <div className="flex items-center gap-2 pl-6">
+                                    <Label htmlFor="linesToRemove" className="text-xs">Line count:</Label>
+                                    <Input
+                                        type="number"
+                                        id="linesToRemove"
+                                        min="0"
+                                        value={linesToRemove}
+                                        onChange={e => setLinesToRemove(parseInt(e.target.value, 10))}
+                                        className="h-8 w-20"
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                    <CardFooter className="justify-center border-t pt-6">
+                        <Button onClick={handleExtract} disabled={!epubFile || chapters.length === 0} size="lg" className="w-full md:w-auto min-w-[200px]">
+                            <Download className="mr-2 h-4 w-4" /> Extract to ZIP
+                        </Button>
+                    </CardFooter>
+                </Card>
+            )}
             <StatusMessage status={status} />
         </div>
     );
@@ -239,7 +287,7 @@ const EpubToZip: React.FC = () => {
 
 type Chapter = { name: string; content: string; title: string; };
 
-// Memoized chapter list item to prevent unnecessary re-renders
+// Memoized chapter list item
 const ChapterListItem = memo(({
     chapter,
     index,
@@ -258,26 +306,22 @@ const ChapterListItem = memo(({
     <li
         onDragEnter={onDragEnter}
         onDragOver={e => e.preventDefault()}
-        className="flex items-center gap-1 p-1.5 border-b dark:border-slate-700 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-700/50 group"
+        className="flex items-center gap-2 p-2 border-b last:border-0 hover:bg-accent/50 transition-colors group"
     >
-        {/* Touch-friendly drag handle - 48px minimum touch target */}
         <div
             draggable
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
-            className="flex items-center justify-center w-12 h-12 cursor-grab active:cursor-grabbing touch-none rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 active:bg-slate-300 dark:active:bg-slate-500 transition-colors flex-shrink-0"
+            className="p-2 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
             title="Drag to reorder"
         >
-            <svg className="w-5 h-5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-            </svg>
+            <GripVertical className="h-4 w-4" />
         </div>
-        <span className="text-xs text-slate-400 w-6 flex-shrink-0 text-center">{index + 1}.</span>
-        <input
-            type="text"
+        <span className="text-xs text-muted-foreground w-6 text-center">{index + 1}.</span>
+        <Input
             value={chapter.title}
             onChange={e => onTitleChange(index, e.target.value)}
-            className="flex-grow bg-transparent p-2 rounded-md border border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 min-w-0 text-sm"
+            className="h-8 text-sm"
         />
     </li>
 ));
@@ -345,9 +389,7 @@ const ZipToEpub: React.FC = () => {
         let counter = renameStartNum;
         setChapters(prev => prev.map(chapter => ({
             ...chapter,
-            title: renamePattern
-                .replace('{n}', String(counter++))
-                .replace('{title}', chapter.title)
+            title: renamePattern.replace('{n}', String(counter++)).replace('{title}', chapter.title)
         })));
         setShowBatchRename(false);
         showToast(`Renamed ${chapters.length} chapters`);
@@ -361,8 +403,6 @@ const ZipToEpub: React.FC = () => {
         showSpinner();
         try {
             const JSZip = await getJSZip();
-
-            // Prepare cover image data if provided
             let coverImageData: ArrayBuffer | undefined;
             let coverImageExt: string | undefined;
             if (coverFile) {
@@ -370,16 +410,10 @@ const ZipToEpub: React.FC = () => {
                 coverImageExt = coverFile.name.split('.').pop()?.toLowerCase() || 'jpg';
             }
 
-            // Use shared EPUB generator
             const epubBlob = await generateEpubBlob(
                 JSZip,
                 chapters.map(c => ({ title: c.title, content: c.content })),
-                {
-                    title: epubTitle,
-                    language: epubLang,
-                    coverImageData,
-                    coverImageExt
-                }
+                { title: epubTitle, language: epubLang, coverImageData, coverImageExt }
             );
 
             triggerDownload(epubBlob, `${epubTitle.replace(/[^a-z0-9]/gi, '_')}.epub`);
@@ -402,23 +436,29 @@ const ZipToEpub: React.FC = () => {
     };
 
     return (
-        <div id="zipToEpubApp" className="space-y-5">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">ZIP to EPUB Converter</h1>
-            <div className="max-w-md mx-auto space-y-4">
-                <FileInput inputId="zipUpload" label="Upload ZIP with .txt Chapters" accept=".zip" onFileSelected={handleFileSelected} onFileCleared={resetUI} />
+        <div className="space-y-6 animate-fade-in">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Source Files</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <FileInput inputId="zipUpload" label="Upload ZIP with .txt Chapters" accept=".zip" onFileSelected={handleFileSelected} onFileCleared={resetUI} />
+                </CardContent>
+            </Card>
 
-                {chapters.length > 0 && (
-                    <div className="p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
-                        <div className="flex justify-between items-center mb-2">
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Chapter Order & Titles (drag to reorder):</label>
-                            <button
-                                onClick={() => setShowBatchRename(true)}
-                                className="text-xs px-2 py-1 rounded bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors"
-                            >
-                                Batch Rename
-                            </button>
+            {chapters.length > 0 && (
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <div className="space-y-1">
+                            <CardTitle>Chapter Organization</CardTitle>
+                            <p className="text-sm text-muted-foreground">Drag to reorder • {chapters.length} chapters</p>
                         </div>
-                        <ul className="max-h-64 overflow-y-auto border rounded-lg bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600">
+                        <Button variant="outline" size="sm" onClick={() => setShowBatchRename(true)}>
+                            Batch Rename
+                        </Button>
+                    </CardHeader>
+                    <CardContent>
+                        <ul className="max-h-64 overflow-y-auto border rounded-md">
                             {chapters.map((chap, index) => (
                                 <ChapterListItem
                                     key={chap.name}
@@ -431,66 +471,75 @@ const ZipToEpub: React.FC = () => {
                                 />
                             ))}
                         </ul>
-                    </div>
-                )}
+                    </CardContent>
+                </Card>
+            )}
 
-                <div className="p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30 space-y-4">
-                    <div>
-                        <label htmlFor="epubTitle" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">EPUB Title:</label>
-                        <input type="text" id="epubTitle" value={epubTitle} onChange={e => setEpubTitle(e.target.value)} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 w-full" />
-                    </div>
-                    <div>
-                        <label htmlFor="epubLang" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Language Code:</label>
-                        <input type="text" id="epubLang" value={epubLang} onChange={e => setEpubLang(e.target.value)} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 w-full" />
-                    </div>
-                    <FileInput inputId="coverUpload" label="Upload Cover Image (Optional)" accept="image/jpeg,image/png" onFileSelected={files => setCoverFile(files[0])} onFileCleared={() => setCoverFile(null)} />
-                </div>
-
-                <div className="text-center">
-                    <button onClick={handleCreateEpub} disabled={chapters.length === 0} className="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg disabled:opacity-50">Create EPUB</button>
-                </div>
-
-                {/* Batch Rename Modal */}
-                {showBatchRename && (
-                    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                        <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-md shadow-xl">
-                            <h3 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">Batch Rename Chapters</h3>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                                        Pattern <span className="text-xs text-slate-500">({'{n}'} = number, {'{title}'} = current)</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={renamePattern}
-                                        onChange={e => setRenamePattern(e.target.value)}
-                                        placeholder="Chapter {n}"
-                                        className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-3 py-2"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Start Number</label>
-                                    <input
-                                        type="number"
-                                        value={renameStartNum}
-                                        onChange={e => setRenameStartNum(parseInt(e.target.value) || 1)}
-                                        min="1"
-                                        className="w-24 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-3 py-2"
-                                    />
-                                </div>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    Preview: "{renamePattern.replace('{n}', String(renameStartNum)).replace('{title}', 'Original Title')}"
-                                </p>
-                            </div>
-                            <div className="mt-6 flex justify-end gap-3">
-                                <button onClick={() => setShowBatchRename(false)} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">Cancel</button>
-                                <button onClick={handleBatchRename} className="px-4 py-2 rounded bg-primary-600 text-white hover:bg-primary-700">Rename All</button>
-                            </div>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Metadata</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="epubTitle">EPUB Title</Label>
+                            <Input id="epubTitle" value={epubTitle} onChange={e => setEpubTitle(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="epubLang">Language Code</Label>
+                            <Input id="epubLang" value={epubLang} onChange={e => setEpubLang(e.target.value)} />
                         </div>
                     </div>
-                )}
-                <StatusMessage status={status} />
-            </div>
+                    <div className="space-y-2">
+                        <Label>Cover Image (Optional)</Label>
+                        <FileInput inputId="coverUpload" label="Upload Cover Image" accept="image/jpeg,image/png" onFileSelected={files => setCoverFile(files[0])} onFileCleared={() => setCoverFile(null)} />
+                    </div>
+                </CardContent>
+                <CardFooter className="justify-center border-t pt-6">
+                    <Button onClick={handleCreateEpub} disabled={chapters.length === 0} size="lg" className="w-full md:w-auto min-w-[200px]">
+                        <Book className="mr-2 h-4 w-4" /> Create EPUB
+                    </Button>
+                </CardFooter>
+            </Card>
+
+            {/* Batch Rename Modal */}
+            {showBatchRename && (
+                <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <Card className="w-full max-w-md shadow-lg animate-scale-in">
+                        <CardHeader>
+                            <CardTitle>Batch Rename Chapters</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label>Pattern</Label>
+                                <Input
+                                    value={renamePattern}
+                                    onChange={e => setRenamePattern(e.target.value)}
+                                    placeholder="Chapter {n}"
+                                />
+                                <p className="text-xs text-muted-foreground">{'{n}'} = number, {'{title}'} = current title</p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Start Number</Label>
+                                <Input
+                                    type="number"
+                                    value={renameStartNum}
+                                    onChange={e => setRenameStartNum(parseInt(e.target.value) || 1)}
+                                    min="1"
+                                />
+                            </div>
+                            <div className="p-2 bg-muted rounded text-sm">
+                                Preview: <span className="font-mono">{renamePattern.replace('{n}', String(renameStartNum)).replace('{title}', 'Title')}</span>
+                            </div>
+                        </CardContent>
+                        <CardFooter className="justify-end gap-2">
+                            <Button variant="ghost" onClick={() => setShowBatchRename(false)}>Cancel</Button>
+                            <Button onClick={handleBatchRename}>Rename All</Button>
+                        </CardFooter>
+                    </Card>
+                </div>
+            )}
+            <StatusMessage status={status} />
         </div>
     );
 };
@@ -499,34 +548,32 @@ export const ZipEpub: React.FC = () => {
     const [mode, setMode] = useState<'zipToEpub' | 'epubToZip'>('zipToEpub');
 
     return (
-        <div id="zipEpubApp" className="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 animate-fade-in will-change-[transform,opacity]">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">ZIP ↔ EPUB Converter</h1>
-            <div className="max-w-md mx-auto mb-6">
-                <label className="text-center block mb-4 text-slate-800 dark:text-slate-200">Conversion Direction:</label>
-                <div className="flex justify-center gap-3 mt-2">
-                    <button
+        <div id="zipEpubApp" className="max-w-4xl mx-auto space-y-6 animate-fade-in p-4 md:p-8">
+            <PageHeader
+                title="ZIP ↔ EPUB Converter"
+                description="Convert between ZIP archives of chapter files and EPUB books."
+            />
+
+            <div className="flex justify-center mb-8">
+                <div className="bg-muted p-1 rounded-lg inline-flex">
+                    <Button
+                        variant={mode === 'zipToEpub' ? 'default' : 'ghost'}
                         onClick={() => setMode('zipToEpub')}
-                        className={`flex items-center px-6 py-3 rounded-lg font-medium shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 hover:scale-105 ${mode === 'zipToEpub'
-                            ? 'bg-primary-600 text-white focus:ring-primary-500 hover:bg-primary-700'
-                            : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 focus:ring-slate-500 hover:bg-slate-300 dark:hover:bg-slate-600'
-                            }`}
+                        className="w-40"
                     >
-                        <span>ZIP → EPUB</span>
-                    </button>
-                    <button
+                        ZIP → EPUB
+                    </Button>
+                    <Button
+                        variant={mode === 'epubToZip' ? 'default' : 'ghost'}
                         onClick={() => setMode('epubToZip')}
-                        className={`flex items-center px-6 py-3 rounded-lg font-medium shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 hover:scale-105 ${mode === 'epubToZip'
-                            ? 'bg-primary-600 text-white focus:ring-primary-500 hover:bg-primary-700'
-                            : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 focus:ring-slate-500 hover:bg-slate-300 dark:hover:bg-slate-600'
-                            }`}
+                        className="w-40"
                     >
-                        <span>EPUB → ZIP</span>
-                    </button>
+                        EPUB → ZIP
+                    </Button>
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 text-center mt-3">Choose your conversion direction</p>
             </div>
 
-            <div id="zipEpubHost">
+            <div key={mode} className="animate-fade-in">
                 {mode === 'zipToEpub' ? <ZipToEpub /> : <EpubToZip />}
             </div>
         </div>

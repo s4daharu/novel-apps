@@ -5,6 +5,16 @@ import { StatusMessage } from '../components/StatusMessage';
 import { triggerDownload } from '../utils/helpers';
 import { calculateWordCount } from '../utils/backupHelpers';
 import { Status, BackupData, BackupScene, BackupSection } from '../utils/types';
+import { PageHeader } from '../components/ui/PageHeader';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { Label } from '../components/ui/Label';
+import { cn } from '../utils/cn';
+import {
+    ArrowUp, ArrowDown, GripVertical, Merge, FileText, Image as ImageIcon,
+    Check
+} from 'lucide-react';
 
 export const MergeBackup: React.FC = () => {
     const { showToast, showSpinner, hideSpinner } = useAppContext();
@@ -44,6 +54,10 @@ export const MergeBackup: React.FC = () => {
         if (loadedFiles.length > 0) {
             const firstCover = loadedFiles.find(f => f.cover)?.cover || null;
             setSelectedCover(firstCover);
+            // Auto-fill title if empty
+            if (!mergedTitle && loadedFiles[0].title) {
+                setMergedTitle(`${loadedFiles[0].title} (Merged)`);
+            }
         }
         hideSpinner();
     };
@@ -52,7 +66,7 @@ export const MergeBackup: React.FC = () => {
         setStatus(null);
         if (files.length === 0) return showToast('Select at least one backup file to merge.', true);
         if (!mergedTitle) return showToast('Merged Project Title is required.', true);
-        
+
         showSpinner();
         try {
             let combinedScenes: BackupScene[] = [];
@@ -114,16 +128,16 @@ export const MergeBackup: React.FC = () => {
             };
 
             const blob = new Blob([JSON.stringify(mergedData, null, 2)], { type: 'application/json' });
-            const filenameBase = mergedTitle.replace(/[^a-z0-9_\\-\\s]/gi, '_').replace(/\\s+/g, '_') || 'merged_backup';
+            const filenameBase = mergedTitle.replace(/[^a-z0-9_\-\s]/gi, '_').replace(/\s+/g, '_') || 'merged_backup';
             triggerDownload(blob, `${filenameBase}.json`);
             setStatus({ message: `Backup files merged into "${mergedTitle}". Download started.`, type: 'success' });
-        } catch(e: any) {
+        } catch (e: any) {
             setStatus({ message: `Error: ${e.message}`, type: 'error' });
         } finally {
             hideSpinner();
         }
     };
-    
+
     const handleDragSort = () => {
         if (draggedItemIndex.current === null || draggedOverItemIndex.current === null) return;
         const items = [...files];
@@ -144,83 +158,172 @@ export const MergeBackup: React.FC = () => {
         newFiles.splice(newIndex, 0, item);
         setFiles(newFiles);
     };
-    
+
     const covers = useMemo(() => files.map(f => f.cover).filter((c): c is string => c !== null), [files]);
 
     return (
-        <div id="mergeBackupApp" className="max-w-3xl md:max-w-4xl mx-auto p-4 md:p-6 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm space-y-5 animate-fade-in will-change-[transform,opacity]">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-5 text-center">Merge Backup Files</h1>
-            <div className="max-w-md mx-auto mb-6">
-                <FileInput inputId="mergeBackupFiles" label="Upload Backup Files" accept=".json,.txt,.nov" multiple onFileSelected={handleFileSelected} onFileCleared={() => setFiles([])} />
-            </div>
+        <div id="mergeBackupApp" className="max-w-4xl mx-auto space-y-6 animate-fade-in p-4 md:p-8">
+            <PageHeader
+                title="Merge Backup Files"
+                description="Combine multiple novel backup files into a single project."
+            />
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Source Backups</CardTitle>
+                    <CardDescription>Upload .json, .txt, or .nov files to merge.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <FileInput inputId="mergeBackupFiles" label="Upload Backup Files" accept=".json,.txt,.nov" multiple onFileSelected={handleFileSelected} onFileCleared={() => setFiles([])} />
+                </CardContent>
+            </Card>
+
             {files.length > 0 && (
-                <>
-                <div className="max-w-md mx-auto">
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Files to merge (drag or use arrows to reorder):</label>
-                    <ul className="list-none p-2 my-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-100 dark:bg-slate-800 max-h-48 overflow-y-auto">
-                        {files.map((file, index) => (
-                            <li key={file.id} draggable onDragStart={() => (draggedItemIndex.current = index)} onDragEnter={() => (draggedOverItemIndex.current = index)} onDragEnd={handleDragSort} onDragOver={e => e.preventDefault()}
-                                className="flex items-center p-1.5 border-b border-slate-200 dark:border-slate-700 last:border-b-0 cursor-grab user-select-none transition-all duration-200 rounded-md mb-0.5 hover:bg-slate-200/50 dark:hover:bg-slate-700/50">
-                                <span className="flex-grow text-slate-800 dark:text-slate-200 p-1.5 text-sm">{file.title}</span>
-                                <div className="flex flex-col">
-                                    <button onClick={() => handleMove(index, 'up')} disabled={index === 0} className="p-1 text-slate-500 disabled:opacity-30" aria-label={`Move ${file.title} up`}>
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" /></svg>
-                                    </button>
-                                    <button onClick={() => handleMove(index, 'down')} disabled={index === files.length - 1} className="p-1 text-slate-500 disabled:opacity-30" aria-label={`Move ${file.title} down`}>
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7 7" /></svg>
-                                    </button>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-                 {covers.length > 0 && (
-                    <div className="max-w-2xl mx-auto mb-6">
-                        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-3 text-center">Select a Cover</h3>
-                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 p-3 bg-slate-100 dark:bg-slate-700/30 rounded-lg border border-slate-200 dark:border-slate-600/50">
-                             <div onClick={() => setSelectedCover(null)} className={`w-full aspect-[2/3] bg-slate-200 dark:bg-slate-800 rounded-md flex items-center justify-center text-center text-xs p-2 text-slate-600 dark:text-slate-300 cursor-pointer transition-all duration-200 ${!selectedCover ? 'ring-4 ring-primary-500' : ''}`}>
-                                No Cover
-                            </div>
-                            {covers.map((cover, i) => (
-                                <div key={i} onClick={() => setSelectedCover(cover)} style={{ backgroundImage: `url(data:image/jpeg;base64,${cover})` }}
-                                className={`w-full aspect-[2/3] bg-cover bg-center rounded-md cursor-pointer transition-all duration-200 ${selectedCover === cover ? 'ring-4 ring-primary-500' : ''}`}>
-                                </div>
-                            ))}
-                        </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-6">
+                        <Card className="h-full flex flex-col">
+                            <CardHeader>
+                                <CardTitle>Merge Order</CardTitle>
+                                <CardDescription>Drag or use arrows to rearrange.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="flex-grow">
+                                <ul className="list-none space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                                    {files.map((file, index) => (
+                                        <li
+                                            key={file.id}
+                                            draggable
+                                            onDragStart={() => (draggedItemIndex.current = index)}
+                                            onDragEnter={() => (draggedOverItemIndex.current = index)}
+                                            onDragEnd={handleDragSort}
+                                            onDragOver={e => e.preventDefault()}
+                                            className="flex items-center gap-3 p-3 bg-muted/40 border rounded-lg hover:border-primary/50 transition-colors group"
+                                        >
+                                            <div className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground">
+                                                <GripVertical className="h-5 w-5" />
+                                            </div>
+                                            <div className="flex-grow min-w-0">
+                                                <div className="font-medium text-sm truncate">{file.title}</div>
+                                                <div className="text-xs text-muted-foreground truncate">{file.file.name}</div>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMove(index, 'up')} disabled={index === 0}>
+                                                    <ArrowUp className="h-3 w-3" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleMove(index, 'down')} disabled={index === files.length - 1}>
+                                                    <ArrowDown className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </CardContent>
+                        </Card>
                     </div>
-                 )}
-                </>
+
+                    <div className="space-y-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Merged Project Info</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="mergeProjectTitle">Project Title</Label>
+                                    <Input
+                                        id="mergeProjectTitle"
+                                        value={mergedTitle}
+                                        onChange={e => setMergedTitle(e.target.value)}
+                                        placeholder="e.g. My Anthology"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="mergeDescription">Description</Label>
+                                    <textarea
+                                        id="mergeDescription"
+                                        value={mergedDesc}
+                                        onChange={e => setMergedDesc(e.target.value)}
+                                        placeholder="Enter description..."
+                                        className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    />
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Configuration</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="mergePrefix">Chapter Prefix (Optional)</Label>
+                                    <Input
+                                        id="mergePrefix"
+                                        value={chapterPrefix}
+                                        onChange={e => setChapterPrefix(e.target.value)}
+                                        placeholder="e.g., Part I - "
+                                    />
+                                </div>
+                                <div className="flex items-center space-x-2 border p-3 rounded-lg bg-muted/20">
+                                    <input
+                                        type="checkbox"
+                                        id="mergePreserveTitles"
+                                        checked={preserveTitles}
+                                        onChange={e => setPreserveTitles(e.target.checked)}
+                                        className="rounded border-input text-primary focus:ring-primary"
+                                    />
+                                    <Label htmlFor="mergePreserveTitles" className="font-normal cursor-pointer select-none">
+                                        Preserve Original Chapter Titles
+                                    </Label>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {covers.length > 0 && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <ImageIcon className="h-4 w-4" /> Cover Image
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        <div
+                                            onClick={() => setSelectedCover(null)}
+                                            className={cn(
+                                                "aspect-[2/3] rounded-md border-2 flex items-center justify-center text-xs text-center cursor-pointer p-1 transition-all",
+                                                !selectedCover ? "border-primary bg-primary/10 text-primary" : "border-transparent bg-muted text-muted-foreground hover:bg-muted/80"
+                                            )}
+                                        >
+                                            No Cover
+                                        </div>
+                                        {covers.map((cover, i) => (
+                                            <div
+                                                key={i}
+                                                onClick={() => setSelectedCover(cover)}
+                                                className={cn(
+                                                    "aspect-[2/3] rounded-md border-2 bg-cover bg-center cursor-pointer transition-all",
+                                                    selectedCover === cover ? "border-primary ring-2 ring-primary/20" : "border-transparent opacity-70 hover:opacity-100"
+                                                )}
+                                                style={{ backgroundImage: `url(data:image/jpeg;base64,${cover})` }}
+                                            />
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+                </div>
             )}
 
-            <div className="space-y-6 max-w-md mx-auto">
-                <div className="p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
-                    <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Merged Project Info</h3>
-                    <div>
-                        <label htmlFor="mergeProjectTitle" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Merged Project Title:</label>
-                        <input type="text" id="mergeProjectTitle" value={mergedTitle} onChange={e => setMergedTitle(e.target.value)} placeholder="Enter title for merged backup" className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 w-full" />
-                    </div>
-                    <div className="mt-4">
-                        <label htmlFor="mergeDescription" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Merged Description:</label>
-                        <textarea id="mergeDescription" value={mergedDesc} onChange={e => setMergedDesc(e.target.value)} placeholder="Enter description" rows={3} className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 w-full"></textarea>
-                    </div>
-                </div>
-
-                <div className="p-4 bg-slate-100/50 dark:bg-slate-700/20 rounded-lg border border-slate-200 dark:border-slate-600/30">
-                    <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Chapter Configuration</h3>
-                     <div>
-                        <label htmlFor="mergePrefix" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Prefix for Chapters (Optional):</label>
-                        <input type="text" id="mergePrefix" value={chapterPrefix} onChange={e => setChapterPrefix(e.target.value)} placeholder="e.g., Part I - " className="bg-slate-100 dark:bg-slate-700 border-2 border-transparent rounded-lg px-3 py-2 text-gray-900 dark:text-white focus:border-primary-500 w-full" />
-                    </div>
-                    <div className="mt-4">
-                        <label className="flex items-center gap-2 text-slate-800 dark:text-slate-200 select-none cursor-pointer">
-                            <input type="checkbox" checked={preserveTitles} onChange={e => setPreserveTitles(e.target.checked)} className="w-4 h-4 rounded border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-primary-500 accent-primary-600"/> Preserve Original Chapter Titles
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <div className="mt-8 flex justify-center">
-                <button onClick={handleMerge} disabled={files.length === 0} className="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg disabled:opacity-50">Merge and Download</button>
+            <div className="flex justify-center pt-6">
+                <Button
+                    onClick={handleMerge}
+                    disabled={files.length === 0}
+                    size="lg"
+                    className="w-full md:w-auto min-w-[200px]"
+                >
+                    <Merge className="mr-2 h-4 w-4" />
+                    Merge and Download
+                </Button>
             </div>
             <StatusMessage status={status} />
         </div>
