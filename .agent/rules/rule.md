@@ -7,4 +7,6 @@ trigger: always_on
 
 ## refer to these samples if required 
 
+## This is a mobile first pwa app for android
+
 ## Suggest a commit message at the end of request if changes are made to the files

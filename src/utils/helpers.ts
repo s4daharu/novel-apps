@@ -12,6 +12,23 @@ export const escapeHTML = (str: string | undefined): string => {
     return str.replace(/[&<>"']/g, (c) => lookup[c]);
 };
 
+/**
+ * Generate a UUID v4 string.
+ * Uses crypto.randomUUID() when available (secure contexts),
+ * falls back to a Math.random() implementation for compatibility.
+ */
+export const generateUUID = (): string => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+    // Fallback for non-secure contexts
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0;
+        const v = c === 'x' ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+    });
+};
+
 export const triggerDownload = (blob: Blob, filename: string) => {
     try {
         const url = URL.createObjectURL(blob);
@@ -45,18 +62,18 @@ export async function pMap<T, R>(
     array: T[],
     mapper: (item: T, index: number) => Promise<R>,
     concurrency: number
-  ): Promise<R[]> {
+): Promise<R[]> {
     const results = new Array<R>(array.length);
     let index = 0;
     const next = async (): Promise<void> => {
-      while (index < array.length) {
-        const i = index++;
-        results[i] = await mapper(array[i], i);
-      }
+        while (index < array.length) {
+            const i = index++;
+            results[i] = await mapper(array[i], i);
+        }
     };
     await Promise.all(Array.from({ length: concurrency }, next));
     return results;
-  }
+}
 
 let FONT_CACHE: { cjkFontBytes: ArrayBuffer; latinFontBytes: ArrayBuffer; } | null = null;
 
@@ -78,7 +95,7 @@ export async function getFonts() {
     try {
         // Use a font with broad Latin character support for Pinyin, etc.
         const latinFontUrl = '/fonts/NotoSans-Regular.ttf';
-        
+
         // Use Alibaba PuHuiTi Heavy for CJK character support in PDFs.
         const cjkFontUrl = '/fonts/Alibaba-PuHuiTi-Heavy.otf';
 
@@ -86,7 +103,7 @@ export async function getFonts() {
             fetchFont(latinFontUrl, 'Latin Font (Noto Sans)'),
             fetchFont(cjkFontUrl, 'CJK Font (Alibaba PuHuiTi Heavy)')
         ]);
-        
+
         FONT_CACHE = { cjkFontBytes, latinFontBytes };
         return FONT_CACHE;
     } catch (error: any) {

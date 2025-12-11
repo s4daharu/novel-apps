@@ -5,6 +5,7 @@ import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { ToolWrapper } from './pages/ToolWrapper';
 import { InstallPrompt } from './components/InstallPrompt';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 export const App: React.FC = () => {
 
@@ -21,13 +22,15 @@ export const App: React.FC = () => {
 
     return (
         <AppProvider>
-            <Routes>
-                <Route path="/" element={<Layout />}>
-                    <Route index element={<Dashboard />} />
-                    <Route path="tool/:toolId" element={<ToolWrapper />} />
-                    <Route path="*" element={<Dashboard />} />
-                </Route>
-            </Routes>
+            <ErrorBoundary>
+                <Routes>
+                    <Route path="/" element={<Layout />}>
+                        <Route index element={<Dashboard />} />
+                        <Route path="tool/:toolId" element={<ToolWrapper />} />
+                        <Route path="*" element={<Dashboard />} />
+                    </Route>
+                </Routes>
+            </ErrorBoundary>
             <InstallPrompt />
         </AppProvider>
     );
