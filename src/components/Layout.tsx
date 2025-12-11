@@ -1,38 +1,17 @@
-
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, Outlet, useLocation, NavLink } from 'react-router-dom';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { toolSectionsMap } from '../pages/ToolWrapper';
+import { Button } from './ui/Button';
+import { Menu, X, BookOpen, Home } from 'lucide-react';
+import { cn } from '../utils/cn';
 
 export const Layout: React.FC = () => {
     const [isMenuOpen, setMenuOpen] = useState(false);
     const location = useLocation();
-    const sidebarRef = useRef<HTMLDivElement>(null);
-    const menuButtonRef = useRef<HTMLButtonElement>(null);
 
     // Close menu on route change
-    useEffect(() => {
-        setMenuOpen(false);
-    }, [location]);
-
-    // Handle escape key to close sidebar
-    useEffect(() => {
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && isMenuOpen) {
-                setMenuOpen(false);
-                menuButtonRef.current?.focus();
-            }
-        };
-
-        if (isMenuOpen) {
-            document.addEventListener('keydown', handleEscape);
-            // Focus trap: focus first link in sidebar
-            const firstLink = sidebarRef.current?.querySelector('a');
-            firstLink?.focus();
-        }
-
-        return () => document.removeEventListener('keydown', handleEscape);
-    }, [isMenuOpen]);
+    useEffect(() => setMenuOpen(false), [location]);
 
     // Prevent body scroll when menu is open on mobile
     useEffect(() => {
@@ -44,80 +23,93 @@ export const Layout: React.FC = () => {
         return () => { document.body.style.overflow = ''; };
     }, [isMenuOpen]);
 
-    const getPageTitle = useCallback(() => {
-        const toolId = location.pathname.split('/')[2];
-        if (toolId) {
-            return toolSectionsMap[toolId]?.title || 'Novel-Apps';
-        }
-        return 'Novel-Apps';
-    }, [location.pathname]);
-
-    // Explicitly define order to match the dashboard
     const toolOrder = ['splitter', 'augmentBackupWithZip', 'zipEpub', 'createBackupFromZip', 'mergeBackup', 'findReplaceBackup', 'backupOrganizer', 'novelSplitter'];
 
+    const NavItem = ({ to, icon: Icon, children }: { to: string, icon?: React.ElementType, children: React.ReactNode }) => (
+        <NavLink
+            to={to}
+            className={({ isActive }) => cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium",
+                isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            )}
+        >
+            {Icon && <Icon className="h-4 w-4" />}
+            {children}
+        </NavLink>
+    );
+
     return (
-        <>
-            {/* Mobile-first header */}
-            <header className="flex items-center justify-between p-4 bg-white/80 dark:bg-slate-800/50 backdrop-blur-sm border-b border-gray-200 dark:border-slate-700 md:hidden sticky top-0 z-30" style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">{getPageTitle()}</h1>
-                <div className="flex items-center gap-2">
-                    <ThemeToggleButton />
-                    <button
-                        ref={menuButtonRef}
-                        onClick={() => setMenuOpen(!isMenuOpen)}
-                        className="text-slate-500 dark:text-slate-300 hover:text-primary-600 dark:hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700"
-                        aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
-                        aria-expanded={isMenuOpen}
-                        aria-controls="sidebar"
-                    >
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                    </button>
-                </div>
-            </header>
-
-            {/* Desktop header */}
-            <header className="hidden md:flex items-center justify-between p-6 bg-white/80 dark:bg-slate-800/50 backdrop-blur-sm border-b border-gray-200 dark:border-slate-700 sticky top-0 z-30" style={{ paddingTop: 'calc(1.5rem + env(safe-area-inset-top))' }}>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{getPageTitle()}</h1>
-                <div className="absolute top-1/2 right-72 transform -translate-y-1/2">
+        <div className="min-h-screen bg-background flex flex-col md:flex-row">
+            {/* Mobile Header */}
+            <header className="md:hidden sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <div className="container flex h-14 items-center justify-between px-4">
+                    <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => setMenuOpen(!isMenuOpen)}>
+                            {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                        </Button>
+                        <span className="font-bold">Novel Apps</span>
+                    </div>
                     <ThemeToggleButton />
                 </div>
             </header>
 
-            {/* Mobile overlay - click to close */}
+            {/* Sidebar (Desktop) */}
+            <aside className="hidden md:flex flex-col w-64 border-r bg-card h-screen sticky top-0 z-30">
+                <div className="h-14 flex items-center px-4 border-b">
+                    <BookOpen className="h-6 w-6 text-primary mr-2" />
+                    <span className="font-bold text-lg">Novel Apps</span>
+                </div>
+                <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+                    <NavItem to="/" icon={Home}>Dashboard</NavItem>
+                    <div className="pt-4 pb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        Tools
+                    </div>
+                    {toolOrder.map(id => toolSectionsMap[id] && (
+                        <NavItem key={id} to={`/tool/${id}`}>
+                            {toolSectionsMap[id].title}
+                        </NavItem>
+                    ))}
+                </div>
+                <div className="p-4 border-t flex justify-between items-center">
+                    <span className="text-xs text-muted-foreground">v1.7.0</span>
+                    <ThemeToggleButton />
+                </div>
+            </aside>
+
+            {/* Mobile Sidebar Overlay */}
             {isMenuOpen && (
-                <div
-                    className="fixed inset-0 bg-black/50 z-10 md:hidden animate-fade-in"
-                    onClick={() => setMenuOpen(false)}
-                    aria-hidden="true"
-                />
+                <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm md:hidden" onClick={() => setMenuOpen(false)}>
+                    <div className="fixed inset-y-0 left-0 z-50 h-full w-3/4 max-w-sm bg-background border-r p-6 shadow-lg animate-slide-in-right" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-8">
+                            <span className="font-bold text-lg flex items-center gap-2">
+                                <BookOpen className="h-5 w-5 text-primary" />
+                                Novel Apps
+                            </span>
+                            <Button variant="ghost" size="icon" onClick={() => setMenuOpen(false)}>
+                                <X className="h-5 w-5" />
+                            </Button>
+                        </div>
+                        <nav className="space-y-1">
+                            <NavItem to="/" icon={Home}>Dashboard</NavItem>
+                            <div className="pt-4 pb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                Tools
+                            </div>
+                            {toolOrder.map(id => toolSectionsMap[id] && (
+                                <NavItem key={id} to={`/tool/${id}`}>
+                                    {toolSectionsMap[id].title}
+                                </NavItem>
+                            ))}
+                        </nav>
+                    </div>
+                </div>
             )}
 
-            {/* Sidebar */}
-            <div
-                ref={sidebarRef}
-                id="sidebar"
-                role="dialog"
-                aria-modal="true"
-                aria-label="Navigation menu"
-                className={`fixed top-0 right-0 w-64 h-full bg-slate-100 dark:bg-slate-800 border-l border-gray-200 dark:border-slate-700 transform transition-transform duration-300 ease-in-out md:translate-x-0 z-20 ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}
-            >
-                <div className="p-6 pt-20">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Tools</h2>
-                    <nav className="space-y-2" role="navigation">
-                        <Link to="/" className="w-full text-left px-4 py-3 rounded-lg text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200 block">Home Dashboard</Link>
-                        {toolOrder.map(id => (
-                            toolSectionsMap[id] && <Link key={id} to={`/tool/${id}`} className="w-full text-left px-4 py-3 rounded-lg text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-all duration-200 block">{toolSectionsMap[id]?.title}</Link>
-                        ))}
-                    </nav>
-                </div>
-            </div>
-
-            {/* Main Content Container */}
-            <main id="main-content" className="flex-1 pb-20 md:pb-0 md:mr-64 relative">
+            {/* Main Content */}
+            <main className="flex-1 w-full md:w-auto md:min-w-0 bg-secondary/10 relative">
                 <Outlet />
             </main>
-        </>
+        </div>
     );
 };

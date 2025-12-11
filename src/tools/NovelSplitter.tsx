@@ -1,9 +1,22 @@
-
 import React, { useState, useEffect, useRef, useMemo, useReducer, useCallback } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { triggerDownload, getJSZip, escapeHTML } from '../utils/helpers';
 import { generateEpubBlob } from '../utils/epubGenerator';
 import { FileInput } from '../components/FileInput';
+import { PageHeader } from '../components/ui/PageHeader';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
+import { Label } from '../components/ui/Label';
+import { Badge } from '../components/ui/Badge';
+import { cn } from '../utils/cn';
+import {
+    ChevronLeft, ChevronRight, Menu, Settings, Save, Upload, FileText,
+    Download, RefreshCw, Trash2, Plus, GripVertical, CheckSquare, Square,
+    Search, FolderOpen, Book, Type, Image as ImageIcon, MoreVertical,
+    ChevronUp, ChevronDown, FolderArchive
+} from 'lucide-react';
 
 // Types
 type Chapter = { id: string; title: string; content: string; };
@@ -552,335 +565,346 @@ export const NovelSplitter: React.FC = () => {
 
     const currentChapter = useMemo(() => chapters.find(c => c.id === selectedChapterId), [chapters, selectedChapterId]);
 
-    // Helper to get context around a match with highlighted text
-    const getMatchContext = useCallback((match: GlobalMatch, contextLength: number = 30) => {
-        const chapter = chapters.find(c => c.id === match.chapterId);
-        if (!chapter) return { before: '', match: match.text, after: '' };
-
-        const content = chapter.content;
-        const beforeStart = Math.max(0, match.index - contextLength);
-        const afterEnd = Math.min(content.length, match.index + match.length + contextLength);
-
-        return {
-            before: (beforeStart > 0 ? '...' : '') + content.substring(beforeStart, match.index),
-            match: match.text,
-            after: content.substring(match.index + match.length, afterEnd) + (afterEnd < content.length ? '...' : '')
-        };
-    }, [chapters]);
-
     const renderUploadStep = () => (
-        <div className="flex flex-col items-center justify-center min-h-[70vh] p-4 text-center">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Novel Splitter</h1>
-            <p className="text-slate-600 dark:text-slate-300 mb-8 max-w-md">Upload your novel as a single .txt file, and this tool will help you split it into chapters, clean it up, and export it.</p>
-            <div className="w-full max-w-md space-y-4">
-                <label htmlFor="novel-file-upload" className="w-full inline-flex items-center justify-center px-6 py-4 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer">
-                    Upload .txt Novel
-                </label>
-                <input type="file" id="novel-file-upload" className="hidden" accept=".txt" onChange={e => e.target.files && handleNovelFile(e.target.files[0])} />
+        <Card className="max-w-xl mx-auto mt-12 animate-fade-in text-center">
+            <CardHeader className="space-y-4">
+                <CardTitle className="text-3xl">Novel Splitter</CardTitle>
+                <CardDescription className="text-lg">
+                    Upload your novel as a single .txt file, and this tool will help you split it into chapters, clean it up, and export it.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div className="flex flex-col gap-4">
+                    <Label htmlFor="novel-file-upload" className="w-full h-32 flex flex-col items-center justify-center border-2 border-dashed border-input rounded-lg hover:bg-muted/50 cursor-pointer transition-colors">
+                        <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                        <span className="font-medium">Click to upload .txt Novel</span>
+                    </Label>
+                    <input type="file" id="novel-file-upload" className="hidden" accept=".txt" onChange={e => e.target.files && handleNovelFile(e.target.files[0])} />
 
-                {localStorage.getItem(SESSION_KEY) && (
-                    <button onClick={restoreSession} className="w-full px-6 py-3 rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white transition-colors">
-                        Restore Last Session
-                    </button>
-                )}
-            </div>
-        </div>
+                    {localStorage.getItem(SESSION_KEY) && (
+                        <Button variant="outline" onClick={restoreSession} className="w-full">
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Restore Last Session
+                        </Button>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
     );
 
     const renderConfigStep = () => (
-        <div className="max-w-3xl mx-auto p-4 md:p-6 animate-fade-in">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Configure Split</h1>
-                <button onClick={() => dispatch({ type: 'SET_STATE', payload: { step: 'upload' } })} className="text-sm text-primary-600 hover:underline">Cancel</button>
+        <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+            <PageHeader
+                title="Configure Split"
+                backUrl="#" // Manual back handling handled by cancel button mostly
+            // But we can custom handle it or just leave it since PageHeader uses navigation.
+            // Actually we want to just go back to step upload.
+            />
+            {/* Custom back button override if needed, but PageHeader navigates history. 
+                Here we want to change state. So maybe we shouldn't use PageHeader for internal steps if it forces nav? 
+                PageHeader takes a backUrl. If we want state change, we might need a custom header or just a button.
+                Let's stick to the card layout.
+            */}
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold">Configuration</h2>
+                <Button variant="ghost" onClick={() => dispatch({ type: 'SET_STATE', payload: { step: 'upload' } })}>Cancel</Button>
             </div>
 
-            <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4 mb-4">
-                <p className="font-semibold text-slate-800 dark:text-slate-200">File: <span className="font-normal text-slate-600 dark:text-slate-300">{fileName}</span></p>
-                <div className="flex items-center gap-2 mt-2">
-                    <label className="text-sm text-slate-700 dark:text-slate-300" htmlFor="encodingSelect">Encoding:</label>
-                    <select id="encodingSelect" value={encoding} onChange={e => dispatch({ type: 'SET_STATE', payload: { encoding: e.target.value } })} className="text-sm bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 focus:border-primary-500 focus:ring-1 focus:ring-primary-500">
-                        <option value="utf-8">UTF-8</option><option value="gbk">GBK</option><option value="big5">Big5</option>
-                    </select>
-                </div>
-            </div>
+            <Card>
+                <CardHeader>
+                    <CardTitle>File Settings</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <FileText className="h-5 w-5 text-muted-foreground" />
+                            <span className="font-medium">{fileName}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Label htmlFor="encodingSelect">Encoding:</Label>
+                            <Select id="encodingSelect" value={encoding} onChange={e => dispatch({ type: 'SET_STATE', payload: { encoding: e.target.value } })} className="w-auto">
+                                <option value="utf-8">UTF-8</option><option value="gbk">GBK</option><option value="big5">Big5</option>
+                            </Select>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
 
-            <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4 mb-4">
-                <div className="flex justify-between items-center font-semibold text-slate-800 dark:text-slate-200">
-                    <button type="button" onClick={() => setCleanupOpen(!isCleanupOpen)} className="flex-grow text-left">Cleanup Rules (Regex)</button>
-                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform ${isCleanupOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                </div>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-lg font-medium">Cleanup Rules</CardTitle>
+                    <Button variant="ghost" size="sm" onClick={() => setCleanupOpen(!isCleanupOpen)}>
+                        {isCleanupOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
+                </CardHeader>
                 {isCleanupOpen && (
-                    <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <CardContent className="pt-4 space-y-4">
                         {cleanupRules.map((rule) => (
-                            <div key={rule.id} className="flex gap-2 items-center mb-1.5">
-                                <input type="text" placeholder="Find pattern" value={rule.find} onChange={e => dispatch({ type: 'UPDATE_RULE', payload: { id: rule.id, find: e.target.value } })} className="flex-grow bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm" />
-                                <input type="text" placeholder="Replace with" value={rule.replace} onChange={e => dispatch({ type: 'UPDATE_RULE', payload: { id: rule.id, replace: e.target.value } })} className="flex-grow bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm" />
-                                <button onClick={() => dispatch({ type: 'DELETE_RULE', payload: rule.id })} disabled={cleanupRules.length === 1} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50">-</button>
+                            <div key={rule.id} className="flex gap-2 items-center">
+                                <Input placeholder="Find pattern" value={rule.find} onChange={e => dispatch({ type: 'UPDATE_RULE', payload: { id: rule.id, find: e.target.value } })} />
+                                <Input placeholder="Replace with" value={rule.replace} onChange={e => dispatch({ type: 'UPDATE_RULE', payload: { id: rule.id, replace: e.target.value } })} />
+                                <Button variant="destructive" size="icon" onClick={() => dispatch({ type: 'DELETE_RULE', payload: rule.id })} disabled={cleanupRules.length === 1}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
                             </div>
                         ))}
-                        <button onClick={() => dispatch({ type: 'ADD_RULE' })} className="px-3 py-1 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800">+</button>
-                    </div>
+                        <Button variant="outline" onClick={() => dispatch({ type: 'ADD_RULE' })} className="w-full">
+                            <Plus className="mr-2 h-4 w-4" /> Add Rule
+                        </Button>
+                    </CardContent>
                 )}
-            </div>
+            </Card>
 
-            <div className="bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm p-4 mb-4">
-                <button type="button" onClick={() => setSplitPreviewOpen(!isSplitPreviewOpen)} className="w-full flex justify-between items-center font-semibold text-slate-800 dark:text-slate-200">
-                    Chapter Splitting (Regex)
-                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform ${isSplitPreviewOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                </button>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-lg font-medium">Split Rules (Regex)</CardTitle>
+                    <Button variant="ghost" size="sm" onClick={() => setSplitPreviewOpen(!isSplitPreviewOpen)}>
+                        {isSplitPreviewOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
+                </CardHeader>
                 {isSplitPreviewOpen && (
-                    <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-                        <div className="flex flex-col sm:flex-row gap-2 mb-2">
-                            <select onChange={(e) => { if (e.target.value) loadTemplate(Number(e.target.value)); }} value="" className="flex-grow bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm">
+                    <CardContent className="pt-4 space-y-4">
+                        <div className="flex gap-2">
+                            <Select onChange={(e) => { if (e.target.value) loadTemplate(Number(e.target.value)); }} value="" className="flex-1">
                                 <option value="" disabled>Load a template...</option>
                                 {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                            </select>
-                            <button onClick={saveTemplate} className="px-3 py-1.5 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white">Save as Template</button>
+                            </Select>
+                            <Button variant="secondary" onClick={saveTemplate}>Save Template</Button>
                         </div>
-                        <input type="text" value={splitRegex} onChange={e => dispatch({ type: 'SET_STATE', payload: { splitRegex: e.target.value } })} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 mb-2 font-mono text-sm" />
-                        <button onClick={previewSplit} className="px-4 py-2 text-sm rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800">Preview Matches</button>
-                        {matchedHeadings.length > 0 && <div className="mt-2 p-2 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg max-h-32 overflow-y-auto text-xs font-mono">{matchedHeadings.map((h, i) => <div key={i}>{h}</div>)}</div>}
-                    </div>
+                        <Input value={splitRegex} onChange={e => dispatch({ type: 'SET_STATE', payload: { splitRegex: e.target.value } })} className="font-mono" />
+                        <Button variant="outline" onClick={previewSplit} className="w-full">Preview Matches</Button>
+
+                        {matchedHeadings.length > 0 && (
+                            <div className="p-4 bg-muted rounded-md max-h-48 overflow-y-auto text-xs font-mono border">
+                                {matchedHeadings.map((h, i) => <div key={i}>{h}</div>)}
+                            </div>
+                        )}
+                    </CardContent>
                 )}
-            </div>
-            <div className="mt-8 flex justify-center">
-                <button onClick={processNovel} disabled={!rawText} className="w-full max-w-xs px-6 py-3 rounded-lg font-medium bg-primary-600 hover:bg-primary-700 text-white shadow-lg disabled:opacity-50">Process Novel</button>
+            </Card>
+
+            <div className="flex justify-center pt-8">
+                <Button size="lg" onClick={processNovel} disabled={!rawText} className="w-full md:w-auto min-w-[200px]">
+                    Process Novel
+                </Button>
             </div>
         </div>
     );
 
     const renderEditorStep = () => (
-        <div className="flex flex-col h-[calc(100dvh-120px)] md:h-[calc(100dvh-100px)] animate-fade-in">
-            {/* Header */}
-            <header className="flex-shrink-0 flex items-center justify-between gap-2 p-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700">
-                <button onClick={() => dispatch({ type: 'SET_STATE', payload: { isChapterNavOpen: true } })} className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" /></svg>
-                    <span className="hidden md:inline">Chapters</span>
-                </button>
-                <input type="text" value={currentChapter?.title || ''} onChange={e => currentChapter && dispatch({ type: 'UPDATE_CHAPTER', payload: { id: currentChapter.id, title: e.target.value } })} className="flex-grow min-w-0 bg-transparent text-center font-semibold text-lg p-1.5 rounded-md focus:bg-slate-200 dark:focus:bg-slate-700 outline-none" />
-                <div className="relative">
-                    <button onClick={() => setChapterActionsOpen(v => !v)} className="p-2 rounded-lg font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" /></svg>
-                    </button>
-                    {isChapterActionsOpen && (
-                        <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-700 rounded-lg shadow-xl border border-slate-200 dark:border-slate-600 z-10">
-                            <button onClick={() => { dispatch({ type: 'MERGE_CHAPTER_WITH_NEXT' }); setChapterActionsOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-600">Merge with Next</button>
-                            <button onClick={() => { textareaRef.current && dispatch({ type: 'SPLIT_CHAPTER', payload: { cursorPosition: textareaRef.current.selectionStart } }); setChapterActionsOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-600">Split at Cursor</button>
-                        </div>
-                    )}
+        <div className="flex flex-col h-[calc(100vh-4rem)] md:h-screen bg-background animate-fade-in absolute inset-0 z-10 md:static">
+            {/* Toolbar */}
+            <div className="h-14 border-b flex items-center justify-between px-4 bg-background z-20">
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" onClick={() => dispatch({ type: 'SET_STATE', payload: { isChapterNavOpen: true } })} className="md:hidden">
+                        <Menu className="h-5 w-5" />
+                    </Button>
+                    <Input
+                        value={currentChapter?.title || ''}
+                        onChange={e => currentChapter && dispatch({ type: 'UPDATE_CHAPTER', payload: { id: currentChapter.id, title: e.target.value } })}
+                        className="font-semibold text-lg bg-transparent border-transparent hover:border-input focus:border-input w-48 md:w-96 text-center"
+                    />
                 </div>
-            </header>
-
-            {/* Editor */}
-            <main className="flex-1 relative">
-                {showFindReplace && (
-                    <div className="absolute top-2 right-2 z-10 grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 p-2 bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-lg border border-slate-300 dark:border-slate-700">
-                        <input type="text" placeholder="Find" value={findQuery} onChange={e => dispatch({ type: 'SET_STATE', payload: { findQuery: e.target.value } })} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm" />
-                        <input type="text" placeholder="Replace" value={replaceQuery} onChange={e => dispatch({ type: 'SET_STATE', payload: { replaceQuery: e.target.value } })} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-sm" />
-                        <div className="flex gap-2">
-                            <button onClick={() => handleFindReplace(false)} className="px-3 py-1 text-sm rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600">Replace</button>
-                            <button onClick={() => handleFindReplace(true)} className="px-3 py-1 text-sm rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600">All</button>
-                        </div>
-                    </div>
-                )}
-                <textarea ref={textareaRef} value={currentChapter?.content || ''} onChange={e => currentChapter && dispatch({ type: 'UPDATE_CHAPTER', payload: { id: currentChapter.id, content: e.target.value } })} placeholder="Select a chapter to begin editing..." className="w-full h-full resize-none p-4 bg-transparent outline-none font-mono text-base leading-relaxed" />
-            </main>
-
-            {/* Footer Toolbar */}
-            <footer className="flex-shrink-0 flex items-center justify-around gap-2 p-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-t border-slate-200 dark:border-slate-700 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
-                <button onClick={() => setBookDetailsModalOpen(true)} className="flex flex-col items-center p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3z" clipRule="evenodd" /></svg>
-                    <span className="text-xs">Details</span>
-                </button>
-                <button onClick={() => dispatch({ type: 'SET_STATE', payload: { showGlobalFindReplace: true } })} className="flex flex-col items-center p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" /></svg>
-                    <span className="text-xs">Find All</span>
-                </button>
-                <button onClick={() => setExportModalOpen(true)} className="flex flex-col items-center p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
-                    <span className="text-xs">Export</span>
-                </button>
-                <button onClick={() => dispatch({ type: 'SET_STATE', payload: { step: 'upload' } })} className="flex flex-col items-center p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.707-10.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L9.414 11H13a1 1 0 100-2H9.414l1.293-1.293z" clipRule="evenodd" /></svg>
-                    <span className="text-xs">Start Over</span>
-                </button>
-            </footer>
-
-            {/* Chapter List Drawer */}
-            <div className={`fixed inset-0 z-40 md:static md:block bg-black/30 md:bg-transparent transition-opacity duration-300 ${isChapterNavOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} onClick={() => dispatch({ type: 'SET_STATE', payload: { isChapterNavOpen: false } })}>
-                <div className={`absolute top-0 left-0 h-full w-72 bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shadow-lg flex flex-col transform transition-transform duration-300 ${isChapterNavOpen ? 'translate-x-0' : '-translate-x-full'}`} onClick={e => e.stopPropagation()}>
-                    <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                        <span className="font-semibold">Chapters ({chapters.length})</span>
-                        <div className="flex gap-2">
-                            <button onClick={() => dispatch({ type: 'ADD_NEW_CHAPTER' })} title="Add New Chapter" className="p-2 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-md"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg></button>
-                            <button onClick={() => dispatch({ type: 'TOGGLE_REORDER_MODE' })} title="Toggle Reorder Mode" className={`p-2 rounded-md ${reorderModeActive ? 'bg-primary-500 text-white' : 'hover:bg-slate-200 dark:hover:bg-slate-600'}`}><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7" /></svg></button>
-                        </div>
-                    </div>
-                    <ul className="flex-1 overflow-y-auto p-2 list-none">
-                        {chapters.map((chapter) => (
-                            <li key={chapter.id} className={`flex items-center p-1 rounded-md ${selectedChapterId === chapter.id ? 'bg-primary-600 text-white font-semibold' : 'hover:bg-slate-200 dark:hover:bg-slate-700'} ${dragIndicator?.id === chapter.id ? (dragIndicator.position === 'top' ? 'border-t-2 border-primary-500' : 'border-b-2 border-primary-500') : ''}`}
-                                onDragOver={e => { e.preventDefault(); if (reorderModeActive) { const rect = e.currentTarget.getBoundingClientRect(); setDragIndicator({ id: chapter.id, position: e.clientY - rect.top > rect.height / 2 ? 'bottom' : 'top' }); } }}>
-                                {!reorderModeActive ? (
-                                    <input type="checkbox" checked={selectedChapterIds.has(chapter.id)} onChange={e => dispatch({ type: 'MULTI_SELECT_CHAPTER', payload: { id: chapter.id, checked: e.target.checked } })} className="w-4 h-4 mr-2 flex-shrink-0 accent-primary-500" onClick={e => e.stopPropagation()} />
-                                ) : (
-                                    <div draggable onDragStart={() => (draggedItem.current = chapter)} onDragEnd={() => handleDragSort(chapter)} className="cursor-grab p-2 touch-none flex-shrink-0">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8h16M4 16h16" /></svg>
-                                    </div>
-                                )}
-                                <div onClick={() => dispatch({ type: 'SET_STATE', payload: { selectedChapterId: chapter.id, isChapterNavOpen: false } })} className="flex-grow min-w-0 cursor-pointer p-1 text-sm truncate">{chapter.title}</div>
-                            </li>
-                        ))}
-                    </ul>
-                    {selectedChapterIds.size > 0 && !reorderModeActive && (
-                        <div className="p-2 border-t border-slate-200 dark:border-slate-700 space-y-2">
-                            <p className="text-sm font-semibold">{selectedChapterIds.size} chapter(s) selected</p>
-                            <div className="flex gap-2 flex-wrap">
-                                <button onClick={() => { if (confirm('Merge selected chapters?')) dispatch({ type: 'MERGE_SELECTED_CHAPTERS' }) }} className="px-2 py-1 text-xs rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Merge</button>
-                                <button onClick={() => setBatchRenameModalOpen(true)} className="px-2 py-1 text-xs rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Rename</button>
-                                <button onClick={() => dispatch({ type: 'SET_SELECTION', payload: new Set() })} className="px-2 py-1 text-xs rounded-md bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Clear</button>
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" onClick={() => setBookDetailsModalOpen(true)} title="Book Details">
+                        <Book className="h-5 w-5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => dispatch({ type: 'SET_STATE', payload: { showGlobalFindReplace: true } })} title="Find & Replace">
+                        <Search className="h-5 w-5" />
+                    </Button>
+                    <div className="relative">
+                        <Button variant="ghost" size="icon" onClick={() => setChapterActionsOpen(v => !v)}>
+                            <MoreVertical className="h-5 w-5" />
+                        </Button>
+                        {isChapterActionsOpen && (
+                            <div className="absolute top-full right-0 mt-2 w-48 bg-popover text-popover-foreground rounded-md shadow-md border z-50 py-1">
+                                <button onClick={() => { dispatch({ type: 'MERGE_CHAPTER_WITH_NEXT' }); setChapterActionsOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground">Merge with Next</button>
+                                <button onClick={() => { textareaRef.current && dispatch({ type: 'SPLIT_CHAPTER', payload: { cursorPosition: textareaRef.current.selectionStart } }); setChapterActionsOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground">Split at Cursor</button>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             </div>
+
+            <div className="flex-1 flex overflow-hidden relative">
+                {/* Chapter List (Desktop Sidebar / Mobile Drawer) */}
+                <aside className={cn(
+                    "fixed inset-y-0 left-0 z-30 w-72 bg-card border-r shadow-xl transform transition-transform duration-300 md:relative md:translate-x-0 md:shadow-none",
+                    isChapterNavOpen ? "translate-x-0" : "-translate-x-full"
+                )}>
+                    <div className="h-full flex flex-col">
+                        <div className="p-4 border-b flex justify-between items-center">
+                            <span className="font-semibold">Chapters ({chapters.length})</span>
+                            <div className="flex gap-1">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => dispatch({ type: 'ADD_NEW_CHAPTER' })}><Plus className="h-4 w-4" /></Button>
+                                <Button variant={reorderModeActive ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => dispatch({ type: 'TOGGLE_REORDER_MODE' })}><GripVertical className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 md:hidden" onClick={() => dispatch({ type: 'SET_STATE', payload: { isChapterNavOpen: false } })}><ChevronLeft className="h-4 w-4" /></Button>
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-2">
+                            {chapters.map((chapter) => (
+                                <div
+                                    key={chapter.id}
+                                    className={cn(
+                                        "flex items-center p-2 rounded-md mb-1 cursor-pointer transition-colors text-sm",
+                                        selectedChapterId === chapter.id ? "bg-primary text-primary-foreground" : "hover:bg-accent hover:text-accent-foreground",
+                                        dragIndicator?.id === chapter.id && (dragIndicator.position === 'top' ? 'border-t-2 border-primary' : 'border-b-2 border-primary')
+                                    )}
+                                    onClick={() => dispatch({ type: 'SET_STATE', payload: { selectedChapterId: chapter.id, isChapterNavOpen: false } })}
+                                    onDragOver={e => {
+                                        e.preventDefault();
+                                        if (reorderModeActive) {
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            setDragIndicator({ id: chapter.id, position: e.clientY - rect.top > rect.height / 2 ? 'bottom' : 'top' });
+                                        }
+                                    }}
+                                >
+                                    {reorderModeActive ? (
+                                        <div draggable onDragStart={() => (draggedItem.current = chapter)} onDragEnd={() => handleDragSort(chapter)} className="mr-2 cursor-grab active:cursor-grabbing">
+                                            <GripVertical className="h-4 w-4 opacity-50" />
+                                        </div>
+                                    ) : (
+                                        <div
+                                            className="mr-2"
+                                            onClick={e => { e.stopPropagation(); dispatch({ type: 'MULTI_SELECT_CHAPTER', payload: { id: chapter.id, checked: !selectedChapterIds.has(chapter.id) } }); }}
+                                        >
+                                            {selectedChapterIds.has(chapter.id) ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4 opacity-30" />}
+                                        </div>
+                                    )}
+                                    <span className="truncate flex-1">{chapter.title}</span>
+                                </div>
+                            ))}
+                        </div>
+                        {selectedChapterIds.size > 0 && !reorderModeActive && (
+                            <div className="p-3 border-t bg-muted/50">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-xs font-medium">{selectedChapterIds.size} selected</span>
+                                    <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => dispatch({ type: 'SET_SELECTION', payload: new Set() })}>Clear</Button>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button variant="outline" size="sm" className="flex-1 h-8 text-xs" onClick={() => { if (confirm('Merge selected chapters?')) dispatch({ type: 'MERGE_SELECTED_CHAPTERS' }) }}>Merge</Button>
+                                    <Button variant="outline" size="sm" className="flex-1 h-8 text-xs" onClick={() => setBatchRenameModalOpen(true)}>Rename</Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </aside>
+
+                {/* Mobile Overlay */}
+                {isChapterNavOpen && <div className="fixed inset-0 bg-black/50 z-20 md:hidden" onClick={() => dispatch({ type: 'SET_STATE', payload: { isChapterNavOpen: false } })} />}
+
+                {/* Editor Area */}
+                <main className="flex-1 relative flex flex-col bg-background">
+                    {showFindReplace && (
+                        <div className="p-2 border-b bg-muted/30 flex gap-2 items-center flex-wrap">
+                            <Input placeholder="Find" value={findQuery} onChange={e => dispatch({ type: 'SET_STATE', payload: { findQuery: e.target.value } })} className="w-32 md:w-48 h-8" />
+                            <Input placeholder="Replace" value={replaceQuery} onChange={e => dispatch({ type: 'SET_STATE', payload: { replaceQuery: e.target.value } })} className="w-32 md:w-48 h-8" />
+                            <Button size="sm" className="h-8" onClick={() => handleFindReplace(false)}>Replace</Button>
+                            <Button size="sm" className="h-8" onClick={() => handleFindReplace(true)}>All</Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 ml-auto" onClick={() => dispatch({ type: 'SET_STATE', payload: { showFindReplace: false } })}><ChevronUp className="h-4 w-4" /></Button>
+                        </div>
+                    )}
+                    <textarea
+                        ref={textareaRef}
+                        value={currentChapter?.content || ''}
+                        onChange={e => currentChapter && dispatch({ type: 'UPDATE_CHAPTER', payload: { id: currentChapter.id, content: e.target.value } })}
+                        className="flex-1 w-full resize-none p-4 md:p-8 outline-none font-mono text-base leading-relaxed bg-transparent"
+                        placeholder={chapters.length === 0 ? "No chapters. Create one!" : "Select a chapter to edit..."}
+                    />
+
+                    {/* Footer Actions */}
+                    <div className="border-t p-2 flex justify-between items-center bg-card">
+                        <Button variant="outline" size="sm" onClick={() => dispatch({ type: 'SET_STATE', payload: { step: 'upload' } })}>
+                            <ChevronLeft className="mr-2 h-4 w-4" /> Start Over
+                        </Button>
+                        <div className="flex gap-2">
+                            <Button variant="secondary" size="sm" onClick={() => setExportModalOpen(true)}>
+                                <Download className="mr-2 h-4 w-4" /> Export
+                            </Button>
+                        </div>
+                    </div>
+                </main>
+            </div>
+
+            {/* Modals */}
+            {isBookDetailsModalOpen && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setBookDetailsModalOpen(false)}>
+                    <Card className="w-full max-w-md" onClick={e => e.stopPropagation()}>
+                        <CardHeader>
+                            <CardTitle>Book Details</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label>Title</Label>
+                                <Input value={meta.title} onChange={e => dispatch({ type: 'SET_META', payload: { title: e.target.value } })} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Author</Label>
+                                <Input value={meta.author} onChange={e => dispatch({ type: 'SET_META', payload: { author: e.target.value } })} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Language</Label>
+                                <Input value={meta.language} onChange={e => dispatch({ type: 'SET_META', payload: { language: e.target.value } })} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Cover Image</Label>
+                                <FileInput inputId="coverUpload" label="Choose Cover" accept="image/*" onFileSelected={files => dispatch({ type: 'SET_META', payload: { coverFile: files[0] } })} />
+                                {meta.coverFile && <p className="text-xs text-muted-foreground">{meta.coverFile.name}</p>}
+                            </div>
+                        </CardContent>
+                        <CardFooter className="justify-end">
+                            <Button onClick={() => setBookDetailsModalOpen(false)}>Done</Button>
+                        </CardFooter>
+                    </Card>
+                </div>
+            )}
+
+            {isExportModalOpen && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setExportModalOpen(false)}>
+                    <Card className="w-full max-w-xs" onClick={e => e.stopPropagation()}>
+                        <CardHeader><CardTitle>Export Novel</CardTitle></CardHeader>
+                        <CardContent className="space-y-3">
+                            <Button className="w-full justify-start" onClick={exportToEpub}>
+                                <Book className="mr-2 h-4 w-4" /> Export to EPUB
+                            </Button>
+                            <Button className="w-full justify-start" variant="outline" onClick={exportToZip}>
+                                <FolderArchive className="mr-2 h-4 w-4" /> Export to TXT (Zip)
+                            </Button>
+                        </CardContent>
+                        <CardFooter><Button variant="ghost" onClick={() => setExportModalOpen(false)} className="w-full">Cancel</Button></CardFooter>
+                    </Card>
+                </div>
+            )}
+
+            {isBatchRenameModalOpen && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setBatchRenameModalOpen(false)}>
+                    <Card className="w-full max-w-md" onClick={e => e.stopPropagation()}>
+                        <CardHeader><CardTitle>Batch Rename</CardTitle></CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-2">
+                                <Label>Pattern (use {'{n}'} for number)</Label>
+                                <Input value={renamePattern} onChange={e => setRenamePattern(e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Start Number</Label>
+                                <Input type="number" value={renameStartNum} onChange={e => setRenameStartNum(parseInt(e.target.value))} />
+                            </div>
+                        </CardContent>
+                        <CardFooter className="justify-end gap-2">
+                            <Button variant="ghost" onClick={() => setBatchRenameModalOpen(false)}>Cancel</Button>
+                            <Button onClick={handleBatchRename}>Rename</Button>
+                        </CardFooter>
+                    </Card>
+                </div>
+            )}
         </div>
     );
 
     return (
-        <div id="novelSplitterApp" className="h-full min-h-[calc(100dvh-80px)]">
+        <div id="novelSplitterApp" className="min-h-full">
             {step === 'upload' && renderUploadStep()}
             {step === 'config' && renderConfigStep()}
             {step === 'editor' && renderEditorStep()}
-
-            {/* Batch Rename Modal */}
-            {isBatchRenameModalOpen && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-md">
-                        <h3 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">Batch Rename Chapters</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Pattern ({'{n}'} for number)</label>
-                                <input type="text" value={renamePattern} onChange={e => setRenamePattern(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-3 py-2" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Start Number</label>
-                                <input type="number" value={renameStartNum} onChange={e => setRenameStartNum(parseInt(e.target.value))} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-3 py-2" />
-                            </div>
-                        </div>
-                        <div className="mt-6 flex justify-end gap-3">
-                            <button onClick={() => setBatchRenameModalOpen(false)} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">Cancel</button>
-                            <button onClick={handleBatchRename} className="px-4 py-2 rounded bg-primary-600 text-white">Rename</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Book Details Modal */}
-            {isBookDetailsModalOpen && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-md">
-                        <h3 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">Book Details</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Title</label>
-                                <input type="text" value={meta.title} onChange={e => dispatch({ type: 'SET_META', payload: { title: e.target.value } })} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-3 py-2" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Author</label>
-                                <input type="text" value={meta.author} onChange={e => dispatch({ type: 'SET_META', payload: { author: e.target.value } })} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-3 py-2" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Language (e.g. en, zh)</label>
-                                <input type="text" value={meta.language} onChange={e => dispatch({ type: 'SET_META', payload: { language: e.target.value } })} className="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded px-3 py-2" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cover Image</label>
-                                <FileInput inputId="coverUpload" label="Choose Cover" accept="image/*" onFileSelected={files => dispatch({ type: 'SET_META', payload: { coverFile: files[0] } })} />
-                                {meta.coverFile && <p className="text-xs mt-1 text-slate-500">{meta.coverFile.name}</p>}
-                            </div>
-                        </div>
-                        <div className="mt-6 flex justify-end gap-3">
-                            <button onClick={() => setBookDetailsModalOpen(false)} className="px-4 py-2 rounded bg-primary-600 text-white">Done</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Export Modal */}
-            {isExportModalOpen && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-sm">
-                        <h3 className="text-lg font-bold mb-4 text-slate-900 dark:text-white">Export Novel</h3>
-                        <div className="space-y-3">
-                            <button onClick={() => { exportToEpub(); setExportModalOpen(false); }} className="w-full py-3 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium">Export as EPUB</button>
-                            <button onClick={() => { exportToZip(); setExportModalOpen(false); }} className="w-full py-3 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-white font-medium">Export as ZIP (txt)</button>
-                        </div>
-                        <div className="mt-6 flex justify-center">
-                            <button onClick={() => setExportModalOpen(false)} className="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">Cancel</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Review Replace All Modal */}
-            {isReviewModalOpen && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
-                        <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Review Replacements</h3>
-                            <button onClick={() => setReviewModalOpen(false)} className="text-2xl">&times;</button>
-                        </div>
-                        <div className="p-2 bg-slate-100 dark:bg-slate-900/50">
-                            <label className="flex items-center gap-2 text-sm px-2">
-                                <input type="checkbox" checked={reviewSelection.size === globalMatches.length} onChange={e => {
-                                    if (e.target.checked) {
-                                        const all = new Set<number>();
-                                        globalMatches.forEach((_, i) => all.add(i));
-                                        setReviewSelection(all);
-                                    } else {
-                                        setReviewSelection(new Set());
-                                    }
-                                }} />
-                                Select All
-                            </label>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                            {globalMatches.map((match, idx) => {
-                                const ctx = getMatchContext(match);
-                                return (
-                                    <div key={idx} className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${reviewSelection.has(idx) ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-slate-200 dark:border-slate-700'}`}>
-                                        <input type="checkbox" checked={reviewSelection.has(idx)} onChange={e => {
-                                            const newSet = new Set(reviewSelection);
-                                            e.target.checked ? newSet.add(idx) : newSet.delete(idx);
-                                            setReviewSelection(newSet);
-                                        }} className="mt-1 w-4 h-4 accent-primary-600" />
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-xs px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300">#{idx + 1}</span>
-                                                <span className="font-medium text-sm text-slate-700 dark:text-slate-300 truncate">{match.chapterTitle}</span>
-                                            </div>
-                                            <div className="text-sm font-mono bg-slate-50 dark:bg-slate-900/50 p-2 rounded border border-slate-200 dark:border-slate-700">
-                                                <span className="text-slate-500 dark:text-slate-400">{ctx.before}</span>
-                                                <mark className="bg-yellow-300 dark:bg-yellow-500/50 text-slate-900 dark:text-white px-0.5 rounded">{ctx.match}</mark>
-                                                <span className="text-slate-500 dark:text-slate-400">{ctx.after}</span>
-                                            </div>
-                                            {globalReplaceQuery && (
-                                                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                                    → <span className="text-green-600 dark:text-green-400 font-medium">{globalReplaceQuery}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                        <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
-                            <button onClick={() => setReviewModalOpen(false)} className="px-4 py-2 rounded bg-slate-200 dark:bg-slate-700">Cancel</button>
-                            <button onClick={handleConfirmReplaceAll} className="px-4 py-2 rounded bg-primary-600 text-white">Replace Selected</button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
