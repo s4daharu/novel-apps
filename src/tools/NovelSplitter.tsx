@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo, useReducer, useCallback } from 'react';
 import { useAppContext } from '../contexts/AppContext';
 import { triggerDownload, getJSZip, escapeHTML } from '../utils/helpers';
+import { generateEpubBlob } from '../utils/epubGenerator';
 import { FileInput } from '../components/FileInput';
 
 // Types
@@ -373,60 +374,30 @@ export const NovelSplitter: React.FC = () => {
     const exportToEpub = async () => {
         showSpinner();
         try {
-            const zip = (await getJSZip())();
-            const bookUUID = crypto.randomUUID();
-            zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
-            zip.folder("META-INF")!.file("container.xml", `<?xml version="1.0" encoding="UTF-8"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>`);
-            const oebps = zip.folder("OEBPS")!;
-            oebps.folder("css")!.file("style.css", "body{font-family:sans-serif;line-height:1.6;} h2{text-align:center;font-weight:bold;} p{text-indent:1.5em; margin-top:0; margin-bottom:0; text-align:justify;} p+p{margin-top: 1em;}");
+            const JSZip = await getJSZip();
 
-            const manifestItems: any[] = [{ id: "css", href: "css/style.css", "media-type": "text/css" }, { id: "nav", href: "nav.xhtml", "media-type": "application/xhtml+xml", properties: "nav" }];
-            const spineItems: any[] = [];
-
+            // Prepare cover image data if provided
+            let coverImageData: ArrayBuffer | undefined;
+            let coverImageExt: string | undefined;
             if (meta.coverFile) {
-                const ext = meta.coverFile.name.split('.').pop()?.toLowerCase() || 'jpg';
-                oebps.folder("images")!.file(`cover.${ext}`, await meta.coverFile.arrayBuffer());
-                manifestItems.push({ id: "cover-image", href: `images/cover.${ext}`, "media-type": `image/${ext === 'jpg' ? 'jpeg' : ext}`, properties: "cover-image" });
-                oebps.folder("text")!.file("cover.xhtml", `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml"><head><title>Cover</title></head><body style="text-align:center;margin:0;padding:0;"><img src="../images/cover.${ext}" alt="Cover" style="max-width:100%;max-height:100vh;object-fit:contain;"/></body></html>`);
-                manifestItems.push({ id: "cover-page", href: "text/cover.xhtml", "media-type": "application/xhtml+xml" });
-                spineItems.push({ idref: "cover-page", linear: "no" });
+                coverImageData = await meta.coverFile.arrayBuffer();
+                coverImageExt = meta.coverFile.name.split('.').pop()?.toLowerCase() || 'jpg';
             }
 
-            chapters.forEach((c, i) => {
-                const filename = `chapter_${i + 1}.xhtml`;
-                const bodyContent = c.content.split('\n').filter(l => l.trim()).map(l => `<p>${escapeHTML(l)}</p>`).join('\n');
-                oebps.folder("text")!.file(filename, `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xml:lang="${meta.language}"><head><title>${escapeHTML(c.title)}</title><link rel="stylesheet" type="text/css" href="../css/style.css"/></head><body><h2>${escapeHTML(c.title)}</h2>${bodyContent}</body></html>`);
-                manifestItems.push({ id: `chapter-${i + 1}`, href: `text/${filename}`, "media-type": "application/xhtml+xml" });
-                spineItems.push({ idref: `chapter-${i + 1}` });
-            });
+            // Use shared EPUB generator
+            const epubBlob = await generateEpubBlob(
+                JSZip,
+                chapters.map(c => ({ title: c.title, content: c.content })),
+                {
+                    title: meta.title,
+                    author: meta.author,
+                    language: meta.language,
+                    coverImageData,
+                    coverImageExt
+                }
+            );
 
-            // Add NCX for EPUB 2 compatibility
-            const ncxNavPoints = chapters.map((chapter, i) => `
-                <navPoint id="navPoint-${i + 1}" playOrder="${i + 1}">
-                    <navLabel><text>${escapeHTML(chapter.title)}</text></navLabel>
-                    <content src="text/chapter_${i + 1}.xhtml"/>
-                </navPoint>`).join('');
-
-            const ncxContent = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE ncx PUBLIC "-//NISO//DTD ncx 2005-1//EN" "http://www.daisy.org/z3986/2005/ncx-2005-1.dtd">
-<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
-<head>
-    <meta name="dtb:uid" content="urn:uuid:${bookUUID}"/>
-    <meta name="dtb:depth" content="1"/>
-    <meta name="dtb:totalPageCount" content="0"/>
-    <meta name="dtb:maxPageNumber" content="0"/>
-</head>
-<docTitle><text>${escapeHTML(meta.title)}</text></docTitle>
-<navMap>${ncxNavPoints}</navMap>
-</ncx>`;
-            oebps.file("toc.ncx", ncxContent);
-            manifestItems.push({ id: "ncx", href: "toc.ncx", "media-type": "application/x-dtbncx+xml" });
-
-            const navLiItems = chapters.map((c, i) => `<li><a href="text/chapter_${i + 1}.xhtml">${escapeHTML(c.title)}</a></li>`).join("\n");
-            oebps.file("nav.xhtml", `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Contents</title></head><body><nav epub:type="toc"><h1>Contents</h1><ol>${navLiItems}</ol></nav></body></html>`);
-            oebps.file("content.opf", `<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookId" version="3.0"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="BookId">urn:uuid:${bookUUID}</dc:identifier><dc:title>${escapeHTML(meta.title)}</dc:title><dc:language>${escapeHTML(meta.language)}</dc:language><dc:creator>${escapeHTML(meta.author)}</dc:creator><meta property="dcterms:modified">${new Date().toISOString()}</meta>${meta.coverFile ? '<meta name="cover" content="cover-image"/>' : ''}</metadata><manifest>${manifestItems.map(item => `<item id="${item.id}" href="${item.href}" media-type="${item["media-type"]}" ${item.properties ? `properties="${item.properties}"` : ''}/>`).join("")}</manifest><spine toc="ncx">${spineItems.map(item => `<itemref idref="${item.idref}" ${item.linear ? `linear="${item.linear}"` : ''}/>`).join("")}</spine></package>`);
-
-            triggerDownload(await zip.generateAsync({ type: "blob", mimeType: "application/epub+zip" }), `${meta.title.replace(/[^a-z0-9]/gi, '_')}.epub`);
+            triggerDownload(epubBlob, `${meta.title.replace(/[^a-z0-9]/gi, '_')}.epub`);
             showToast('EPUB created successfully!');
         } catch (e: any) {
             showToast(`Failed to generate EPUB: ${e.message}`, true);
